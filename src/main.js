@@ -870,4 +870,34 @@ function setupSettings() {
       location.reload();
     }
   });
+
+  // Force Refresh
+  document.getElementById('btn-force-refresh').addEventListener('click', async () => {
+    if (confirm('Möchtest du ein Update erzwingen und die App neu laden?')) {
+      // Unregister Service Workers
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
+        } catch (e) {
+          console.error('Error unregistering service worker:', e);
+        }
+      }
+      // Clear cache
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          for (const key of keys) {
+            await caches.delete(key);
+          }
+        } catch (e) {
+          console.error('Error clearing caches:', e);
+        }
+      }
+      // Force reload page
+      window.location.reload(true);
+    }
+  });
 }
