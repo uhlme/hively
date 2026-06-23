@@ -199,7 +199,7 @@ function renderDashboardView() {
   document.getElementById('stat-hives-count').innerText = hives.filter(h => h.status !== 'Aufgelöst').length;
   
   const totalHoney = honey.reduce((sum, h) => sum + parseFloat(h.amount || 0), 0);
-  document.getElementById('stat-honey-weight').innerText = totalHoney.toFixed(1);
+  document.getElementById('stat-honey-weight').innerHTML = `${totalHoney.toFixed(1)} <span style="font-size: 0.95rem; font-weight: 500; color: var(--text-secondary); margin-left: 2px;">kg</span>`;
 
   const totalExpenses = finances
     .filter(f => f.type === 'expense' || !f.type) // old data might not have type, fallback to expenses

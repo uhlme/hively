@@ -189,17 +189,19 @@ nav.bottom-nav {
 .text-primary-color { color: var(--primary); }
 
 .stat-label {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .stat-val {
-  font-size: 1.8rem;
+  font-size: 1.55rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-top: 4px;
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -391,8 +393,9 @@ textarea {
   flex: 1;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  padding: 12px;
+  padding: 10px 8px;
   border-radius: 12px;
+  min-width: 0;
 }
 
 /* Hive detail styles */
