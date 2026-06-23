@@ -204,7 +204,7 @@ function renderDashboardView() {
   const totalExpenses = finances
     .filter(f => f.type === 'expense' || !f.type) // old data might not have type, fallback to expenses
     .reduce((sum, f) => sum + parseFloat(f.price || 0), 0);
-  document.getElementById('stat-expenses-sum').innerText = totalExpenses.toLocaleString('de-CH', { style: 'currency', currency: 'CHF' });
+  document.getElementById('stat-expenses-sum').innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${totalExpenses.toFixed(2)}`;
 
   // Recent activities list (Inspections & Harvests merged, newest first)
   const inspections = getInspections();
