@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hively" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Hively – Bienen-Tracker</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header>
+        <h1 id="app-title">🐝 Hively</h1>
+        <div class="header-actions">
+          <button id="btn-quick-add" class="btn btn-sm btn-primary">+ Volk</button>
+        </div>
+      </header>
+
+      <!-- Main Content Viewport -->
+      <main id="main-viewport">
+        <!-- View 1: Dashboard -->
+        <section id="view-dashboard" class="view">
+          <div class="stat-card-row">
+            <div class="stat-card">
+              <div class="stat-label">Völker</div>
+              <div class="stat-val" id="stat-hives-count">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Honig (kg)</div>
+              <div class="stat-val text-primary-color" id="stat-honey-weight">0.0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Ausgaben</div>
+              <div class="stat-val text-danger" id="stat-expenses-sum">0.00 CHF</div>
+            </div>
+          </div>
+
+          <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Nächste Schritte & Aktionen</h2>
+          <div class="grid-2" style="margin-bottom: 24px;">
+            <button id="dash-btn-insp" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
+              <span>📝 Durchsicht</span>
+              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Arbeit eintragen</span>
+            </button>
+            <button id="dash-btn-honey" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
+              <span>🍯 Honigernte</span>
+              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Ertrag buchen</span>
+            </button>
+          </div>
+
+          <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Letzte Aktivitäten</h2>
+          <div id="dashboard-recent-activities">
+            <!-- Rendered via JS -->
+            <p class="text-muted text-center" style="padding: 20px;">Keine Aktivitäten vorhanden.</p>
+          </div>
+        </section>
+
+        <!-- View 2: Völker (Hives List) -->
+        <section id="view-hives" class="view hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 style="font-size: 1.25rem;">Deine Bienenstände</h2>
+            <button id="btn-add-hive" class="btn btn-sm btn-primary">+ Volk hinzufügen</button>
+          </div>
+          <div id="hives-list-container">
+            <!-- Rendered via JS -->
+          </div>
+        </section>
+
+        <!-- View 3: Volk Details (Single Hive View) -->
+        <section id="view-hive-detail" class="view hidden">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto; padding: 8px 12px;">← Zurück</button>
+            <h2 id="detail-hive-title" style="font-size: 1.25rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Kasten Details</h2>
+          </div>
+
+          <div class="detail-header" id="detail-hive-info">
+            <!-- Rendered via JS -->
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-size: 1.1rem;">Verlaufsprotokoll</h3>
+            <button id="btn-new-inspection" class="btn btn-sm btn-primary">+ Neue Durchsicht</button>
+          </div>
+
+          <div id="hive-inspections-list">
+            <!-- Rendered via JS -->
+          </div>
+        </section>
+
+        <!-- View 4: Finanzen (Finance & Harvests) -->
+        <section id="view-finances" class="view hidden">
+          <div class="segmented-control">
+            <button id="tab-fin-expenses" class="active">Ausgaben / Einkäufe</button>
+            <button id="tab-fin-honey">Honigerträge</button>
+          </div>
+
+          <!-- Section: Expenses -->
+          <div id="section-expenses">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h2 style="font-size: 1.25rem;">Einkäufe & Belege</h2>
+              <button id="btn-add-expense" class="btn btn-sm btn-primary">+ Kauf erfassen</button>
+            </div>
+            <div id="expenses-list-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Section: Honey Yield -->
+          <div id="section-honey" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h2 style="font-size: 1.25rem;">Ernteübersicht</h2>
+              <button id="btn-add-honey" class="btn btn-sm btn-primary">+ Ernte buchen</button>
+            </div>
+            <div id="honey-list-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- View 5: Einstellungen -->
+        <section id="view-settings" class="view hidden">
+          <h2 style="font-size: 1.25rem; margin-bottom: 16px;">App-Einstellungen</h2>
+          
+          <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Datenverwaltung</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+              Sichere deine Daten regelmäßig. Sie werden lokal auf diesem Gerät gespeichert.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="btn-export-backup" class="btn btn-secondary">💾 Backup herunterladen (JSON)</button>
+              <button id="btn-trigger-import" class="btn btn-secondary">📂 Backup einspielen (JSON)</button>
+              <input type="file" id="input-import-file" accept=".json" style="display: none;" />
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Entwickler-Werkzeuge</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+              Füge Demo-Daten hinzu, um die App mit Beispieldaten zu testen.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="btn-seed-data" class="btn btn-secondary">🐝 Demo-Daten laden</button>
+              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">🗑️ Alle Daten löschen</button>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 40px;" class="text-muted">
+            <p style="font-size: 0.85rem;">Bienen-Tracker v1.0.0</p>
+            <p style="font-size: 0.75rem; margin-top: 4px;">Für die Imkerei optimierte PWA</p>
+          </div>
+        </section>
+      </main>
+
+      <!-- Bottom Nav Bar -->
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-view="dashboard">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="hives">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+          Kästen
+        </button>
+        <button class="nav-item" data-view="finances">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Finanzen
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Optionen
+        </button>
+      </nav>
+
+      <!-- MODAL: Kasten hinzufügen/bearbeiten -->
+      <div id="modal-hive" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="modal-hive-title">Volk erfassen</h2>
+            <button class="modal-close" data-close="modal-hive">&times;</button>
+          </div>
+          <form id="form-hive">
+            <input type="hidden" id="hive-form-id" />
+            <div class="form-group">
+              <label for="hive-form-name">Name / Kasten-Nummer</label>
+              <input type="text" id="hive-form-name" class="form-control" placeholder="z.B. Kasten 3 - Lindenweg" required />
+            </div>
+            <div class="form-group">
+              <label for="hive-form-queen-name">Name der Königin</label>
+              <input type="text" id="hive-form-queen-name" class="form-control" placeholder="z.B. Beatrix" />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="hive-form-breed">Rasse / Linie</label>
+                <input type="text" id="hive-form-breed" class="form-control" placeholder="z.B. Carnica" />
+              </div>
+              <div class="form-group">
+                <label for="hive-form-queen-year">Königinnen-Jahrgang</label>
+                <select id="hive-form-queen-year">
+                  <option value="2026">2026 (Weiß)</option>
+                  <option value="2025">2025 (Blau)</option>
+                  <option value="2024">2024 (Grün)</option>
+                  <option value="2023">2023 (Rot)</option>
+                  <option value="2022">2022 (Gelb)</option>
+                  <option value="2021">2021 (Weiß)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="hive-form-status">Status</label>
+              <select id="hive-form-status">
+                <option value="Gesund">Gesund</option>
+                <option value="Varroa-Behandlung">Varroa-Behandlung</option>
+                <option value="Schwarmstimmung">Schwarmstimmung</option>
+                <option value="Aufgelöst">Aufgelöst</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="hive-form-notes">Notizen / Besonderheiten</label>
+              <textarea id="hive-form-notes" placeholder="z.B. Zuchtkönigin von Imkerverein..."></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-hive" class="btn btn-danger" style="display: none; flex: 1;">Volk löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Durchsicht hinzufügen/bearbeiten -->
+      <div id="modal-inspection" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Durchsicht erfassen</h2>
+            <button class="modal-close" data-close="modal-inspection">&times;</button>
+          </div>
+          <form id="form-inspection">
+            <input type="hidden" id="insp-form-id" />
+            <div class="form-group">
+              <label for="insp-form-hive-id">Bienenvolk</label>
+              <select id="insp-form-hive-id" required>
+                <!-- Rendered via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="insp-form-date">Datum</label>
+              <input type="date" id="insp-form-date" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="insp-form-brood">Brutstatus & Königin</label>
+              <input type="text" id="insp-form-brood" class="form-control" placeholder="z.B. Stifte, offene und verdeckelte Brut" />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="insp-form-honey-super">Honigraum status</label>
+                <input type="text" id="insp-form-honey-super" class="form-control" placeholder="z.B. 1 aufgesetzt / halbvoll" />
+              </div>
+              <div class="form-group">
+                <label for="insp-form-temperament">Sanftmut (1 - 5)</label>
+                <select id="insp-form-temperament">
+                  <option value="5">5 (Sehr sanft)</option>
+                  <option value="4">4 (Sanft)</option>
+                  <option value="3">3 (Normal/Mäßig)</option>
+                  <option value="2">2 (Stechlustig)</option>
+                  <option value="1">1 (Sehr aggressiv)</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="insp-form-feeding">Fütterung</label>
+                <input type="text" id="insp-form-feeding" class="form-control" placeholder="z.B. Nein / 2L Sirup" />
+              </div>
+              <div class="form-group">
+                <label for="insp-form-varroa">Varroabehandlung</label>
+                <input type="text" id="insp-form-varroa" class="form-control" placeholder="z.B. Keine / Ameisensäure" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="insp-form-notes">Arbeiten & Notizen</label>
+              <textarea id="insp-form-notes" placeholder="z.B. Wabenbau geordnet, Baurahmen ausgeschnitten..."></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-inspection" class="btn btn-danger" style="display: none; flex: 1;">Durchsicht löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Kauf/Ausgabe hinzufügen -->
+      <div id="modal-finance" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Kauf erfassen</h2>
+            <button class="modal-close" data-close="modal-finance">&times;</button>
+          </div>
+          <form id="form-finance">
+            <input type="hidden" id="finance-form-id" />
+            <div class="form-group">
+              <label for="finance-form-date">Datum</label>
+              <input type="date" id="finance-form-date" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="finance-form-description">Gegenstand / Beschreibung</label>
+              <input type="text" id="finance-form-description" class="form-control" placeholder="z.B. 10x Absperrgitter Zander" required />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="finance-form-category">Kategorie</label>
+                <select id="finance-form-category">
+                  <option value="Hardware">Hardware / Beuten</option>
+                  <option value="Futter">Futter</option>
+                  <option value="Bienen">Bienen / Königinnen</option>
+                  <option value="Imkereibedarf">Imkereibedarf / Werkzeug</option>
+                  <option value="Sonstiges">Sonstiges</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="finance-form-price">Preis (CHF)</label>
+                <input type="number" step="0.01" id="finance-form-price" class="form-control" placeholder="0.00" required />
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-finance" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Honigernte erfassen -->
+      <div id="modal-honey" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Honigernte erheben</h2>
+            <button class="modal-close" data-close="modal-honey">&times;</button>
+          </div>
+          <form id="form-honey">
+            <input type="hidden" id="honey-form-id" />
+            <div class="form-group">
+              <label for="honey-form-hive-id">Bienenvolk</label>
+              <select id="honey-form-hive-id" required>
+                <!-- Rendered via JS -->
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="honey-form-date">Erntedatum</label>
+                <input type="date" id="honey-form-date" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label for="honey-form-amount">Gewicht (kg)</label>
+                <input type="number" step="0.1" id="honey-form-amount" class="form-control" placeholder="0.0" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="honey-form-type">Trachtart / Sorte</label>
+              <input type="text" id="honey-form-type" class="form-control" placeholder="z.B. Frühtracht, Raps, Waldhonig" required />
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-honey" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+# Redirects are useful for PWAs / SPAs to ensure client-side routing fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
