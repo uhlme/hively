@@ -55,11 +55,11 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background-color: var(--bg-secondary);
 }
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-primary);
   color: var(--text-primary);
   font-size: 16px;
   line-height: 1.5;
@@ -74,6 +74,7 @@ body {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  background-color: var(--bg-secondary);
 }
 
 header {
@@ -107,6 +108,7 @@ main {
   padding: 16px 14px;
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
   -webkit-overflow-scrolling: touch;
+  background-color: var(--bg-primary);
 }
 
 /* Bottom Navigation Bar */
