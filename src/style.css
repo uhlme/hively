@@ -190,6 +190,10 @@ nav.bottom-nav {
   gap: 12px;
 }
 
+.grid-2 > * {
+  min-width: 0;
+}
+
 /* Typography Utilities */
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }
@@ -277,7 +281,7 @@ nav.bottom-nav {
   margin-bottom: 6px;
 }
 
-.form-control, select, textarea {
+.form-control, select, textarea, input[type="date"] {
   width: 100%;
   padding: 12px;
   border-radius: 10px;
@@ -289,6 +293,10 @@ nav.bottom-nav {
   outline: none;
   transition: border-color 0.2s;
   min-height: 48px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
 }
 
 .form-control:focus, select:focus, textarea:focus {
@@ -363,6 +371,7 @@ textarea {
   padding: 24px 20px;
   max-height: calc(100% - var(--safe-top) - var(--safe-bottom) - 40px);
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   transform: scale(0.9);
   opacity: 0;

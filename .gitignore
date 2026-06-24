@@ -26,3 +26,8 @@ dist-ssr
 .env.local
 .env.*.local
 
+
+# Firebase (local deploy config only)
+firebase.json
+.firebaserc
+.firebase/
