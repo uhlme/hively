@@ -25,7 +25,7 @@ export function startSpeechRecognition({ onResult, onError, onStatusChange }) {
     return;
   }
 
-  recognition.lang = 'de-DE';
+  recognition.lang = 'de-CH';
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
   recognition.continuous = false; // Stop when the user stops speaking
@@ -85,8 +85,8 @@ export async function parseInspectionWithGemini(transcriptionText) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   
-  // Using gemini-1.5-flash which is extremely fast and perfect for structured JSON extraction
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  // Using gemini-2.5-flash which is extremely fast and perfect for structured JSON extraction
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const systemPrompt = `Du bist eine KI zur Analyse von gesprochenen Imker-Protokollen bei einer Durchsicht eines Bienenvolks.
 Extrahiere die relevanten Daten aus dem folgenden Protokoll-Text und liefere ein strukturiertes JSON-Objekt zurück.
