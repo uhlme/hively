@@ -242,6 +242,23 @@
             <h2>Durchsicht erfassen</h2>
             <button class="modal-close" data-close="modal-inspection">&times;</button>
           </div>
+          
+          <!-- Voice Assistant Section -->
+          <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.9rem; font-weight: 600;">🎙️ KI-Sprach-Assistent</span>
+              <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btn-voice-record" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
+                <span id="voice-btn-icon">🎙️</span>
+                <span id="voice-btn-text">Diktieren starten</span>
+              </button>
+            </div>
+            <div id="voice-transcription-preview" style="display: none; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; max-height: 80px; overflow-y: auto; border-left: 3px solid var(--primary);"></div>
+            <div id="voice-assistant-error" class="text-danger" style="display: none; font-size: 0.8rem; margin-top: 4px;"></div>
+          </div>
+
           <form id="form-inspection">
             <input type="hidden" id="insp-form-id" />
             <div class="form-group">

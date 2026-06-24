@@ -488,3 +488,15 @@ textarea {
 .hidden {
   display: none !important;
 }
+
+/* Pulsing red badge for voice recording */
+@keyframes pulse-red {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+#voice-status-badge.voice-badge-listening {
+  animation: pulse-red 1.2s infinite;
+}
+

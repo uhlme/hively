@@ -19,6 +19,7 @@ import {
   syncLocalToRemote
 } from './storage.js';
 import { supabase } from './supabase.js';
+import { startSpeechRecognition, stopSpeechRecognition, parseInspectionWithGemini } from './voiceAssistant.js';
 
 // --- Service Worker Registration ---
 if ('serviceWorker' in navigator) {
@@ -79,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupForms();
   setupSettings();
   setupAuth();
+  setupVoiceAssistant();
   
   // Initial render
   await navigate(currentView);
@@ -1009,4 +1011,182 @@ function setupAuth() {
       submitBtn.disabled = false;
     }
   });
+}
+
+// --- KI Voice Assistant Integration ---
+function setupVoiceAssistant() {
+  const btnRecord = document.getElementById('btn-voice-record');
+  const btnIcon = document.getElementById('voice-btn-icon');
+  const btnText = document.getElementById('voice-btn-text');
+  const statusBadge = document.getElementById('voice-status-badge');
+  const previewDiv = document.getElementById('voice-transcription-preview');
+  const errorDiv = document.getElementById('voice-assistant-error');
+
+  if (!btnRecord) return;
+
+  let currentStatus = 'idle'; // 'idle', 'listening', 'processing'
+  let transcription = '';
+
+  btnRecord.addEventListener('click', () => {
+    errorDiv.style.display = 'none';
+
+    if (currentStatus === 'listening') {
+      stopSpeechRecognition();
+      return;
+    }
+
+    transcription = '';
+    previewDiv.innerText = '';
+    previewDiv.style.display = 'none';
+
+    startSpeechRecognition({
+      onResult: (text, isFinal) => {
+        transcription = text;
+        previewDiv.innerText = text;
+        previewDiv.style.display = 'block';
+
+        if (isFinal) {
+          handleFinalTranscription(text);
+        }
+      },
+      onError: (err) => {
+        errorDiv.innerText = err;
+        errorDiv.style.display = 'block';
+        resetUI();
+      },
+      onStatusChange: (status) => {
+        currentStatus = status;
+        updateUIForStatus(status);
+      }
+    });
+  });
+
+  function resetUI() {
+    currentStatus = 'idle';
+    btnIcon.innerText = '🎙️';
+    btnText.innerText = 'Diktieren starten';
+    statusBadge.innerText = 'Bereit';
+    statusBadge.style.background = 'rgba(255,255,255,0.1)';
+    statusBadge.style.color = 'var(--text)';
+    btnRecord.classList.remove('btn-danger');
+    btnRecord.classList.add('btn-secondary');
+    statusBadge.classList.remove('voice-badge-listening');
+  }
+
+  function updateUIForStatus(status) {
+    if (status === 'listening') {
+      btnIcon.innerText = '🛑';
+      btnText.innerText = 'Diktieren stoppen';
+      statusBadge.innerText = 'Aufnahme...';
+      statusBadge.style.background = '#ef4444';
+      statusBadge.style.color = '#fff';
+      btnRecord.classList.remove('btn-secondary');
+      btnRecord.classList.add('btn-danger');
+      statusBadge.classList.add('voice-badge-listening');
+    } else if (status === 'processing') {
+      btnIcon.innerText = '⏳';
+      btnText.innerText = 'KI analysiert...';
+      statusBadge.innerText = 'Analysiere...';
+      statusBadge.style.background = 'var(--primary)';
+      statusBadge.style.color = '#000';
+      statusBadge.classList.remove('voice-badge-listening');
+    } else {
+      resetUI();
+    }
+  }
+
+  async function handleFinalTranscription(text) {
+    if (!text || text.trim().length === 0) {
+      resetUI();
+      return;
+    }
+
+    try {
+      const data = await parseInspectionWithGemini(text);
+      if (!data) throw new Error('Ungültige Antwort der KI.');
+
+      // Match Hive Name
+      if (data.hiveName) {
+        const hives = await getHives();
+        const matchedHive = hives.find(h => 
+          h.name.toLowerCase().includes(data.hiveName.toLowerCase()) || 
+          data.hiveName.toLowerCase().includes(h.name.toLowerCase())
+        );
+        if (matchedHive) {
+          document.getElementById('insp-form-hive-id').value = matchedHive.id;
+          highlightField('insp-form-hive-id');
+        }
+      }
+
+      // Populate Brood Status
+      if (data.broodStatus) {
+        const input = document.getElementById('insp-form-brood');
+        input.value = data.broodStatus;
+        highlightField('insp-form-brood');
+      }
+
+      // Populate Honey Super
+      if (data.honeySuper) {
+        const input = document.getElementById('insp-form-honey-super');
+        input.value = data.honeySuper;
+        highlightField('insp-form-honey-super');
+      }
+
+      // Populate Temperament
+      if (data.temperament) {
+        const select = document.getElementById('insp-form-temperament');
+        const val = Math.min(5, Math.max(1, parseInt(data.temperament)));
+        select.value = val.toString();
+        highlightField('insp-form-temperament');
+      }
+
+      // Populate Feeding
+      if (data.feeding) {
+        const input = document.getElementById('insp-form-feeding');
+        input.value = data.feeding;
+        highlightField('insp-form-feeding');
+      }
+
+      // Populate Varroa
+      if (data.varroa) {
+        const input = document.getElementById('insp-form-varroa');
+        input.value = data.varroa;
+        highlightField('insp-form-varroa');
+      }
+
+      // Populate Notes
+      if (data.notes) {
+        const input = document.getElementById('insp-form-notes');
+        input.value = data.notes;
+        highlightField('insp-form-notes');
+      }
+
+      statusBadge.innerText = 'Eingetragen!';
+      statusBadge.style.background = '#10b981';
+      statusBadge.style.color = '#fff';
+
+      setTimeout(() => {
+        resetUI();
+        previewDiv.style.display = 'none';
+      }, 3000);
+
+    } catch (err) {
+      console.error(err);
+      errorDiv.innerText = err.message || 'Fehler bei der KI-Verarbeitung.';
+      errorDiv.style.display = 'block';
+      resetUI();
+    }
+  }
+
+  function highlightField(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transition = 'all 0.3s ease';
+    el.style.boxShadow = '0 0 10px var(--primary)';
+    el.style.borderColor = 'var(--primary)';
+    setTimeout(() => {
+      el.style.boxShadow = 'none';
+      el.style.borderColor = '';
+    }, 2000);
+  }
 }
