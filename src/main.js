@@ -15,8 +15,10 @@ import {
   deleteHoneyHarvest,
   exportData,
   importData,
-  seedDemoData
+  seedDemoData,
+  syncLocalToRemote
 } from './storage.js';
+import { supabase } from './supabase.js';
 
 // --- Service Worker Registration ---
 if ('serviceWorker' in navigator) {
@@ -31,6 +33,7 @@ if ('serviceWorker' in navigator) {
 let currentView = 'dashboard';
 let activeHiveIdForDetail = null;
 let currentFinanceTab = 'expenses'; // 'expenses' or 'honey'
+let authMode = 'login'; // 'login' or 'register'
 
 // --- Color Helpers ---
 // White (1 or 6), Yellow (2 or 7), Red (3 or 8), Green (4 or 9), Blue (5 or 0)
@@ -69,24 +72,25 @@ function formatDateString(isoString) {
 }
 
 // --- App Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
-  initStorage();
+document.addEventListener('DOMContentLoaded', async () => {
+  await initStorage();
   setupRouting();
   setupModals();
   setupForms();
   setupSettings();
+  setupAuth();
   
   // Initial render
-  navigate(currentView);
+  await navigate(currentView);
 });
 
 // --- Routing / View Swapping ---
 function setupRouting() {
   const navItems = document.querySelectorAll('nav.bottom-nav .nav-item');
   navItems.forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', async () => {
       const view = item.getAttribute('data-view');
-      navigate(view);
+      await navigate(view);
     });
   });
 
@@ -96,8 +100,8 @@ function setupRouting() {
   });
 
   // Back button on detail view
-  document.getElementById('btn-back-to-hives').addEventListener('click', () => {
-    navigate('hives');
+  document.getElementById('btn-back-to-hives').addEventListener('click', async () => {
+    await navigate('hives');
   });
 
   // View specific quick actions
@@ -118,18 +122,18 @@ function setupRouting() {
   const tabExpenses = document.getElementById('tab-fin-expenses');
   const tabHoney = document.getElementById('tab-fin-honey');
   
-  tabExpenses.addEventListener('click', () => {
+  tabExpenses.addEventListener('click', async () => {
     tabExpenses.classList.add('active');
     tabHoney.classList.remove('active');
     currentFinanceTab = 'expenses';
-    renderFinanceView();
+    await renderFinanceView();
   });
 
-  tabHoney.addEventListener('click', () => {
+  tabHoney.addEventListener('click', async () => {
     tabHoney.classList.add('active');
     tabExpenses.classList.remove('active');
     currentFinanceTab = 'honey';
-    renderFinanceView();
+    await renderFinanceView();
   });
 
   // Finance list buttons
@@ -141,7 +145,7 @@ function setupRouting() {
   });
 }
 
-function navigate(viewName) {
+async function navigate(viewName) {
   currentView = viewName;
 
   // Toggle active tab in bottom nav
@@ -178,22 +182,22 @@ function navigate(viewName) {
 
   // Render content
   if (viewName === 'dashboard') {
-    renderDashboardView();
+    await renderDashboardView();
   } else if (viewName === 'hives') {
-    renderHivesView();
+    await renderHivesView();
   } else if (viewName === 'hive-detail') {
-    renderHiveDetailView();
+    await renderHiveDetailView();
   } else if (viewName === 'finances') {
-    renderFinanceView();
+    await renderFinanceView();
   }
 }
 
 // --- Dynamic Rendering ---
 
-function renderDashboardView() {
-  const hives = getHives();
-  const honey = getHoneyHarvests();
-  const finances = getFinances();
+async function renderDashboardView() {
+  const hives = await getHives();
+  const honey = await getHoneyHarvests();
+  const finances = await getFinances();
 
   // Statistics
   document.getElementById('stat-hives-count').innerText = hives.filter(h => h.status !== 'Aufgelöst').length;
@@ -207,7 +211,7 @@ function renderDashboardView() {
   document.getElementById('stat-expenses-sum').innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${totalExpenses.toFixed(2)}`;
 
   // Recent activities list (Inspections & Harvests merged, newest first)
-  const inspections = getInspections();
+  const inspections = await getInspections();
   const activities = [];
 
   inspections.forEach(i => {
@@ -257,8 +261,8 @@ function renderDashboardView() {
   `).join('');
 }
 
-function renderHivesView() {
-  const hives = getHives();
+async function renderHivesView() {
+  const hives = await getHives();
   const container = document.getElementById('hives-list-container');
   
   if (hives.length === 0) {
@@ -297,17 +301,17 @@ function renderHivesView() {
 
   // Add click handlers for hive cards
   document.querySelectorAll('.hive-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', async () => {
       activeHiveIdForDetail = card.getAttribute('data-id');
-      navigate('hive-detail');
+      await navigate('hive-detail');
     });
   });
 }
 
-function renderHiveDetailView() {
-  const hive = getHiveById(activeHiveIdForDetail);
+async function renderHiveDetailView() {
+  const hive = await getHiveById(activeHiveIdForDetail);
   if (!hive) {
-    navigate('hives');
+    await navigate('hives');
     return;
   }
 
@@ -357,7 +361,7 @@ function renderHiveDetailView() {
   });
 
   // Render Inspections Timeline
-  const inspections = getInspections(activeHiveIdForDetail);
+  const inspections = await getInspections(activeHiveIdForDetail);
   const timeline = document.getElementById('hive-inspections-list');
   
   if (inspections.length === 0) {
@@ -408,7 +412,7 @@ function renderHiveDetailView() {
   });
 }
 
-function renderFinanceView() {
+async function renderFinanceView() {
   const expensesList = document.getElementById('expenses-list-container');
   const honeyList = document.getElementById('honey-list-container');
   const sectionExpenses = document.getElementById('section-expenses');
@@ -421,7 +425,7 @@ function renderFinanceView() {
     document.getElementById('btn-quick-add').innerText = '+ Kauf';
     
     // Render Expenses
-    const finances = getFinances().filter(f => f.type === 'expense' || !f.type);
+    const finances = (await getFinances()).filter(f => f.type === 'expense' || !f.type);
     if (finances.length === 0) {
       expensesList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Käufe erfasst.</p>`;
       return;
@@ -445,11 +449,11 @@ function renderFinanceView() {
 
     // Delete buttons
     document.querySelectorAll('.btn-delete-fin-item').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         if (confirm('Kauf wirklich löschen?')) {
-          deleteFinance(btn.getAttribute('data-id'));
-          renderFinanceView();
-          renderDashboardView();
+          await deleteFinance(btn.getAttribute('data-id'));
+          await renderFinanceView();
+          await renderDashboardView();
         }
       });
     });
@@ -460,8 +464,8 @@ function renderFinanceView() {
     document.getElementById('btn-quick-add').innerText = '+ Ernte';
 
     // Render Honey Yields
-    const honey = getHoneyHarvests();
-    const hives = getHives();
+    const honey = await getHoneyHarvests();
+    const hives = await getHives();
     
     if (honey.length === 0) {
       honeyList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Honigernten erfasst.</p>`;
@@ -489,11 +493,11 @@ function renderFinanceView() {
 
     // Delete buttons
     document.querySelectorAll('.btn-delete-honey-item').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         if (confirm('Erntebeleg wirklich löschen?')) {
-          deleteHoneyHarvest(btn.getAttribute('data-id'));
-          renderFinanceView();
-          renderDashboardView();
+          await deleteHoneyHarvest(btn.getAttribute('data-id'));
+          await renderFinanceView();
+          await renderDashboardView();
         }
       });
     });
@@ -565,14 +569,14 @@ function openHiveModal(hive = null) {
   openModal('modal-hive');
 }
 
-function openInspectionModal(inspection = null, preselectedHiveId = null) {
+async function openInspectionModal(inspection = null, preselectedHiveId = null) {
   const form = document.getElementById('form-inspection');
   const deleteBtn = document.getElementById('btn-delete-inspection');
   form.reset();
 
   // Populate Hive dropdown
   const hiveSelect = document.getElementById('insp-form-hive-id');
-  const hives = getHives();
+  const hives = await getHives();
   
   if (hives.length === 0) {
     alert('Bitte erstelle zuerst ein Volk/Kasten, bevor du Durchsichten erfasst.');
@@ -609,7 +613,7 @@ function openInspectionModal(inspection = null, preselectedHiveId = null) {
   openModal('modal-inspection');
 }
 
-function openFinanceModal(finance = null) {
+async function openFinanceModal(finance = null) {
   const form = document.getElementById('form-finance');
   const deleteBtn = document.getElementById('btn-delete-finance');
   form.reset();
@@ -630,14 +634,14 @@ function openFinanceModal(finance = null) {
   openModal('modal-finance');
 }
 
-function openHoneyModal(honey = null) {
+async function openHoneyModal(honey = null) {
   const form = document.getElementById('form-honey');
   const deleteBtn = document.getElementById('btn-delete-honey');
   form.reset();
 
   // Populate Hive dropdown
   const hiveSelect = document.getElementById('honey-form-hive-id');
-  const hives = getHives();
+  const hives = await getHives();
 
   if (hives.length === 0) {
     alert('Bitte erstelle zuerst ein Volk, bevor du eine Honigernte buchst.');
@@ -671,7 +675,7 @@ function openHoneyModal(honey = null) {
 // --- Form Submissions & Database Write Ops ---
 function setupForms() {
   // Hive Form Submit
-  document.getElementById('form-hive').addEventListener('submit', (e) => {
+  document.getElementById('form-hive').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('hive-form-id').value;
     const hive = {
@@ -685,32 +689,32 @@ function setupForms() {
 
     if (id) hive.id = id;
 
-    const saved = saveHive(hive);
+    await saveHive(hive);
     closeModal('modal-hive');
     
     if (id) {
       // In details view, reload detail info
-      renderHiveDetailView();
+      await renderHiveDetailView();
     } else {
       // Navigate to list
-      navigate('hives');
+      await navigate('hives');
     }
-    renderDashboardView();
+    await renderDashboardView();
   });
 
   // Hive Delete Button
-  document.getElementById('btn-delete-hive').addEventListener('click', () => {
+  document.getElementById('btn-delete-hive').addEventListener('click', async () => {
     const id = document.getElementById('hive-form-id').value;
     if (id && confirm('Möchtest du dieses Volk und alle dazugehörigen Durchsichten unwiderruflich löschen?')) {
-      deleteHive(id);
+      await deleteHive(id);
       closeModal('modal-hive');
-      navigate('hives');
-      renderDashboardView();
+      await navigate('hives');
+      await renderDashboardView();
     }
   });
 
   // Inspection Form Submit
-  document.getElementById('form-inspection').addEventListener('submit', (e) => {
+  document.getElementById('form-inspection').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('insp-form-id').value;
     const inspection = {
@@ -726,33 +730,33 @@ function setupForms() {
 
     if (id) inspection.id = id;
 
-    saveInspection(inspection);
+    await saveInspection(inspection);
     closeModal('modal-inspection');
 
     // Refresh view
     if (currentView === 'hive-detail') {
-      renderHiveDetailView();
+      await renderHiveDetailView();
     } else {
-      navigate('dashboard');
+      await navigate('dashboard');
     }
-    renderDashboardView();
+    await renderDashboardView();
   });
 
   // Inspection Delete Button
-  document.getElementById('btn-delete-inspection').addEventListener('click', () => {
+  document.getElementById('btn-delete-inspection').addEventListener('click', async () => {
     const id = document.getElementById('insp-form-id').value;
     if (id && confirm('Diese Durchsicht wirklich löschen?')) {
-      deleteInspection(id);
+      await deleteInspection(id);
       closeModal('modal-inspection');
       if (currentView === 'hive-detail') {
-        renderHiveDetailView();
+        await renderHiveDetailView();
       }
-      renderDashboardView();
+      await renderDashboardView();
     }
   });
 
   // Finance Form Submit (Expenses)
-  document.getElementById('form-finance').addEventListener('submit', (e) => {
+  document.getElementById('form-finance').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('finance-form-id').value;
     const item = {
@@ -765,19 +769,19 @@ function setupForms() {
 
     if (id) item.id = id;
 
-    saveFinance(item);
+    await saveFinance(item);
     closeModal('modal-finance');
     
     if (currentView === 'finances') {
-      renderFinanceView();
+      await renderFinanceView();
     } else {
-      navigate('finances');
+      await navigate('finances');
     }
-    renderDashboardView();
+    await renderDashboardView();
   });
 
   // Honey Form Submit (Honey Harvests)
-  document.getElementById('form-honey').addEventListener('submit', (e) => {
+  document.getElementById('form-honey').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('honey-form-id').value;
     const harvest = {
@@ -789,7 +793,7 @@ function setupForms() {
 
     if (id) harvest.id = id;
 
-    saveHoneyHarvest(harvest);
+    await saveHoneyHarvest(harvest);
     closeModal('modal-honey');
 
     if (currentView === 'finances') {
@@ -798,25 +802,25 @@ function setupForms() {
       const tabHoney = document.getElementById('tab-fin-honey');
       tabExpenses.classList.remove('active');
       tabHoney.classList.add('active');
-      renderFinanceView();
+      await renderFinanceView();
     } else {
-      navigate('finances');
+      await navigate('finances');
       currentFinanceTab = 'honey';
       const tabExpenses = document.getElementById('tab-fin-expenses');
       const tabHoney = document.getElementById('tab-fin-honey');
       tabExpenses.classList.remove('active');
       tabHoney.classList.add('active');
-      renderFinanceView();
+      await renderFinanceView();
     }
-    renderDashboardView();
+    await renderDashboardView();
   });
 }
 
 // --- Backup & Settings Administration ---
 function setupSettings() {
   // Export Data
-  document.getElementById('btn-export-backup').addEventListener('click', () => {
-    const dataStr = exportData();
+  document.getElementById('btn-export-backup').addEventListener('click', async () => {
+    const dataStr = await exportData();
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -841,11 +845,11 @@ function setupSettings() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const success = importData(evt.target.result);
+    reader.onload = async (evt) => {
+      const success = await importData(evt.target.result);
       if (success) {
         alert('Daten erfolgreich importiert!');
-        navigate('dashboard');
+        await navigate('dashboard');
       } else {
         alert('Fehler beim Importieren der Datei. Bitte überprüfe das Format.');
       }
@@ -898,6 +902,111 @@ function setupSettings() {
       }
       // Force reload page
       window.location.reload(true);
+    }
+  });
+}
+
+// --- Supabase Authentication Setup ---
+function setupAuth() {
+  if (!supabase) {
+    document.getElementById('btn-auth-action').style.display = 'none';
+    document.getElementById('user-status').innerText = 'Lokal-Modus';
+    return;
+  }
+
+  const userStatus = document.getElementById('user-status');
+  const btnAuthAction = document.getElementById('btn-auth-action');
+  const formAuth = document.getElementById('form-auth');
+  const tabLogin = document.getElementById('tab-auth-login');
+  const tabRegister = document.getElementById('tab-auth-register');
+  const errorMsg = document.getElementById('auth-error-msg');
+  const successMsg = document.getElementById('auth-success-msg');
+  const modalTitle = document.getElementById('auth-modal-title');
+  const submitBtn = document.getElementById('btn-auth-submit');
+
+  // Listen to auth changes
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      userStatus.innerText = session.user.email;
+      btnAuthAction.innerText = 'Logout';
+      
+      // Check if there is local data to sync
+      const localHives = JSON.parse(localStorage.getItem('bee_tracker_hives')) || [];
+      if (localHives.length > 0) {
+        if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in dein Online-Konto übertragen?')) {
+          await syncLocalToRemote();
+          alert('Daten erfolgreich synchronisiert!');
+        }
+      }
+      
+      await navigate(currentView);
+    } else {
+      userStatus.innerText = 'Lokal';
+      btnAuthAction.innerText = 'Login';
+      await navigate(currentView);
+    }
+  });
+
+  // Header button click
+  btnAuthAction.addEventListener('click', async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      if (confirm('Möchtest du dich abmelden?')) {
+        await supabase.auth.signOut();
+        location.reload(); // Reload to reset storage state
+      }
+    } else {
+      openModal('modal-auth');
+    }
+  });
+
+  // Modal tabs
+  tabLogin.addEventListener('click', () => {
+    authMode = 'login';
+    tabLogin.className = 'btn btn-sm btn-primary';
+    tabRegister.className = 'btn btn-sm btn-secondary';
+    modalTitle.innerText = 'Bei Hively anmelden';
+    submitBtn.innerText = 'Anmelden';
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+  });
+
+  tabRegister.addEventListener('click', () => {
+    authMode = 'register';
+    tabLogin.className = 'btn btn-sm btn-secondary';
+    tabRegister.className = 'btn btn-sm btn-primary';
+    modalTitle.innerText = 'Konto erstellen';
+    submitBtn.innerText = 'Registrieren';
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+  });
+
+  // Auth Form Submit
+  formAuth.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+    submitBtn.disabled = true;
+
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+
+    try {
+      if (authMode === 'login') {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeModal('modal-auth');
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        successMsg.innerText = 'Registrierung erfolgreich! Bitte überprüfe deine E-Mails zur Bestätigung.';
+        successMsg.style.display = 'block';
+      }
+    } catch (err) {
+      errorMsg.innerText = err.message || 'Ein Fehler ist aufgetreten.';
+      errorMsg.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
     }
   });
 }

@@ -18,7 +18,9 @@
       <!-- Header -->
       <header>
         <h1 id="app-title">🐝 Hively</h1>
-        <div class="header-actions">
+        <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+          <span id="user-status" class="user-status-text" style="font-size: 0.8rem; opacity: 0.8;">Lokal</span>
+          <button id="btn-auth-action" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">Login</button>
           <button id="btn-quick-add" class="btn btn-sm btn-primary">+ Volk</button>
         </div>
       </header>
@@ -367,6 +369,35 @@
             <div style="display: flex; gap: 12px; margin-top: 24px;">
               <button type="button" id="btn-delete-honey" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
               <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Auth (Login/Registrierung) -->
+      <div id="modal-auth" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="auth-modal-title">Bei Hively anmelden</h2>
+            <button class="modal-close" data-close="modal-auth">&times;</button>
+          </div>
+          <div class="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <button id="tab-auth-login" class="btn btn-sm btn-primary" style="flex: 1; padding: 8px;">Login</button>
+            <button id="tab-auth-register" class="btn btn-sm btn-secondary" style="flex: 1; padding: 8px;">Registrieren</button>
+          </div>
+          <form id="form-auth">
+            <div class="form-group">
+              <label for="auth-email">E-Mail Adresse</label>
+              <input type="email" id="auth-email" class="form-control" placeholder="ihre.email@example.com" required />
+            </div>
+            <div class="form-group">
+              <label for="auth-password">Passwort</label>
+              <input type="password" id="auth-password" class="form-control" placeholder="••••••••" required />
+            </div>
+            <div id="auth-error-msg" class="text-danger" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
+            <div id="auth-success-msg" class="text-success" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%;">Anmelden</button>
             </div>
           </form>
         </div>

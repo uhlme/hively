@@ -1,11 +1,9 @@
--- Supabase Migration Schema for Bienen-Tracker
-
--- Enable UUID extension if needed (though client generates text keys, standardizing DB is good practice)
--- create extension if not exists "uuid-ossp";
+-- Supabase Migration Schema for Bienen-Tracker with Multi-User support
 
 -- 1. Hives Table (Bienenvölker)
 create table if not exists public.hives (
     id text primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
     name text not null,
     queen_name text,
     queen_year integer,
@@ -17,16 +15,17 @@ create table if not exists public.hives (
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Enable RLS (Row Level Security) - recommended for Supabase
+-- Enable RLS (Row Level Security)
 alter table public.hives enable row level security;
-create policy "Allow public read access" on public.hives for select using (true);
-create policy "Allow public insert" on public.hives for insert with check (true);
-create policy "Allow public update" on public.hives for update using (true);
-create policy "Allow public delete" on public.hives for delete using (true);
+create policy "Users can only select their own hives" on public.hives for select using (auth.uid() = user_id);
+create policy "Users can only insert their own hives" on public.hives for insert with check (auth.uid() = user_id);
+create policy "Users can only update their own hives" on public.hives for update using (auth.uid() = user_id);
+create policy "Users can only delete their own hives" on public.hives for delete using (auth.uid() = user_id);
 
 -- 2. Inspections Table (Durchsichten)
 create table if not exists public.inspections (
     id text primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
     hive_id text references public.hives(id) on delete cascade not null,
     date date not null default current_date,
     feeding text,
@@ -40,14 +39,15 @@ create table if not exists public.inspections (
 );
 
 alter table public.inspections enable row level security;
-create policy "Allow public read access" on public.inspections for select using (true);
-create policy "Allow public insert" on public.inspections for insert with check (true);
-create policy "Allow public update" on public.inspections for update using (true);
-create policy "Allow public delete" on public.inspections for delete using (true);
+create policy "Users can only select their own inspections" on public.inspections for select using (auth.uid() = user_id);
+create policy "Users can only insert their own inspections" on public.inspections for insert with check (auth.uid() = user_id);
+create policy "Users can only update their own inspections" on public.inspections for update using (auth.uid() = user_id);
+create policy "Users can only delete their own inspections" on public.inspections for delete using (auth.uid() = user_id);
 
 -- 3. Finances Table (Ausgaben / Einnahmen)
 create table if not exists public.finances (
     id text primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
     date date not null default current_date,
     description text not null,
     category text,
@@ -58,14 +58,15 @@ create table if not exists public.finances (
 );
 
 alter table public.finances enable row level security;
-create policy "Allow public read access" on public.finances for select using (true);
-create policy "Allow public insert" on public.finances for insert with check (true);
-create policy "Allow public update" on public.finances for update using (true);
-create policy "Allow public delete" on public.finances for delete using (true);
+create policy "Users can only select their own finances" on public.finances for select using (auth.uid() = user_id);
+create policy "Users can only insert their own finances" on public.finances for insert with check (auth.uid() = user_id);
+create policy "Users can only update their own finances" on public.finances for update using (auth.uid() = user_id);
+create policy "Users can only delete their own finances" on public.finances for delete using (auth.uid() = user_id);
 
 -- 4. Honey Harvests Table (Honigernten)
 create table if not exists public.honey_harvests (
     id text primary key,
+    user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
     hive_id text references public.hives(id) on delete cascade not null,
     date date not null default current_date,
     amount numeric(6, 2) not null,
@@ -75,7 +76,7 @@ create table if not exists public.honey_harvests (
 );
 
 alter table public.honey_harvests enable row level security;
-create policy "Allow public read access" on public.honey_harvests for select using (true);
-create policy "Allow public insert" on public.honey_harvests for insert with check (true);
-create policy "Allow public update" on public.honey_harvests for update using (true);
-create policy "Allow public delete" on public.honey_harvests for delete using (true);
+create policy "Users can only select their own honey harvests" on public.honey_harvests for select using (auth.uid() = user_id);
+create policy "Users can only insert their own honey harvests" on public.honey_harvests for insert with check (auth.uid() = user_id);
+create policy "Users can only update their own honey harvests" on public.honey_harvests for update using (auth.uid() = user_id);
+create policy "Users can only delete their own honey harvests" on public.honey_harvests for delete using (auth.uid() = user_id);
