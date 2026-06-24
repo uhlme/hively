@@ -281,7 +281,7 @@ nav.bottom-nav {
   margin-bottom: 6px;
 }
 
-.form-control, select, textarea, input[type="date"] {
+.form-control, select, textarea, input[type="date"], input[type="number"] {
   width: 100%;
   padding: 12px;
   border-radius: 10px;
