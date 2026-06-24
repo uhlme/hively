@@ -139,8 +139,9 @@ export async function initStorage() {
   if (await useRemote()) {
     return; // Online session, no demo data seeding
   }
-  if (!localStorage.getItem(KEYS.HIVES)) {
+  if (!localStorage.getItem(KEYS.HIVES) && !localStorage.getItem('bee_tracker_demo_seeded')) {
     seedDemoData();
+    localStorage.setItem('bee_tracker_demo_seeded', 'true');
   }
 }
 

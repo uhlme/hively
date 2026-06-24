@@ -934,10 +934,13 @@ function setupAuth() {
       
       // Check if there is local data to sync
       const localHives = JSON.parse(localStorage.getItem('bee_tracker_hives')) || [];
-      if (localHives.length > 0) {
+      const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
+      if (localHives.length > 0 && !hasDeclinedSync) {
         if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in dein Online-Konto übertragen?')) {
           await syncLocalToRemote();
           alert('Daten erfolgreich synchronisiert!');
+        } else {
+          localStorage.setItem('bee_tracker_sync_declined', 'true');
         }
       }
       
@@ -954,6 +957,7 @@ function setupAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       if (confirm('Möchtest du dich abmelden?')) {
+        localStorage.removeItem('bee_tracker_sync_declined');
         await supabase.auth.signOut();
         location.reload(); // Reload to reset storage state
       }
