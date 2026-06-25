@@ -524,3 +524,14 @@ textarea {
   animation: pulse-red 1.2s infinite;
 }
 
+/* Fix for iOS Safari WebKit form input/select focus and click bugs */
+input, textarea, select {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+

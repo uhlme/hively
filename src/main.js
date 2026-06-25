@@ -1061,7 +1061,9 @@ function setupForms() {
     const id = document.getElementById('insp-form-id').value;
     
     // Get checked checkboxes (either checkbox or hidden input)
-    const checkedCheckboxes = document.querySelectorAll('.hive-checkbox:checked');
+    const checkedCheckboxes = Array.from(document.querySelectorAll('.hive-checkbox')).filter(el => {
+      return el.type === 'hidden' || el.checked;
+    });
     if (checkedCheckboxes.length === 0) {
       alert('Bitte wähle mindestens ein Bienenvolk aus.');
       return;
@@ -1189,6 +1191,13 @@ function setupForms() {
       await renderFinanceView();
     }
     await renderDashboardView();
+  });
+
+  // Force window layout refresh on input blur to fix iOS Safari touch target bug
+  document.addEventListener('focusout', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      window.scrollTo(0, window.scrollY);
+    }
   });
 }
 
