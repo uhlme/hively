@@ -108,21 +108,21 @@ export async function parseAudioWithGemini(audioBlob) {
   // Using gemini-2.5-flash which is multimodal and handles audio + dialect perfectly
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-  const systemPrompt = `Du bist eine KI zur Analyse von gesprochenen Imker-Protokollen bei einer Durchsicht eines Bienenvolks.
+  const systemPrompt = `Du bist eine KI zur Analyse von gesprochenen Imker-Protokollen bei einer Durchsicht von Bienenvölkern.
 Höre dir die beigefügte Audiodatei genau an. Sie ist auf Schweizerdeutsch (Mundart) gesprochen.
 Verstehe den Dialekt, übersetze ihn gedanklich ins Hochdeutsche und extrahiere die relevanten Daten.
 Liefere ein strukturiertes JSON-Objekt zurück.
 
 Formatvorgabe (JSON):
 {
-  "hiveName": "Erkannter Name des Volks oder Kastens (z.B. 'Kasten 1', 'Apfelwiese' oder null wenn nicht genannt)",
+  "hiveNames": ["Array von erkannten Kasten-Namen, z.B. ['Kasten 1', 'Kasten 2']. Falls der Benutzer explizit 'alle' oder 'bei allen' sagt, liefere ['alle'] zurück. Leeres Array [], wenn keine genannt wurden."],
   "notes": "Eine übersichtliche, strukturierte Zusammenfassung der gesamten Durchsicht auf Hochdeutsch. Fasse alle beobachteten Details wie Brutstatus, Honigraum, Sanftmut, Fütterung, Varroabehandlung und sonstige Arbeiten in lesbaren, strukturierten Notizen zusammen."
 }
 
 Wichtig:
 - Antworte AUSSCHLIESSLICH mit dem validen JSON-Objekt.
 - Füge keine Markdown-Formatierung wie \`\`\`json oder sonstigen Text hinzu.
-- Setze nicht erwähnte Felder auf null.`;
+- Setze nicht erwähnte Felder auf ein leeres Array oder null.`;
 
   try {
     const result = await model.generateContent([

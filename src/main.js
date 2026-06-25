@@ -649,8 +649,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
   const deleteBtn = document.getElementById('btn-delete-inspection');
   form.reset();
 
-  // Populate Hive dropdown
-  const hiveSelect = document.getElementById('insp-form-hive-id');
+  const hivesContainer = document.getElementById('insp-form-hives-container');
   const hives = await getHives();
   
   if (hives.length === 0) {
@@ -659,22 +658,35 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     return;
   }
 
-  hiveSelect.innerHTML = hives.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
-
   if (inspection) {
     document.getElementById('insp-form-id').value = inspection.id;
-    document.getElementById('insp-form-hive-id').value = inspection.hiveId;
     document.getElementById('insp-form-date').value = inspection.date;
     document.getElementById('insp-form-notes').value = inspection.notes || '';
     deleteBtn.style.display = 'block';
+
+    const matchedHive = hives.find(h => h.id === inspection.hiveId);
+    const hiveName = matchedHive ? matchedHive.name : 'Unbekanntes Volk';
+    hivesContainer.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; font-weight: 500;">
+        <span>${hiveName}</span>
+        <span class="text-muted" style="font-size: 0.75rem;">(Nicht änderbar)</span>
+      </div>
+      <input type="hidden" class="hive-checkbox" value="${inspection.hiveId}" checked />
+    `;
   } else {
     document.getElementById('insp-form-id').value = '';
     document.getElementById('insp-form-date').value = new Date().toISOString().split('T')[0];
     deleteBtn.style.display = 'none';
 
-    if (preselectedHiveId) {
-      document.getElementById('insp-form-hive-id').value = preselectedHiveId;
-    }
+    hivesContainer.innerHTML = hives.map(h => {
+      const isChecked = (preselectedHiveId === h.id) ? 'checked' : '';
+      return `
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; margin: 0; padding: 4px; transition: background-color 0.2s;">
+          <input type="checkbox" class="hive-checkbox" value="${h.id}" ${isChecked} id="hive-chk-${h.id}" style="width: auto; margin: 0;" />
+          <span>${h.name}</span>
+        </label>
+      `;
+    }).join('');
   }
 
   openModal('modal-inspection');
@@ -787,20 +799,48 @@ function setupForms() {
   document.getElementById('form-inspection').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('insp-form-id').value;
-    const inspection = {
-      hiveId: document.getElementById('insp-form-hive-id').value,
-      date: document.getElementById('insp-form-date').value,
-      broodStatus: '',
-      honeySuper: '',
-      temperament: 5,
-      feeding: '',
-      varroa: '',
-      notes: document.getElementById('insp-form-notes').value
-    };
+    
+    // Get checked checkboxes (either checkbox or hidden input)
+    const checkedCheckboxes = document.querySelectorAll('.hive-checkbox:checked');
+    if (checkedCheckboxes.length === 0) {
+      alert('Bitte wähle mindestens ein Bienenvolk aus.');
+      return;
+    }
+    
+    const date = document.getElementById('insp-form-date').value;
+    const notes = document.getElementById('insp-form-notes').value;
 
-    if (id) inspection.id = id;
+    if (id) {
+      // Edit mode: save single update
+      const inspection = {
+        id: id,
+        hiveId: checkedCheckboxes[0].value,
+        date: date,
+        broodStatus: '',
+        honeySuper: '',
+        temperament: 5,
+        feeding: '',
+        varroa: '',
+        notes: notes
+      };
+      await saveInspection(inspection);
+    } else {
+      // Creation mode: save separate inspections for each checked hive
+      for (const chk of checkedCheckboxes) {
+        const inspection = {
+          hiveId: chk.value,
+          date: date,
+          broodStatus: '',
+          honeySuper: '',
+          temperament: 5,
+          feeding: '',
+          varroa: '',
+          notes: notes
+        };
+        await saveInspection(inspection);
+      }
+    }
 
-    await saveInspection(inspection);
     closeModal('modal-inspection');
 
     // Refresh view
@@ -1168,16 +1208,38 @@ function setupVoiceAssistant() {
       const data = await parseAudioWithGemini(audioBlob);
       if (!data) throw new Error('Ungültige Antwort der KI.');
 
-      // Match Hive Name
-      if (data.hiveName) {
+      // Match Hive Names
+      if (data.hiveNames && Array.isArray(data.hiveNames)) {
         const hives = await getHives();
-        const matchedHive = hives.find(h => 
-          h.name.toLowerCase().includes(data.hiveName.toLowerCase()) || 
-          data.hiveName.toLowerCase().includes(h.name.toLowerCase())
-        );
-        if (matchedHive) {
-          document.getElementById('insp-form-hive-id').value = matchedHive.id;
-          highlightField('insp-form-hive-id');
+        const chkContainer = document.getElementById('insp-form-hives-container');
+        
+        // Reset all checkboxes first
+        const checkboxes = chkContainer.querySelectorAll('.hive-checkbox');
+        checkboxes.forEach(chk => {
+          chk.checked = false;
+        });
+
+        const isAlle = data.hiveNames.includes('alle');
+        
+        if (isAlle) {
+          checkboxes.forEach(chk => {
+            chk.checked = true;
+            highlightLabel(chk.parentElement);
+          });
+        } else {
+          for (const rawName of data.hiveNames) {
+            const matchedHive = hives.find(h => 
+              h.name.toLowerCase().includes(rawName.toLowerCase()) || 
+              rawName.toLowerCase().includes(h.name.toLowerCase())
+            );
+            if (matchedHive) {
+              const chk = document.getElementById(`hive-chk-${matchedHive.id}`);
+              if (chk) {
+                chk.checked = true;
+                highlightLabel(chk.parentElement);
+              }
+            }
+          }
         }
       }
 
@@ -1216,6 +1278,16 @@ function highlightField(id) {
   setTimeout(() => {
     el.style.boxShadow = 'none';
     el.style.borderColor = '';
+  }, 2000);
+}
+
+function highlightLabel(label) {
+  if (!label) return;
+  label.style.transition = 'all 0.3s ease';
+  label.style.backgroundColor = 'rgba(242, 180, 46, 0.2)'; // semi-transparent primary color
+  label.style.borderRadius = '6px';
+  setTimeout(() => {
+    label.style.backgroundColor = '';
   }, 2000);
 }
 

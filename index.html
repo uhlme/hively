@@ -274,10 +274,10 @@
           <form id="form-inspection">
             <input type="hidden" id="insp-form-id" />
             <div class="form-group">
-              <label for="insp-form-hive-id">Bienenvolk</label>
-              <select id="insp-form-hive-id" required>
-                <!-- Rendered via JS -->
-              </select>
+              <label>Bienenvolk / Kästen</label>
+              <div id="insp-form-hives-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background-color: var(--bg-secondary); display: flex; flex-direction: column; gap: 8px;">
+                <!-- Rendered dynamically via JS -->
+              </div>
             </div>
             <div class="form-group">
               <label for="insp-form-date">Datum</label>
