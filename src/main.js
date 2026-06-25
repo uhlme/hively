@@ -424,20 +424,12 @@ async function renderHiveDetailView() {
   }
 
   timeline.innerHTML = inspections.map(insp => {
-    const stars = '★'.repeat(parseInt(insp.temperament || 5)) + '☆'.repeat(5 - parseInt(insp.temperament || 5));
     return `
       <div class="log-item inspection-log-card" data-id="${insp.id}">
         <div class="log-item-header">
           <span>${formatDateString(insp.date)}</span>
-          <span style="color: var(--primary); font-size: 0.9rem;">${stars}</span>
         </div>
-        <div style="margin-bottom: 6px; font-size: 0.9rem;">
-          ${insp.broodStatus ? `<div>🔍 <strong>Brut:</strong> ${insp.broodStatus}</div>` : ''}
-          ${insp.honeySuper ? `<div>🍯 <strong>Honigraum:</strong> ${insp.honeySuper}</div>` : ''}
-          ${insp.feeding && insp.feeding !== 'Nein' ? `<div>🌾 <strong>Futter:</strong> ${insp.feeding}</div>` : ''}
-          ${insp.varroa && insp.varroa !== 'Keine Behandlung' ? `<div>🕷️ <strong>Varroa:</strong> ${insp.varroa}</div>` : ''}
-        </div>
-        ${insp.notes ? `<p class="text-secondary" style="font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 6px; margin-top: 6px; font-style: italic;">"${insp.notes}"</p>` : ''}
+        ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${insp.notes}</p>` : ''}
         <div style="text-align: right; margin-top: 8px;">
           <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${insp.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.75rem;">Bearbeiten</button>
         </div>
@@ -636,19 +628,11 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     document.getElementById('insp-form-id').value = inspection.id;
     document.getElementById('insp-form-hive-id').value = inspection.hiveId;
     document.getElementById('insp-form-date').value = inspection.date;
-    document.getElementById('insp-form-brood').value = inspection.broodStatus || '';
-    document.getElementById('insp-form-honey-super').value = inspection.honeySuper || '';
-    document.getElementById('insp-form-temperament').value = inspection.temperament || '5';
-    document.getElementById('insp-form-feeding').value = inspection.feeding || 'Nein';
-    document.getElementById('insp-form-varroa').value = inspection.varroa || 'Keine Behandlung';
     document.getElementById('insp-form-notes').value = inspection.notes || '';
     deleteBtn.style.display = 'block';
   } else {
     document.getElementById('insp-form-id').value = '';
     document.getElementById('insp-form-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('insp-form-temperament').value = '5';
-    document.getElementById('insp-form-feeding').value = 'Nein';
-    document.getElementById('insp-form-varroa').value = 'Keine Behandlung';
     deleteBtn.style.display = 'none';
 
     if (preselectedHiveId) {
@@ -766,11 +750,11 @@ function setupForms() {
     const inspection = {
       hiveId: document.getElementById('insp-form-hive-id').value,
       date: document.getElementById('insp-form-date').value,
-      broodStatus: document.getElementById('insp-form-brood').value,
-      honeySuper: document.getElementById('insp-form-honey-super').value,
-      temperament: document.getElementById('insp-form-temperament').value,
-      feeding: document.getElementById('insp-form-feeding').value,
-      varroa: document.getElementById('insp-form-varroa').value,
+      broodStatus: '',
+      honeySuper: '',
+      temperament: 5,
+      feeding: '',
+      varroa: '',
       notes: document.getElementById('insp-form-notes').value
     };
 
@@ -1074,6 +1058,7 @@ function setupVoiceAssistant() {
 
   let currentStatus = 'idle'; // 'idle', 'listening', 'processing'
   let transcription = '';
+  let processed = false;
 
   btnRecord.addEventListener('click', () => {
     errorDiv.style.display = 'none';
@@ -1084,6 +1069,7 @@ function setupVoiceAssistant() {
     }
 
     transcription = '';
+    processed = false;
     previewDiv.innerText = '';
     previewDiv.style.display = 'none';
 
@@ -1105,6 +1091,9 @@ function setupVoiceAssistant() {
       onStatusChange: (status) => {
         currentStatus = status;
         updateUIForStatus(status);
+        if (status === 'processing' && !processed) {
+          handleFinalTranscription(transcription);
+        }
       }
     });
   });
@@ -1144,10 +1133,13 @@ function setupVoiceAssistant() {
   }
 
   async function handleFinalTranscription(text) {
+    if (processed) return;
     if (!text || text.trim().length === 0) {
       resetUI();
       return;
     }
+
+    processed = true;
 
     try {
       const data = await parseInspectionWithGemini(text);
@@ -1164,42 +1156,6 @@ function setupVoiceAssistant() {
           document.getElementById('insp-form-hive-id').value = matchedHive.id;
           highlightField('insp-form-hive-id');
         }
-      }
-
-      // Populate Brood Status
-      if (data.broodStatus) {
-        const input = document.getElementById('insp-form-brood');
-        input.value = data.broodStatus;
-        highlightField('insp-form-brood');
-      }
-
-      // Populate Honey Super
-      if (data.honeySuper) {
-        const input = document.getElementById('insp-form-honey-super');
-        input.value = data.honeySuper;
-        highlightField('insp-form-honey-super');
-      }
-
-      // Populate Temperament
-      if (data.temperament) {
-        const select = document.getElementById('insp-form-temperament');
-        const val = Math.min(5, Math.max(1, parseInt(data.temperament)));
-        select.value = val.toString();
-        highlightField('insp-form-temperament');
-      }
-
-      // Populate Feeding
-      if (data.feeding) {
-        const input = document.getElementById('insp-form-feeding');
-        input.value = data.feeding;
-        highlightField('insp-form-feeding');
-      }
-
-      // Populate Varroa
-      if (data.varroa) {
-        const input = document.getElementById('insp-form-varroa');
-        input.value = data.varroa;
-        highlightField('insp-form-varroa');
       }
 
       // Populate Notes

@@ -94,12 +94,7 @@ Extrahiere die relevanten Daten aus dem folgenden Protokoll-Text und liefere ein
 Formatvorgabe (JSON):
 {
   "hiveName": "Erkannter Name des Volks oder Kastens (z.B. 'Kasten 1', 'Apfelwiese' oder null wenn nicht genannt)",
-  "temperament": 5, // Ganzzahl von 1 bis 5 (1 = sehr wild/aggressiv, 3 = normal/mäßig, 5 = sehr sanft). Falls nicht genannt, verwende null.
-  "broodStatus": "Zusammenfassung des Brutstatus (z.B. 'Stifte vorhanden', 'Brut in allen Stadien', 'Keine Königin gefunden' oder null)",
-  "honeySuper": "Zustand oder Anzahl des Honigraums (z.B. '1 Honigraum aufgesetzt', 'Honigraum fast voll' oder null)",
-  "feeding": "Fütterungs-Details (z.B. 'Zuckerwasser 1:1', '2 Liter Sirup', 'Nein' oder null)",
-  "varroa": "Varroabehandlung (z.B. 'Ameisensäure', 'Oxalsäure', 'Nein' oder null)",
-  "notes": "Zusammenfassung der restlichen Arbeiten, Besonderheiten oder Beobachtungen (z.B. 'Wabenbau geordnet', 'Königin gezeichnet' oder null)"
+  "notes": "Eine übersichtliche Zusammenfassung der gesamten Durchsicht. Fasse alle beobachteten Details wie Brutstatus, Honigraum, Sanftmut, Fütterung, Varroabehandlung und sonstige Arbeiten in lesbaren, strukturierten Notizen zusammen."
 }
 
 Wichtig:
