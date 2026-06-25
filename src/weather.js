@@ -33,7 +33,109 @@ const WMO_CODES = {
     99: { label: 'Gewitter mit starkem Hagel', emoji: '⛈️' }
 };
 
-export async function fetchCurrentWeather() {
+export function getCachedLocation() {
+    try {
+        const stored = localStorage.getItem('hively_user_location');
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error("Fehler beim Lesen des gespeicherten Standorts:", e);
+    }
+    return null;
+}
+
+export function saveCachedLocation(lat, lon) {
+    try {
+        localStorage.setItem('hively_user_location', JSON.stringify({ lat, lon }));
+    } catch (e) {
+        console.error("Fehler beim Speichern des Standorts:", e);
+    }
+}
+
+async function fetchWeatherAndPollenByCoords(lat, lon) {
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`;
+    const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
+    
+    const [weatherRes, pollenRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(pollenUrl)
+    ]);
+    
+    if (!weatherRes.ok || !pollenRes.ok) {
+        throw new Error("Fehler beim Abrufen der Wetterdaten");
+    }
+    
+    const weatherData = await weatherRes.json();
+    const pollenData = await pollenRes.json();
+    
+    const temp = weatherData.current?.temperature_2m;
+    const code = weatherData.current?.weather_code;
+    const wind = weatherData.current?.wind_speed_10m;
+    const conditionData = WMO_CODES[code] || { label: 'Unbekannt', emoji: '🌡️' };
+    
+    const p = pollenData.current || {};
+    const pollenLevels = [
+        { name: 'Erle', value: p.alder_pollen || 0 },
+        { name: 'Birke', value: p.birch_pollen || 0 },
+        { name: 'Gräser', value: p.grass_pollen || 0 },
+        { name: 'Beifuß', value: p.mugwort_pollen || 0 },
+        { name: 'Olive', value: p.olive_pollen || 0 },
+        { name: 'Traubenkraut', value: p.ragweed_pollen || 0 }
+    ];
+    
+    pollenLevels.sort((a, b) => b.value - a.value);
+    const dominantPollen = pollenLevels[0].value > 1 ? pollenLevels[0] : null;
+    
+    return {
+        temperature: temp,
+        conditionText: conditionData.label,
+        conditionEmoji: conditionData.emoji,
+        windSpeed: wind,
+        dominantPollen: dominantPollen,
+        allPollen: p,
+        latitude: lat,
+        longitude: lon
+    };
+}
+
+async function fetchCurrentWeatherByCoords(lat, lon) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const current = data.current;
+    
+    if (!current) {
+         throw new Error("Keine aktuellen Wetterdaten in der Antwort gefunden.");
+    }
+    
+    const temp = current.temperature_2m;
+    const code = current.weather_code;
+    const conditionData = WMO_CODES[code] || { label: 'Unbekannt', emoji: '🌡️' };
+    
+    return {
+        temperature: temp,
+        conditionText: conditionData.label,
+        conditionEmoji: conditionData.emoji,
+        code: code,
+        latitude: lat,
+        longitude: lon
+    };
+}
+
+export async function fetchCurrentWeather(forceRefresh = false) {
+    if (!forceRefresh) {
+        const cachedLoc = getCachedLocation();
+        if (cachedLoc) {
+            return fetchCurrentWeatherByCoords(cachedLoc.lat, cachedLoc.lon);
+        }
+    }
+
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error("Geolocation wird von diesem Browser nicht unterstützt."));
@@ -45,32 +147,10 @@ export async function fetchCurrentWeather() {
                 try {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    saveCachedLocation(lat, lon);
                     
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
-                    const response = await fetch(url);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    const current = data.current;
-                    
-                    if (!current) {
-                         throw new Error("Keine aktuellen Wetterdaten in der Antwort gefunden.");
-                    }
-                    
-                    const temp = current.temperature_2m;
-                    const code = current.weather_code;
-                    const conditionData = WMO_CODES[code] || { label: 'Unbekannt', emoji: '🌡️' };
-                    
-                    resolve({
-                        temperature: temp,
-                        conditionText: conditionData.label,
-                        conditionEmoji: conditionData.emoji,
-                        code: code
-                    });
-
+                    const data = await fetchCurrentWeatherByCoords(lat, lon);
+                    resolve(data);
                 } catch (error) {
                     console.error("Fehler beim Abrufen der Wetterdaten:", error);
                     reject(error);
@@ -88,7 +168,14 @@ export async function fetchCurrentWeather() {
     });
 }
 
-export async function fetchDashboardWeatherAndPollen() {
+export async function fetchDashboardWeatherAndPollen(forceRefresh = false) {
+    if (!forceRefresh) {
+        const cachedLoc = getCachedLocation();
+        if (cachedLoc) {
+            return fetchWeatherAndPollenByCoords(cachedLoc.lat, cachedLoc.lon);
+        }
+    }
+
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error("Geolocation wird von diesem Browser nicht unterstützt."));
@@ -100,49 +187,10 @@ export async function fetchDashboardWeatherAndPollen() {
                 try {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    saveCachedLocation(lat, lon);
                     
-                    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`;
-                    const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
-                    
-                    const [weatherRes, pollenRes] = await Promise.all([
-                        fetch(weatherUrl),
-                        fetch(pollenUrl)
-                    ]);
-                    
-                    if (!weatherRes.ok || !pollenRes.ok) {
-                        throw new Error("Fehler beim Abrufen der Dashboard-Daten");
-                    }
-                    
-                    const weatherData = await weatherRes.json();
-                    const pollenData = await pollenRes.json();
-                    
-                    const temp = weatherData.current?.temperature_2m;
-                    const code = weatherData.current?.weather_code;
-                    const wind = weatherData.current?.wind_speed_10m;
-                    const conditionData = WMO_CODES[code] || { label: 'Unbekannt', emoji: '🌡️' };
-                    
-                    const p = pollenData.current || {};
-                    const pollenLevels = [
-                        { name: 'Erle', value: p.alder_pollen || 0 },
-                        { name: 'Birke', value: p.birch_pollen || 0 },
-                        { name: 'Gräser', value: p.grass_pollen || 0 },
-                        { name: 'Beifuß', value: p.mugwort_pollen || 0 },
-                        { name: 'Olive', value: p.olive_pollen || 0 },
-                        { name: 'Traubenkraut', value: p.ragweed_pollen || 0 }
-                    ];
-                    
-                    pollenLevels.sort((a, b) => b.value - a.value);
-                    const dominantPollen = pollenLevels[0].value > 1 ? pollenLevels[0] : null;
-                    
-                    resolve({
-                        temperature: temp,
-                        conditionText: conditionData.label,
-                        conditionEmoji: conditionData.emoji,
-                        windSpeed: wind,
-                        dominantPollen: dominantPollen,
-                        allPollen: p
-                    });
-
+                    const data = await fetchWeatherAndPollenByCoords(lat, lon);
+                    resolve(data);
                 } catch (error) {
                     console.error("Fehler beim Abrufen von Wetter/Pollen:", error);
                     reject(error);

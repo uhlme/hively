@@ -23,7 +23,7 @@ import {
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
-import { fetchCurrentWeather, fetchDashboardWeatherAndPollen } from './weather.js';
+import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
 
 // --- State Variables ---
@@ -343,6 +343,10 @@ async function renderDashboardView() {
 async function loadDashboardRadar() {
   const radarContent = document.getElementById('radar-content');
   const radarLoading = document.getElementById('radar-loading');
+  const setupPrompt = document.getElementById('radar-setup-prompt');
+  const btnSetup = document.getElementById('btn-radar-setup');
+  const btnLocate = document.getElementById('btn-radar-locate');
+
   const elTemp = document.getElementById('radar-temp');
   const elCond = document.getElementById('radar-condition');
   const elWind = document.getElementById('radar-wind');
@@ -352,8 +356,75 @@ async function loadDashboardRadar() {
 
   if (!radarContent) return;
 
-  radarContent.style.display = 'none';
-  radarLoading.style.display = 'block';
+  // Bind click handlers (safely overwrite)
+  if (btnSetup) {
+    btnSetup.onclick = async () => {
+      setupPrompt.style.display = 'none';
+      radarLoading.style.display = 'block';
+      radarLoading.innerText = 'Standort ermitteln... ⏳';
+      try {
+        const weatherData = await fetchDashboardWeatherAndPollen(true);
+        const insight = await getWeatherInsightFromGemini(weatherData);
+        const data = {
+          ...weatherData,
+          insight: insight,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+        applyRadarData(data);
+      } catch (err) {
+        radarLoading.innerText = 'Standort-Fehler ❌';
+        setTimeout(() => {
+          radarLoading.style.display = 'none';
+          setupPrompt.style.display = 'flex';
+        }, 3000);
+      }
+    };
+  }
+
+  if (btnLocate) {
+    btnLocate.onclick = async (e) => {
+      e.stopPropagation();
+      btnLocate.style.display = 'none';
+      radarLoading.style.display = 'block';
+      radarLoading.innerText = 'Ortung... ⏳';
+      radarContent.style.opacity = '0.5';
+      try {
+        const weatherData = await fetchDashboardWeatherAndPollen(true);
+        const insight = await getWeatherInsightFromGemini(weatherData);
+        const data = {
+          ...weatherData,
+          insight: insight,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+        radarContent.style.opacity = '1';
+        applyRadarData(data);
+      } catch (err) {
+        radarLoading.innerText = 'Fehler ❌';
+        radarContent.style.opacity = '1';
+        setTimeout(() => {
+          radarLoading.style.display = 'none';
+          btnLocate.style.display = 'block';
+        }, 3000);
+      }
+    };
+  }
+
+  // Check if we have cached coordinates
+  const cachedLoc = getCachedLocation();
+  if (!cachedLoc) {
+    // Show location request card
+    radarContent.style.display = 'none';
+    radarLoading.style.display = 'none';
+    if (btnLocate) btnLocate.style.display = 'none';
+    if (setupPrompt) setupPrompt.style.display = 'flex';
+    return;
+  }
+
+  // Hide setup card, show loading/content
+  if (setupPrompt) setupPrompt.style.display = 'none';
+  if (btnLocate) btnLocate.style.display = 'block';
 
   const cached = sessionStorage.getItem('bienen_radar_cache');
   if (cached) {
@@ -366,8 +437,12 @@ async function loadDashboardRadar() {
     } catch (e) {}
   }
 
+  radarContent.style.display = 'none';
+  radarLoading.style.display = 'block';
+  radarLoading.innerText = 'Lädt... ⏳';
+
   try {
-    const weatherData = await fetchDashboardWeatherAndPollen();
+    const weatherData = await fetchDashboardWeatherAndPollen(false);
     const insight = await getWeatherInsightFromGemini(weatherData);
     
     const data = {
@@ -385,6 +460,7 @@ async function loadDashboardRadar() {
 
   function applyRadarData(data) {
     radarLoading.style.display = 'none';
+    if (btnLocate) btnLocate.style.display = 'block';
     radarContent.style.display = 'flex';
     
     elTemp.innerText = data.temperature;

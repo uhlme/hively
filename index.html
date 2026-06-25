@@ -47,9 +47,22 @@
 
           <!-- Bienen-Radar Widget -->
           <div id="dashboard-radar-widget" class="card" style="margin-bottom: 24px; padding: 16px; background: linear-gradient(135deg, rgba(255, 160, 0, 0.1), rgba(255, 143, 0, 0.05)); border: 1px solid rgba(255, 160, 0, 0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
               <h2 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">📡 Bienen-Radar</h2>
-              <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);">Lädt... ⏳</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button id="btn-radar-locate" class="btn btn-sm btn-secondary" style="width: auto; padding: 4px 8px; font-size: 0.8rem; display: none;" title="Standort aktualisieren">📍 Ortung</button>
+                <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);">Lädt... ⏳</span>
+              </div>
+            </div>
+            
+            <!-- Location Setup Prompt (if no coords stored) -->
+            <div id="radar-setup-prompt" style="display: none; flex-direction: column; align-items: center; gap: 12px; padding: 16px 8px; text-align: center;">
+              <span style="font-size: 2rem;">🐝</span>
+              <div>
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">Standort für Wetterdaten festlegen</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 260px; margin: 0 auto;">Hively benötigt deinen Standort, um das aktuelle Wetter und den Pollenflug anzuzeigen.</div>
+              </div>
+              <button id="btn-radar-setup" class="btn btn-primary btn-sm" style="width: auto; padding: 8px 16px;">Standort freigeben</button>
             </div>
             
             <div id="radar-content" style="display: none; flex-direction: column; gap: 12px;">
