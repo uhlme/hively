@@ -89,7 +89,11 @@ function setAppHeight() {
     // labels sit above the home-indicator cut line.
     app.style.height = '100vh';
     const inset = Math.max(0, Math.round(screen.height - window.innerHeight));
-    if (inset > cachedBottomInset) cachedBottomInset = inset;
+    // Safe area bottom inset is never larger than 50px. Any value larger is the keyboard.
+    const isKeyboardOpen = document.activeElement && (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
+    if (inset > cachedBottomInset && inset < 50 && !isKeyboardOpen) {
+      cachedBottomInset = inset;
+    }
     // +12px breathing room so the labels aren't flush against the home-indicator edge.
     document.documentElement.style.setProperty('--sab', (cachedBottomInset + 12) + 'px');
   } else {
