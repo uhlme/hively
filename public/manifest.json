@@ -4,11 +4,17 @@
   "short_name": "Hively",
   "description": "Progressive Web App zur mobilen Verwaltung von Bienenvölkern",
   "start_url": "/",
+  "scope": "/",
+  "lang": "de",
+  "dir": "ltr",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "tabbed"],
   "orientation": "portrait",
   "background_color": "#141417",
   "theme_color": "#141417",
   "categories": ["productivity", "utilities", "business"],
+  "prefer_related_applications": false,
+  "related_applications": [],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -19,6 +25,22 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "471x1024",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Hively Dashboard"
+    },
+    {
+      "src": "/screenshot-2.png",
+      "sizes": "445x938",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Kasten Details"
     }
   ],
   "shortcuts": [
@@ -36,5 +58,14 @@
       "url": "/?view=finances",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "note_taking": {
+    "new_note_url": "/"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }
