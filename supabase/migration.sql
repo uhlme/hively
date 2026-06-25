@@ -11,6 +11,9 @@ create table if not exists public.hives (
     breed text,
     status text default 'Gesund'::text,
     notes text,
+    brood_frames integer default 0,
+    honey_frames_1 integer default 0,
+    honey_frames_2 integer default 0,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

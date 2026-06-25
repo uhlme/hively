@@ -194,6 +194,16 @@ nav.bottom-nav {
   min-width: 0;
 }
 
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.grid-3 > * {
+  min-width: 0;
+}
+
 /* Typography Utilities */
 .text-muted { color: var(--text-muted); }
 .text-secondary { color: var(--text-secondary); }

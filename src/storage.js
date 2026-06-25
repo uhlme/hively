@@ -32,6 +32,9 @@ function mapHiveToDB(h) {
     breed: h.breed || null,
     status: h.status || 'Gesund',
     notes: h.notes || null,
+    brood_frames: h.broodFrames ? parseInt(h.broodFrames) : 0,
+    honey_frames_1: h.honeyFrames1 ? parseInt(h.honeyFrames1) : 0,
+    honey_frames_2: h.honeyFrames2 ? parseInt(h.honeyFrames2) : 0,
     created_at: h.createdAt || new Date().toISOString(),
     updated_at: h.updatedAt || new Date().toISOString()
   };
@@ -47,6 +50,9 @@ function mapHiveFromDB(h) {
     breed: h.breed,
     status: h.status,
     notes: h.notes,
+    broodFrames: h.brood_frames || 0,
+    honeyFrames1: h.honey_frames_1 || 0,
+    honeyFrames2: h.honey_frames_2 || 0,
     createdAt: h.created_at,
     updatedAt: h.updated_at
   };
@@ -532,6 +538,9 @@ export function seedDemoData() {
       breed: 'Carnica',
       status: 'Gesund',
       notes: 'Sehr starkes Volk, sanftmütig und fleißig.',
+      broodFrames: 10,
+      honeyFrames1: 8,
+      honeyFrames2: 0,
       createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
     },
     {
@@ -543,6 +552,9 @@ export function seedDemoData() {
       breed: 'Buckfast',
       status: 'Varroa-Behandlung',
       notes: 'Königin gezeichnet. Aktuell Ameisensäure-Behandlung.',
+      broodFrames: 10,
+      honeyFrames1: 0,
+      honeyFrames2: 0,
       createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days ago
     }
   ];

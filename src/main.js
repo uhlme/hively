@@ -403,6 +403,18 @@ async function renderHiveDetailView() {
       </div>
     </div>
     <div class="detail-row">
+      <span class="text-secondary">Brutraum (Waben)</span>
+      <span style="font-weight: 500;">${hive.broodFrames || 0}</span>
+    </div>
+    <div class="detail-row">
+      <span class="text-secondary">1. Honigraum (Waben)</span>
+      <span style="font-weight: 500;">${hive.honeyFrames1 || 0}</span>
+    </div>
+    <div class="detail-row">
+      <span class="text-secondary">2. Honigraum (Waben)</span>
+      <span style="font-weight: 500;">${hive.honeyFrames2 || 0}</span>
+    </div>
+    <div class="detail-row">
       <span class="text-secondary">Erstellt am</span>
       <span style="font-weight: 500;">${formatDateString(hive.createdAt)}</span>
     </div>
@@ -607,6 +619,9 @@ function openHiveModal(hive = null) {
     document.getElementById('hive-form-breed').value = hive.breed || '';
     document.getElementById('hive-form-queen-year').value = hive.queenYear || 2026;
     document.getElementById('hive-form-status').value = hive.status || 'Gesund';
+    document.getElementById('hive-form-brood-frames').value = hive.broodFrames || 0;
+    document.getElementById('hive-form-honey-frames-1').value = hive.honeyFrames1 || 0;
+    document.getElementById('hive-form-honey-frames-2').value = hive.honeyFrames2 || 0;
     document.getElementById('hive-form-notes').value = hive.notes || '';
     deleteBtn.style.display = 'block';
   } else {
@@ -614,6 +629,9 @@ function openHiveModal(hive = null) {
     document.getElementById('hive-form-id').value = '';
     document.getElementById('hive-form-queen-name').value = '';
     document.getElementById('hive-form-queen-year').value = new Date().getFullYear();
+    document.getElementById('hive-form-brood-frames').value = 0;
+    document.getElementById('hive-form-honey-frames-1').value = 0;
+    document.getElementById('hive-form-honey-frames-2').value = 0;
     deleteBtn.style.display = 'none';
   }
 
@@ -727,6 +745,9 @@ function setupForms() {
       breed: document.getElementById('hive-form-breed').value,
       queenYear: parseInt(document.getElementById('hive-form-queen-year').value),
       status: document.getElementById('hive-form-status').value,
+      broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
+      honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
+      honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
       notes: document.getElementById('hive-form-notes').value
     };
 
