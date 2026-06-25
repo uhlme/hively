@@ -18,13 +18,16 @@ import {
   seedDemoData,
   syncLocalToRemote,
   getTasksState,
-  saveTaskState
+  saveTaskState,
+  processSyncQueue,
+  getSyncQueueLength
 } from './storage.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
+import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
 
 // --- State Variables ---
 let currentView = 'dashboard';
@@ -121,6 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupAuth();
   setupVoiceAssistant();
   setupReceiptScanner();
+  setupConnectionTracking();
 
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
@@ -338,6 +342,9 @@ async function renderDashboardView() {
 
   // Trigger radar load asynchronously
   loadDashboardRadar();
+  
+  // Render pending offline memos/scans
+  await renderOfflineMemos();
 }
 
 async function loadDashboardRadar() {
@@ -1498,6 +1505,21 @@ function setupVoiceAssistant() {
   }
 
   async function handleAudioProcessing(audioBlob) {
+    if (!navigator.onLine) {
+      updateUIForStatus('idle');
+      previewDiv.style.display = 'none';
+      try {
+        const base64 = await blobToBase64(audioBlob);
+        await saveOfflineMemo('voice', base64, audioBlob.type);
+        alert('Offline-Modus: Dein Diktat wurde lokal gespeichert. Sobald du Internetverbindung hast, wird es automatisch verarbeitet! 💾');
+        await renderOfflineMemos();
+      } catch (err) {
+        console.error(err);
+        alert('Fehler beim lokalen Speichern der Sprachnotiz.');
+      }
+      return;
+    }
+
     updateUIForStatus('processing');
     try {
       const data = await parseAudioWithGemini(audioBlob);
@@ -1606,6 +1628,21 @@ function setupReceiptScanner() {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!navigator.onLine) {
+      try {
+        const base64 = await blobToBase64(file);
+        await saveOfflineMemo('receipt', base64, file.type);
+        alert('Offline-Modus: Der Beleg wurde lokal gesichert. Er wird analysiert, sobald du wieder online bist! 💾');
+        await renderOfflineMemos();
+      } catch (err) {
+        console.error(err);
+        alert('Fehler beim lokalen Speichern des Belegs.');
+      } finally {
+        fileInput.value = '';
+      }
+      return;
+    }
+
     updateUI('processing');
     errorDiv.style.display = 'none';
 
@@ -1686,4 +1723,199 @@ function formatGeminiError(err, defaultMessage) {
     return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung. 📡';
   }
   return defaultMessage || 'Ein unerwarteter Fehler ist bei der KI-Analyse aufgetreten. Bitte versuche es erneut.';
+}
+
+function setupConnectionTracking() {
+  updateConnectionStatusUI();
+  
+  window.addEventListener('online', async () => {
+    updateConnectionStatusUI();
+    console.log('[Connection] Online! Synchronisiere Daten...');
+    try {
+      await processSyncQueue();
+      await processOfflineMemosQueue();
+    } catch (e) {
+      console.error('[Connection] Error auto-syncing:', e);
+    }
+    updateConnectionStatusUI();
+    
+    // Also re-render dashboard if we are currently viewing it
+    if (currentView === 'dashboard') {
+      await renderDashboardView();
+    }
+  });
+  
+  window.addEventListener('offline', () => {
+    updateConnectionStatusUI();
+    console.log('[Connection] Offline.');
+    if (currentView === 'dashboard') {
+      renderOfflineMemos();
+    }
+  });
+
+  // Initial sync check
+  if (navigator.onLine) {
+    processSyncQueue().then(() => {
+      updateConnectionStatusUI();
+      processOfflineMemosQueue().then(() => {
+        if (currentView === 'dashboard') {
+          renderDashboardView();
+        }
+      });
+    });
+  }
+}
+
+function updateConnectionStatusUI() {
+  const statusEl = document.getElementById('connection-status');
+  if (!statusEl) return;
+
+  if (navigator.onLine) {
+    const pendingCount = getSyncQueueLength();
+    if (pendingCount > 0) {
+      statusEl.innerText = '🔄';
+      statusEl.title = `Online - ${pendingCount} Änderungen ausstehend...`;
+    } else {
+      statusEl.innerText = '🟢';
+      statusEl.title = 'Online - Synchronisiert';
+    }
+  } else {
+    statusEl.innerText = '🔌';
+    statusEl.title = 'Offline - Änderungen werden lokal gespeichert';
+  }
+}
+
+async function renderOfflineMemos() {
+  const container = document.getElementById('dashboard-offline-memos');
+  const list = document.getElementById('offline-memos-list');
+  if (!container || !list) return;
+
+  const memos = await getOfflineMemos();
+  if (memos.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  list.innerHTML = memos.map(memo => {
+    const dateStr = new Date(memo.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const typeLabel = memo.type === 'voice' ? '🎙️ Diktat' : '📷 Beleg-Scan';
+    const detailText = memo.type === 'voice' 
+      ? `Sprachmemo vom ${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`
+      : `Beleg hochgeladen am ${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`;
+      
+    return `
+      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15);">
+        <div>
+          <div style="font-weight: 600; font-size: 0.9rem;">${typeLabel}</div>
+          <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${memo.id}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+          ${navigator.onLine ? 'Verarbeiten' : 'Wartet auf Netz'}
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.btn-process-offline-memo').forEach(btn => {
+    btn.disabled = !navigator.onLine;
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      btn.disabled = true;
+      btn.innerText = 'Verarbeite...';
+      try {
+        await processSingleOfflineMemo(id);
+        await renderOfflineMemos();
+        await renderDashboardView();
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerText = 'Wiederholen';
+        alert('Verarbeitung fehlgeschlagen: ' + err.message);
+      }
+    });
+  });
+}
+
+async function processSingleOfflineMemo(id) {
+  const memos = await getOfflineMemos();
+  const memo = memos.find(m => m.id === id);
+  if (!memo) return;
+
+  const blob = base64ToBlob(memo.mediaData, memo.mediaType);
+
+  if (memo.type === 'voice') {
+    // 1. Process voice audio with Gemini
+    const data = await parseAudioWithGemini(blob);
+    if (!data) throw new Error('Keine Antwort von Gemini erhalten.');
+
+    // 2. Determine target hive IDs
+    const hives = await getHives();
+    const targetHiveIds = [];
+    
+    if (data.hiveNames && Array.isArray(data.hiveNames)) {
+      const isAlle = data.hiveNames.includes('alle');
+      if (isAlle) {
+        hives.forEach(h => targetHiveIds.push(h.id));
+      } else {
+        for (const rawName of data.hiveNames) {
+          const matchedHive = hives.find(h => 
+            h.name.toLowerCase().includes(rawName.toLowerCase()) || 
+            rawName.toLowerCase().includes(h.name.toLowerCase())
+          );
+          if (matchedHive) {
+            targetHiveIds.push(matchedHive.id);
+          }
+        }
+      }
+    }
+
+    if (targetHiveIds.length === 0) {
+      throw new Error('Es konnte kein passendes Volk für das Diktat gefunden werden.');
+    }
+
+    // 3. Create inspections
+    const date = new Date(memo.timestamp).toISOString().split('T')[0];
+    for (const hiveId of targetHiveIds) {
+      const inspection = {
+        hiveId: hiveId,
+        date: date,
+        broodStatus: '',
+        honeySuper: '',
+        temperament: 5,
+        notes: data.notes || 'Durchsicht via Offline-Sprachmemo.'
+      };
+      await saveInspection(inspection);
+    }
+
+  } else if (memo.type === 'receipt') {
+    // 1. Process receipt file with Gemini
+    const file = new File([blob], 'offline_receipt.jpg', { type: memo.mediaType });
+    const data = await parseReceiptWithGemini(file);
+    if (!data) throw new Error('Keine Beleg-Daten von Gemini erkannt.');
+
+    // 2. Save finance item
+    const finance = {
+      date: data.date || new Date(memo.timestamp).toISOString().split('T')[0],
+      description: data.description || 'Offline Beleg-Scan',
+      category: data.category || 'Sonstiges',
+      price: parseFloat(data.price || 0),
+      type: 'expense'
+    };
+    await saveFinance(finance);
+  }
+
+  // 4. Delete memo from IndexedDB on success
+  await deleteOfflineMemo(id);
+}
+
+async function processOfflineMemosQueue() {
+  if (!navigator.onLine) return;
+  const memos = await getOfflineMemos();
+  for (const memo of memos) {
+    try {
+      await processSingleOfflineMemo(memo.id);
+    } catch (err) {
+      console.error('Error auto-processing offline memo:', err);
+    }
+  }
 }

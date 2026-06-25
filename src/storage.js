@@ -6,7 +6,8 @@ const KEYS = {
   INSPECTIONS: 'bee_tracker_inspections',
   FINANCES: 'bee_tracker_finances',
   HONEY: 'bee_tracker_honey',
-  TASKS: 'bee_tracker_tasks'
+  TASKS: 'bee_tracker_tasks',
+  SYNC_QUEUE: 'bee_tracker_sync_queue'
 };
 
 // Check if user is logged in
@@ -156,29 +157,113 @@ export async function initStorage() {
   }
 }
 
-// Hives CRUD
-export async function getHives() {
-  if (await useRemote()) {
-    const { data, error } = await supabase.from('hives').select('*').order('name');
-    if (error) {
-      console.error('Error fetching hives from Supabase:', error);
-      return [];
+// --- Sync Queue (Outbox) Helpers ---
+
+function addToSyncQueue(action, type, payload) {
+  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
+  const recordId = payload.id || payload;
+  
+  // Deduplicate upsert events to prevent flooding the database on sync
+  const filteredQueue = queue.filter(item => {
+    const itemRecordId = item.payload.id || item.payload;
+    return !(itemRecordId === recordId && item.type === type && action === 'upsert' && item.action === 'upsert');
+  });
+
+  filteredQueue.push({
+    id: 'sq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    action,
+    type,
+    payload,
+    timestamp: Date.now()
+  });
+  
+  localStorage.setItem(KEYS.SYNC_QUEUE, JSON.stringify(filteredQueue));
+  console.log(`[Sync Queue] Added ${action} on ${type} (${recordId}). Total pending: ${filteredQueue.length}`);
+}
+
+export async function processSyncQueue() {
+  if (!supabase) return;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  const userId = session.user.id;
+
+  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
+  if (queue.length === 0) return;
+
+  console.log(`[Sync Queue] Processing ${queue.length} pending offline operations...`);
+  const failedItems = [];
+
+  for (const item of queue) {
+    try {
+      if (item.action === 'upsert') {
+        let dbData;
+        let table;
+        if (item.type === 'hives') {
+          dbData = { ...mapHiveToDB(item.payload), user_id: userId };
+          table = 'hives';
+        } else if (item.type === 'inspections') {
+          dbData = { ...mapInspectionToDB(item.payload), user_id: userId };
+          table = 'inspections';
+        } else if (item.type === 'finances') {
+          dbData = { ...mapFinanceToDB(item.payload), user_id: userId };
+          table = 'finances';
+        } else if (item.type === 'honey_harvests') {
+          dbData = { ...mapHoneyToDB(item.payload), user_id: userId };
+          table = 'honey_harvests';
+        }
+        
+        if (table && dbData) {
+          const { error } = await supabase.from(table).upsert(dbData);
+          if (error) throw error;
+        }
+      } else if (item.action === 'delete') {
+        let table;
+        if (item.type === 'hives') table = 'hives';
+        else if (item.type === 'inspections') table = 'inspections';
+        else if (item.type === 'finances') table = 'finances';
+        else if (item.type === 'honey_harvests') table = 'honey_harvests';
+
+        if (table) {
+          const { error } = await supabase.from(table).delete().eq('id', item.payload);
+          if (error) throw error;
+        }
+      }
+    } catch (err) {
+      console.error(`[Sync Queue] Failed to sync item ${item.id}:`, err);
+      failedItems.push(item);
     }
-    return data.map(mapHiveFromDB);
+  }
+
+  localStorage.setItem(KEYS.SYNC_QUEUE, JSON.stringify(failedItems));
+  console.log(`[Sync Queue] Processing complete. Pending left: ${failedItems.length}`);
+}
+
+export function getSyncQueueLength() {
+  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
+  return queue.length;
+}
+
+// --- Hives CRUD ---
+
+export async function getHives() {
+  const isRemote = await useRemote();
+  if (isRemote && navigator.onLine) {
+    try {
+      const { data, error } = await supabase.from('hives').select('*').order('name');
+      if (error) throw error;
+      const hives = data.map(mapHiveFromDB);
+      localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
+      return hives;
+    } catch (err) {
+      console.warn('Failed to fetch hives from Supabase, loading from local cache:', err);
+    }
   }
   return JSON.parse(localStorage.getItem(KEYS.HIVES)) || [];
 }
 
 export async function getHiveById(id) {
-  if (await useRemote()) {
-    const { data, error } = await supabase.from('hives').select('*').eq('id', id).single();
-    if (error) {
-      console.error('Error fetching hive from Supabase:', error);
-      return null;
-    }
-    return mapHiveFromDB(data);
-  }
-  return (await getHives()).find(h => h.id === id);
+  const hives = await getHives();
+  return hives.find(h => h.id === id);
 }
 
 export async function saveHive(hive) {
@@ -189,17 +274,7 @@ export async function saveHive(hive) {
   }
   hive.updatedAt = new Date().toISOString();
 
-  if (isRemote) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapHiveToDB(hive), user_id: session.user.id };
-    const { error } = await supabase.from('hives').upsert(dbData);
-    if (error) {
-      console.error('Error saving hive to Supabase:', error);
-      throw error;
-    }
-    return hive;
-  }
-
+  // 1. Save to local storage first
   const hives = await getHives();
   const idx = hives.findIndex(h => h.id === hive.id);
   if (idx !== -1) {
@@ -208,24 +283,35 @@ export async function saveHive(hive) {
     hives.push(hive);
   }
   localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
+
+  // 2. Sync to Supabase or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const dbData = { ...mapHiveToDB(hive), user_id: session.user.id };
+        const { error } = await supabase.from('hives').upsert(dbData);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to save hive to remote, queueing for sync:', err);
+        addToSyncQueue('upsert', 'hives', hive);
+      }
+    } else {
+      addToSyncQueue('upsert', 'hives', hive);
+    }
+  }
   return hive;
 }
 
 export async function deleteHive(id) {
-  if (await useRemote()) {
-    const { error } = await supabase.from('hives').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting hive from Supabase:', error);
-      throw error;
-    }
-    return;
-  }
-
+  const isRemote = await useRemote();
+  
+  // 1. Delete locally first
   let hives = await getHives();
   hives = hives.filter(h => h.id !== id);
   localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
 
-  // Cascade delete inspections and honey harvests for this hive locally
+  // Cascade delete inspections and honey harvests locally
   let inspections = await getInspections();
   inspections = inspections.filter(i => i.hiveId !== id);
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
@@ -233,28 +319,43 @@ export async function deleteHive(id) {
   let honey = await getHoneyHarvests();
   honey = honey.filter(h => h.hiveId !== id);
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+
+  // 2. Delete remotely or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { error } = await supabase.from('hives').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to delete hive from remote, queueing:', err);
+        addToSyncQueue('delete', 'hives', id);
+      }
+    } else {
+      addToSyncQueue('delete', 'hives', id);
+    }
+  }
 }
 
-// Inspections CRUD
+// --- Inspections CRUD ---
+
 export async function getInspections(hiveId = null) {
-  if (await useRemote()) {
-    let query = supabase.from('inspections').select('*').order('date', { ascending: false });
-    if (hiveId) {
-      query = query.eq('hive_id', hiveId);
+  const isRemote = await useRemote();
+  if (isRemote && navigator.onLine) {
+    try {
+      const { data, error } = await supabase.from('inspections').select('*').order('date', { ascending: false });
+      if (error) throw error;
+      const inspections = data.map(mapInspectionFromDB);
+      localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
+    } catch (err) {
+      console.warn('Failed to fetch inspections from remote, using local cache:', err);
     }
-    const { data, error } = await query;
-    if (error) {
-      console.error('Error fetching inspections from Supabase:', error);
-      return [];
-    }
-    return data.map(mapInspectionFromDB);
   }
 
   const inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
   if (hiveId) {
     return inspections
       .filter(i => i.hiveId === hiveId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date)); // newest first
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   }
   return inspections.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
@@ -267,17 +368,7 @@ export async function saveInspection(inspection) {
   }
   inspection.updatedAt = new Date().toISOString();
 
-  if (isRemote) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapInspectionToDB(inspection), user_id: session.user.id };
-    const { error } = await supabase.from('inspections').upsert(dbData);
-    if (error) {
-      console.error('Error saving inspection to Supabase:', error);
-      throw error;
-    }
-    return inspection;
-  }
-
+  // 1. Save locally
   const inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
   const idx = inspections.findIndex(i => i.id === inspection.id);
   if (idx !== -1) {
@@ -286,33 +377,63 @@ export async function saveInspection(inspection) {
     inspections.push(inspection);
   }
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const dbData = { ...mapInspectionToDB(inspection), user_id: session.user.id };
+        const { error } = await supabase.from('inspections').upsert(dbData);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to save inspection to remote, queueing:', err);
+        addToSyncQueue('upsert', 'inspections', inspection);
+      }
+    } else {
+      addToSyncQueue('upsert', 'inspections', inspection);
+    }
+  }
   return inspection;
 }
 
 export async function deleteInspection(id) {
-  if (await useRemote()) {
-    const { error } = await supabase.from('inspections').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting inspection from Supabase:', error);
-      throw error;
-    }
-    return;
-  }
+  const isRemote = await useRemote();
 
+  // 1. Delete locally
   let inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
   inspections = inspections.filter(i => i.id !== id);
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { error } = await supabase.from('inspections').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to delete inspection from remote, queueing:', err);
+        addToSyncQueue('delete', 'inspections', id);
+      }
+    } else {
+      addToSyncQueue('delete', 'inspections', id);
+    }
+  }
 }
 
-// Finances CRUD
+// --- Finances CRUD ---
+
 export async function getFinances() {
-  if (await useRemote()) {
-    const { data, error } = await supabase.from('finances').select('*').order('date', { ascending: false });
-    if (error) {
-      console.error('Error fetching finances from Supabase:', error);
-      return [];
+  const isRemote = await useRemote();
+  if (isRemote && navigator.onLine) {
+    try {
+      const { data, error } = await supabase.from('finances').select('*').order('date', { ascending: false });
+      if (error) throw error;
+      const finances = data.map(mapFinanceFromDB);
+      localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
+    } catch (err) {
+      console.warn('Failed to fetch finances from remote, using local cache:', err);
     }
-    return data.map(mapFinanceFromDB);
   }
 
   const finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
@@ -327,18 +448,8 @@ export async function saveFinance(item) {
   }
   item.updatedAt = new Date().toISOString();
 
-  if (isRemote) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapFinanceToDB(item), user_id: session.user.id };
-    const { error } = await supabase.from('finances').upsert(dbData);
-    if (error) {
-      console.error('Error saving finance to Supabase:', error);
-      throw error;
-    }
-    return item;
-  }
-
-  const finances = await getFinances();
+  // 1. Save locally
+  const finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
   const idx = finances.findIndex(f => f.id === item.id);
   if (idx !== -1) {
     finances[idx] = { ...finances[idx], ...item };
@@ -346,33 +457,63 @@ export async function saveFinance(item) {
     finances.push(item);
   }
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const dbData = { ...mapFinanceToDB(item), user_id: session.user.id };
+        const { error } = await supabase.from('finances').upsert(dbData);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to save finance to remote, queueing:', err);
+        addToSyncQueue('upsert', 'finances', item);
+      }
+    } else {
+      addToSyncQueue('upsert', 'finances', item);
+    }
+  }
   return item;
 }
 
 export async function deleteFinance(id) {
-  if (await useRemote()) {
-    const { error } = await supabase.from('finances').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting finance from Supabase:', error);
-      throw error;
-    }
-    return;
-  }
+  const isRemote = await useRemote();
 
-  let finances = await getFinances();
+  // 1. Delete locally
+  let finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
   finances = finances.filter(f => f.id !== id);
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { error } = await supabase.from('finances').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to delete finance from remote, queueing:', err);
+        addToSyncQueue('delete', 'finances', id);
+      }
+    } else {
+      addToSyncQueue('delete', 'finances', id);
+    }
+  }
 }
 
-// Honey Harvests CRUD
+// --- Honey Harvests CRUD ---
+
 export async function getHoneyHarvests() {
-  if (await useRemote()) {
-    const { data, error } = await supabase.from('honey_harvests').select('*').order('date', { ascending: false });
-    if (error) {
-      console.error('Error fetching honey harvests from Supabase:', error);
-      return [];
+  const isRemote = await useRemote();
+  if (isRemote && navigator.onLine) {
+    try {
+      const { data, error } = await supabase.from('honey_harvests').select('*').order('date', { ascending: false });
+      if (error) throw error;
+      const honey = data.map(mapHoneyFromDB);
+      localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+    } catch (err) {
+      console.warn('Failed to fetch honey harvests from remote, using local cache:', err);
     }
-    return data.map(mapHoneyFromDB);
   }
 
   const honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
@@ -387,18 +528,8 @@ export async function saveHoneyHarvest(harvest) {
   }
   harvest.updatedAt = new Date().toISOString();
 
-  if (isRemote) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapHoneyToDB(harvest), user_id: session.user.id };
-    const { error } = await supabase.from('honey_harvests').upsert(dbData);
-    if (error) {
-      console.error('Error saving honey harvest to Supabase:', error);
-      throw error;
-    }
-    return harvest;
-  }
-
-  const honey = await getHoneyHarvests();
+  // 1. Save locally
+  const honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
   const idx = honey.findIndex(h => h.id === harvest.id);
   if (idx !== -1) {
     honey[idx] = { ...honey[idx], ...harvest };
@@ -406,25 +537,52 @@ export async function saveHoneyHarvest(harvest) {
     honey.push(harvest);
   }
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const dbData = { ...mapHoneyToDB(harvest), user_id: session.user.id };
+        const { error } = await supabase.from('honey_harvests').upsert(dbData);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to save honey harvest to remote, queueing:', err);
+        addToSyncQueue('upsert', 'honey_harvests', harvest);
+      }
+    } else {
+      addToSyncQueue('upsert', 'honey_harvests', harvest);
+    }
+  }
   return harvest;
 }
 
 export async function deleteHoneyHarvest(id) {
-  if (await useRemote()) {
-    const { error } = await supabase.from('honey_harvests').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting honey harvest from Supabase:', error);
-      throw error;
-    }
-    return;
-  }
+  const isRemote = await useRemote();
 
-  let honey = await getHoneyHarvests();
+  // 1. Delete locally
+  let honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
   honey = honey.filter(h => h.id !== id);
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+
+  // 2. Sync or queue
+  if (isRemote) {
+    if (navigator.onLine) {
+      try {
+        const { error } = await supabase.from('honey_harvests').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Failed to delete honey harvest from remote, queueing:', err);
+        addToSyncQueue('delete', 'honey_harvests', id);
+      }
+    } else {
+      addToSyncQueue('delete', 'honey_harvests', id);
+    }
+  }
 }
 
-// Tasks State (Calendar)
+// --- Tasks State (Calendar) ---
+
 export async function getTasksState() {
   return JSON.parse(localStorage.getItem(KEYS.TASKS)) || {};
 }
@@ -437,7 +595,7 @@ export async function saveTaskState(month, taskId, isChecked) {
   return true;
 }
 
-// Sync Local Data to Supabase
+// Sync Local Data to Supabase (manual migration trigger)
 export async function syncLocalToRemote() {
   if (!supabase) return false;
   const { data: { session } } = await supabase.auth.getSession();
@@ -476,12 +634,6 @@ export async function syncLocalToRemote() {
     const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
     if (error) console.error('Error syncing honey:', error);
   }
-
-  // Clean local storage entries after successful sync
-  localStorage.removeItem(KEYS.HIVES);
-  localStorage.removeItem(KEYS.INSPECTIONS);
-  localStorage.removeItem(KEYS.FINANCES);
-  localStorage.removeItem(KEYS.HONEY);
 
   return true;
 }
@@ -559,7 +711,7 @@ export function seedDemoData() {
       broodFrames: 10,
       honeyFrames1: 8,
       honeyFrames2: 0,
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
       id: 'hive_demo_2',
@@ -573,7 +725,7 @@ export function seedDemoData() {
       broodFrames: 10,
       honeyFrames1: 0,
       honeyFrames2: 0,
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days ago
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
     }
   ];
 
@@ -581,23 +733,23 @@ export function seedDemoData() {
     {
       id: 'insp_demo_1',
       hiveId: 'hive_demo_1',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days ago
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       feeding: 'Nein',
       varroa: 'Keine Behandlung',
       broodStatus: 'Stifte, offene und verdeckelte Brut vorhanden',
       honeySuper: '2 Honigräume aufgesetzt',
-      temperament: '5', // Sehr sanft
+      temperament: '5',
       notes: 'Schwarmstimmung kontrolliert, keine Spielnäpfchen bestiftet. Honigräume gut gefüllt.'
     },
     {
       id: 'insp_demo_2',
       hiveId: 'hive_demo_2',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days ago
+      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       feeding: '1:1 Zuckerwasser (3 Liter)',
       varroa: 'Ameisensäure (60% ad us. vet.)',
       broodStatus: 'Brutnest verkleinert, aber Brut in allen Stadien vorhanden',
       honeySuper: 'Kein Honigraum',
-      temperament: '3', // Mäßig
+      temperament: '3',
       notes: 'Ameisensäure-Verdunster eingesetzt. Milbenfall kontrollieren.'
     }
   ];

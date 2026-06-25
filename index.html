@@ -19,6 +19,7 @@
       <header>
         <h1 id="app-title">🐝 Hively</h1>
         <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+          <span id="connection-status" style="font-size: 1rem; display: flex; align-items: center; cursor: pointer;" title="Online">🟢</span>
           <span id="user-status" class="user-status-text" style="font-size: 0.8rem; opacity: 0.8;">Lokal</span>
           <button id="btn-auth-action" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">Login</button>
           <button id="btn-quick-add" class="btn btn-sm btn-primary">+ Volk</button>
@@ -82,6 +83,13 @@
                 <span style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 4px;">🤖 KI-Einschätzung:</span>
                 <span id="radar-insight" style="font-size: 0.9rem; font-style: italic; line-height: 1.4;">--</span>
               </div>
+          </div>
+          
+          <!-- Offline Memos Queue -->
+          <div id="dashboard-offline-memos" class="card" style="display: none; margin-bottom: 24px; padding: 16px; border: 1px solid var(--primary); background: rgba(255, 160, 0, 0.05);">
+            <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">💾 Offline-Diktate ausstehend</h3>
+            <div id="offline-memos-list" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered dynamically via JS -->
             </div>
           </div>
 
