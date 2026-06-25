@@ -22,15 +22,6 @@ import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 
-// --- Service Worker Registration ---
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered:', reg.scope))
-      .catch(err => console.error('Service Worker registration failed:', err));
-  });
-}
-
 // --- State Variables ---
 let currentView = 'dashboard';
 let activeHiveIdForDetail = null;
@@ -133,6 +124,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindAppHeight();
 
   // Initial render
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewParam = urlParams.get('view');
+  if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings'].includes(viewParam)) {
+    currentView = viewParam;
+  }
   await navigate(currentView);
 });
 

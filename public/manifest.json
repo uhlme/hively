@@ -1,4 +1,5 @@
 {
+  "id": "ch.hively.app",
   "name": "Hively Bienen-Tracker",
   "short_name": "Hively",
   "description": "Progressive Web App zur mobilen Verwaltung von Bienenvölkern",
@@ -7,6 +8,7 @@
   "orientation": "portrait",
   "background_color": "#141417",
   "theme_color": "#141417",
+  "categories": ["productivity", "utilities", "business"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -17,6 +19,22 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kästen",
+      "short_name": "Kästen",
+      "description": "Deine Bienenstände verwalten",
+      "url": "/?view=hives",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Finanzen",
+      "short_name": "Finanzen",
+      "description": "Ausgaben und Honigerträge verwalten",
+      "url": "/?view=finances",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
