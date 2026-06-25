@@ -19,7 +19,7 @@ import {
   syncLocalToRemote
 } from './storage.js';
 import { supabase } from './supabase.js';
-import { startSpeechRecognition, stopSpeechRecognition, parseInspectionWithGemini } from './voiceAssistant.js';
+import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 
 // --- Service Worker Registration ---
 if ('serviceWorker' in navigator) {
@@ -1070,32 +1070,25 @@ function setupVoiceAssistant() {
   if (!btnRecord) return;
 
   let currentStatus = 'idle'; // 'idle', 'listening', 'processing'
-  let transcription = '';
-  let processed = false;
 
-  btnRecord.addEventListener('click', () => {
+  btnRecord.addEventListener('click', async () => {
     errorDiv.style.display = 'none';
 
     if (currentStatus === 'listening') {
-      stopSpeechRecognition();
+      btnRecord.disabled = true; // Prevent double click during transition
+      const audioBlob = await stopAudioRecording();
+      btnRecord.disabled = false;
+      
+      if (audioBlob) {
+        await handleAudioProcessing(audioBlob);
+      }
       return;
     }
 
-    transcription = '';
-    processed = false;
-    previewDiv.innerText = '';
-    previewDiv.style.display = 'none';
+    previewDiv.innerText = 'Aufnahme läuft... Mundart sprechen erlaubt!';
+    previewDiv.style.display = 'block';
 
-    startSpeechRecognition({
-      onResult: (text, isFinal) => {
-        transcription = text;
-        previewDiv.innerText = text;
-        previewDiv.style.display = 'block';
-
-        if (isFinal) {
-          handleFinalTranscription(text);
-        }
-      },
+    startAudioRecording({
       onError: (err) => {
         errorDiv.innerText = err;
         errorDiv.style.display = 'block';
@@ -1104,9 +1097,6 @@ function setupVoiceAssistant() {
       onStatusChange: (status) => {
         currentStatus = status;
         updateUIForStatus(status);
-        if (status === 'processing' && !processed) {
-          handleFinalTranscription(transcription);
-        }
       }
     });
   });
@@ -1145,17 +1135,10 @@ function setupVoiceAssistant() {
     }
   }
 
-  async function handleFinalTranscription(text) {
-    if (processed) return;
-    if (!text || text.trim().length === 0) {
-      resetUI();
-      return;
-    }
-
-    processed = true;
-
+  async function handleAudioProcessing(audioBlob) {
+    updateUIForStatus('processing');
     try {
-      const data = await parseInspectionWithGemini(text);
+      const data = await parseAudioWithGemini(audioBlob);
       if (!data) throw new Error('Ungültige Antwort der KI.');
 
       // Match Hive Name
