@@ -68,14 +68,19 @@ body {
   -webkit-user-select: none;
 }
 
-/* App Shell Structure */
+/* App Shell Structure
+   iOS PWA fix: position:fixed + top:0 + height:100vh makes the container cover
+   the FULL screen (incl. safe areas). Using bottom:0 instead would only fill the
+   safe viewport (~844px) and leave the black gap above the home indicator. */
 #app {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   background-color: var(--bg-secondary);
-  position: relative;
 }
 
 header {
@@ -105,28 +110,25 @@ header .header-actions {
 /* Main scrollable viewport */
 main {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 14px;
-  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
   -webkit-overflow-scrolling: touch;
   background-color: var(--bg-primary);
 }
 
-/* Bottom Navigation Bar */
+/* Bottom Navigation Bar — in normal flex flow, pinned to bottom of #app.
+   --sab is the JS-measured safe-area-inset-bottom (reliable where env() is flaky). */
 nav.bottom-nav {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   height: var(--nav-height);
-  padding-bottom: var(--safe-bottom);
+  padding-bottom: var(--sab, env(safe-area-inset-bottom, 0px));
   box-sizing: content-box;
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  z-index: 100;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -186,6 +188,10 @@ nav.bottom-nav {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.grid-2 > * {
+  min-width: 0;
 }
 
 /* Typography Utilities */
@@ -275,7 +281,7 @@ nav.bottom-nav {
   margin-bottom: 6px;
 }
 
-.form-control, select, textarea {
+.form-control, select, textarea, input[type="date"], input[type="number"] {
   width: 100%;
   padding: 12px;
   border-radius: 10px;
@@ -287,6 +293,10 @@ nav.bottom-nav {
   outline: none;
   transition: border-color 0.2s;
   min-height: 48px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
 }
 
 .form-control:focus, select:focus, textarea:focus {
@@ -361,6 +371,7 @@ textarea {
   padding: 24px 20px;
   max-height: calc(100% - var(--safe-top) - var(--safe-bottom) - 40px);
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   transform: scale(0.9);
   opacity: 0;

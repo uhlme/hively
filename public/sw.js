@@ -1,10 +1,7 @@
-const CACHE_NAME = 'bee-tracker-v1';
+const CACHE_NAME = 'bee-tracker-v2';
 const ASSETS = [
   '/',
   '/index.html',
-  '/src/main.js',
-  '/src/style.css',
-  '/src/storage.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
@@ -37,10 +34,25 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch Event - network-first falling back to cache
+// Fetch Event
 self.addEventListener('fetch', (e) => {
   // Only cache GET requests
   if (e.request.method !== 'GET') return;
+
+  // Navigations / HTML -> network-first, so the app shell is always fresh
+  // (falls back to cache only when offline).
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((networkResponse) => {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseToCache));
+          return networkResponse;
+        })
+        .catch(() => caches.match(e.request).then((cached) => cached || caches.match('/index.html')))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
@@ -60,7 +72,7 @@ self.addEventListener('fetch', (e) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
-        
+
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(e.request, responseToCache);

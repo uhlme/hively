@@ -25,7 +25,7 @@ import { startSpeechRecognition, stopSpeechRecognition, parseInspectionWithGemin
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .then(reg => console.log('Service Worker registered:', reg.scope))
       .catch(err => console.error('Service Worker registration failed:', err));
   });
 }
@@ -72,6 +72,45 @@ function formatDateString(isoString) {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// --- Viewport Height (Safari + PWA safe) ---
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// env(safe-area-inset-bottom) is unreliable on this iOS PWA (returns 0 or 34
+// non-deterministically). screen.height - innerHeight is stable, so use that and
+// cache the max so a flaky 0 read never shrinks the clearance back.
+let cachedBottomInset = 0;
+function setAppHeight() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (IS_STANDALONE) {
+    // PWA: cover the FULL screen so the nav background reaches the very bottom
+    // (no black gap). Reserve the device's real bottom inset as nav padding so the
+    // labels sit above the home-indicator cut line.
+    app.style.height = '100vh';
+    const inset = Math.max(0, Math.round(screen.height - window.innerHeight));
+    if (inset > cachedBottomInset) cachedBottomInset = inset;
+    // +12px breathing room so the labels aren't flush against the home-indicator edge.
+    document.documentElement.style.setProperty('--sab', (cachedBottomInset + 12) + 'px');
+  } else {
+    // Safari: no home indicator; track the dynamic URL bar via the visual viewport.
+    document.documentElement.style.setProperty('--sab', '0px');
+    app.style.height = (window.visualViewport ? window.visualViewport.height : window.innerHeight) + 'px';
+  }
+}
+
+// On PWA cold start the visual viewport isn't settled at DOMContentLoaded (same root
+// cause that breaks 100dvh). Re-run after the viewport has had a chance to settle.
+function bindAppHeight() {
+  setAppHeight();
+  requestAnimationFrame(setAppHeight);
+  [50, 150, 300, 600].forEach(ms => setTimeout(setAppHeight, ms));
+  window.addEventListener('load', setAppHeight);
+  window.addEventListener('pageshow', setAppHeight);
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 100));
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+}
+
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
   await initStorage();
@@ -81,7 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSettings();
   setupAuth();
   setupVoiceAssistant();
-  
+
+  // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
+  // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
+  // each break in one of the two environments.
+  bindAppHeight();
+
   // Initial render
   await navigate(currentView);
 });
