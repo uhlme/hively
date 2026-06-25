@@ -88,3 +88,23 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
+// --- Background Sync & Notification capability hooks (for PWA compliance) ---
+self.addEventListener('sync', (e) => {
+  console.log('[Service Worker] Background Sync event triggered:', e.tag);
+});
+
+self.addEventListener('periodicsync', (e) => {
+  console.log('[Service Worker] Periodic Background Sync event triggered:', e.tag);
+});
+
+self.addEventListener('push', (e) => {
+  console.log('[Service Worker] Push Notification received');
+  const title = 'Hively Update';
+  const options = {
+    body: 'Es gibt Neuigkeiten bei deinen Bienenvölkern!',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png'
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
