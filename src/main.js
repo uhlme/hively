@@ -20,6 +20,7 @@ import {
 } from './storage.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
+import { parseReceiptWithGemini } from './receiptScanner.js';
 
 // --- Service Worker Registration ---
 if ('serviceWorker' in navigator) {
@@ -120,6 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSettings();
   setupAuth();
   setupVoiceAssistant();
+  setupReceiptScanner();
 
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
@@ -1198,16 +1200,105 @@ function setupVoiceAssistant() {
       resetUI();
     }
   }
+}
 
-  function highlightField(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.transition = 'all 0.3s ease';
-    el.style.boxShadow = '0 0 10px var(--primary)';
-    el.style.borderColor = 'var(--primary)';
-    setTimeout(() => {
-      el.style.boxShadow = 'none';
-      el.style.borderColor = '';
-    }, 2000);
+// Global UI helper to highlight updated input fields
+function highlightField(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.transition = 'all 0.3s ease';
+  el.style.boxShadow = '0 0 10px var(--primary)';
+  el.style.borderColor = 'var(--primary)';
+  setTimeout(() => {
+    el.style.boxShadow = 'none';
+    el.style.borderColor = '';
+  }, 2000);
+}
+
+// --- KI Beleg-Scanner Integration ---
+function setupReceiptScanner() {
+  const btnScan = document.getElementById('btn-receipt-scan');
+  const fileInput = document.getElementById('input-receipt-file');
+  const statusBadge = document.getElementById('receipt-status-badge');
+  const errorDiv = document.getElementById('receipt-scanner-error');
+  const btnIcon = document.getElementById('receipt-btn-icon');
+  const btnText = document.getElementById('receipt-btn-text');
+
+  if (!btnScan || !fileInput) return;
+
+  btnScan.addEventListener('click', () => {
+    errorDiv.style.display = 'none';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    updateUI('processing');
+    errorDiv.style.display = 'none';
+
+    try {
+      const data = await parseReceiptWithGemini(file);
+      if (!data) throw new Error('Keine Daten vom Beleg-Scanner empfangen.');
+
+      // Populate form fields
+      if (data.date) {
+        document.getElementById('finance-form-date').value = data.date;
+        highlightField('finance-form-date');
+      }
+      if (data.description) {
+        document.getElementById('finance-form-description').value = data.description;
+        highlightField('finance-form-description');
+      }
+      if (data.category) {
+        const catSelect = document.getElementById('finance-form-category');
+        const validCategories = Array.from(catSelect.options).map(opt => opt.value);
+        if (validCategories.includes(data.category)) {
+          catSelect.value = data.category;
+        } else {
+          catSelect.value = 'Sonstiges';
+        }
+        highlightField('finance-form-category');
+      }
+      if (data.price !== undefined && data.price !== null) {
+        document.getElementById('finance-form-price').value = parseFloat(data.price).toFixed(2);
+        highlightField('finance-form-price');
+      }
+
+      statusBadge.innerText = 'Beleg erfasst!';
+      statusBadge.style.background = '#10b981';
+      statusBadge.style.color = '#fff';
+
+      setTimeout(() => {
+        updateUI('idle');
+      }, 3000);
+
+    } catch (err) {
+      console.error(err);
+      errorDiv.innerText = err.message || 'Fehler beim Analysieren des Belegs.';
+      errorDiv.style.display = 'block';
+      updateUI('idle');
+    } finally {
+      fileInput.value = '';
+    }
+  });
+
+  function updateUI(status) {
+    if (status === 'processing') {
+      btnScan.disabled = true;
+      btnIcon.innerText = '⏳';
+      btnText.innerText = 'Beleg wird analysiert...';
+      statusBadge.innerText = 'Analysiere...';
+      statusBadge.style.background = 'var(--primary)';
+      statusBadge.style.color = '#000';
+    } else {
+      btnScan.disabled = false;
+      btnIcon.innerText = '📷';
+      btnText.innerText = 'Beleg hochladen / fotografieren';
+      statusBadge.innerText = 'Bereit';
+      statusBadge.style.background = 'rgba(255,255,255,0.1)';
+      statusBadge.style.color = 'var(--text-primary)';
+    }
   }
 }

@@ -304,6 +304,23 @@
             <h2>Kauf erfassen</h2>
             <button class="modal-close" data-close="modal-finance">&times;</button>
           </div>
+          
+          <!-- Receipt Scan Section -->
+          <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.9rem; font-weight: 600;">📷 KI-Beleg-Scanner</span>
+              <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btn-receipt-scan" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
+                <span id="receipt-btn-icon">📷</span>
+                <span id="receipt-btn-text">Beleg hochladen / fotografieren</span>
+              </button>
+              <input type="file" id="input-receipt-file" accept="image/*" capture="environment" style="display: none;" />
+            </div>
+            <div id="receipt-scanner-error" class="text-danger" style="display: none; font-size: 0.8rem; margin-top: 4px;"></div>
+          </div>
+
           <form id="form-finance">
             <input type="hidden" id="finance-form-id" />
             <div class="form-group">
