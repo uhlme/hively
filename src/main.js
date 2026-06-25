@@ -1556,7 +1556,7 @@ function setupVoiceAssistant() {
 
     } catch (err) {
       console.error(err);
-      errorDiv.innerText = err.message || 'Fehler bei der KI-Verarbeitung.';
+      errorDiv.innerText = formatGeminiError(err, 'Fehler bei der KI-Verarbeitung.');
       errorDiv.style.display = 'block';
       resetUI();
     }
@@ -1647,7 +1647,7 @@ function setupReceiptScanner() {
 
     } catch (err) {
       console.error(err);
-      errorDiv.innerText = err.message || 'Fehler beim Analysieren des Belegs.';
+      errorDiv.innerText = formatGeminiError(err, 'Fehler beim Analysieren des Belegs.');
       errorDiv.style.display = 'block';
       updateUI('idle');
     } finally {
@@ -1672,4 +1672,18 @@ function setupReceiptScanner() {
       statusBadge.style.color = 'var(--text-primary)';
     }
   }
+}
+
+function formatGeminiError(err, defaultMessage) {
+  const errMsg = err.message || err.toString() || '';
+  if (errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
+    return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut. ⏳';
+  }
+  if (errMsg.includes('403') || errMsg.includes('400') || errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('key not valid')) {
+    return 'Der KI-API-Schlüssel ist ungültig oder abgelaufen. Bitte überprüfe deine Einstellungen oder deinen Schlüssel. 🔑';
+  }
+  if (errMsg.toLowerCase().includes('fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch')) {
+    return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung. 📡';
+  }
+  return defaultMessage || 'Ein unerwarteter Fehler ist bei der KI-Analyse aufgetreten. Bitte versuche es erneut.';
 }
