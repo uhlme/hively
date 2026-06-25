@@ -293,8 +293,8 @@ async function renderDashboardView() {
     return;
   }
 
-  recentList.innerHTML = activities.slice(0, 5).map(act => `
-    <div class="card" style="padding: 12px; margin-bottom: 10px;">
+  recentList.innerHTML = activities.slice(0, 5).map((act, index) => `
+    <div class="card recent-activity-card" data-index="${index}" style="padding: 12px; margin-bottom: 10px; cursor: pointer;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <span class="text-primary-color" style="font-size: 0.85rem; font-weight: 600;">${act.tag}</span>
         <span class="text-muted" style="font-size: 0.75rem;">${formatDateString(act.date)}</span>
@@ -305,6 +305,19 @@ async function renderDashboardView() {
       </div>
     </div>
   `).join('');
+
+  // Attach click handlers to open edit modals
+  document.querySelectorAll('.recent-activity-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.getAttribute('data-index'));
+      const act = activities[idx];
+      if (act.type === 'inspection') {
+        openInspectionModal(act.raw);
+      } else if (act.type === 'honey') {
+        openHoneyModal(act.raw);
+      }
+    });
+  });
 }
 
 async function renderHivesView() {
