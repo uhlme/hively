@@ -148,7 +148,17 @@ function setupRouting() {
 
   // Top header quick-add button
   document.getElementById('btn-quick-add').addEventListener('click', () => {
-    openHiveModal();
+    if (currentView === 'hives') {
+      openHiveModal();
+    } else if (currentView === 'finances') {
+      if (currentFinanceTab === 'expenses') {
+        openFinanceModal();
+      } else {
+        openHoneyModal();
+      }
+    } else {
+      openHiveModal();
+    }
   });
 
   // Back button on detail view
@@ -162,9 +172,6 @@ function setupRouting() {
   });
   document.getElementById('dash-btn-honey').addEventListener('click', () => {
     openHoneyModal();
-  });
-  document.getElementById('btn-add-hive').addEventListener('click', () => {
-    openHiveModal();
   });
   document.getElementById('btn-new-inspection').addEventListener('click', () => {
     openInspectionModal(null, activeHiveIdForDetail);
@@ -189,9 +196,6 @@ function setupRouting() {
   });
 
   // Finance list buttons
-  document.getElementById('btn-add-expense').addEventListener('click', () => {
-    openFinanceModal();
-  });
   document.getElementById('btn-add-honey').addEventListener('click', () => {
     openHoneyModal();
   });
