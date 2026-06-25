@@ -1016,32 +1016,37 @@ function setupForms() {
   // Hive Form Submit
   document.getElementById('form-hive').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('hive-form-id').value;
-    const hive = {
-      name: document.getElementById('hive-form-name').value,
-      queenName: document.getElementById('hive-form-queen-name').value,
-      breed: document.getElementById('hive-form-breed').value,
-      queenYear: parseInt(document.getElementById('hive-form-queen-year').value),
-      status: document.getElementById('hive-form-status').value,
-      broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
-      honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
-      honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
-      notes: document.getElementById('hive-form-notes').value
-    };
+    try {
+      const id = document.getElementById('hive-form-id').value;
+      const hive = {
+        name: document.getElementById('hive-form-name').value,
+        queenName: document.getElementById('hive-form-queen-name').value,
+        breed: document.getElementById('hive-form-breed').value,
+        queenYear: parseInt(document.getElementById('hive-form-queen-year').value),
+        status: document.getElementById('hive-form-status').value,
+        broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
+        honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
+        honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
+        notes: document.getElementById('hive-form-notes').value
+      };
 
-    if (id) hive.id = id;
+      if (id) hive.id = id;
 
-    await saveHive(hive);
-    closeModal('modal-hive');
-    
-    if (id) {
-      // In details view, reload detail info
-      await renderHiveDetailView();
-    } else {
-      // Navigate to list
-      await navigate('hives');
+      await saveHive(hive);
+      closeModal('modal-hive');
+      
+      if (id) {
+        // In details view, reload detail info
+        await renderHiveDetailView();
+      } else {
+        // Navigate to list
+        await navigate('hives');
+      }
+      await renderDashboardView();
+    } catch (err) {
+      console.error('Fehler beim Speichern des Volks:', err);
+      alert('Fehler beim Speichern des Volks: ' + (err.message || err));
     }
-    await renderDashboardView();
   });
 
   // Hive Delete Button
@@ -1058,43 +1063,28 @@ function setupForms() {
   // Inspection Form Submit
   document.getElementById('form-inspection').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('insp-form-id').value;
-    
-    // Get checked checkboxes (either checkbox or hidden input)
-    const checkedCheckboxes = Array.from(document.querySelectorAll('.hive-checkbox')).filter(el => {
-      return el.type === 'hidden' || el.checked;
-    });
-    if (checkedCheckboxes.length === 0) {
-      alert('Bitte wähle mindestens ein Bienenvolk aus.');
-      return;
-    }
-    
-    const date = document.getElementById('insp-form-date').value;
-    const notes = document.getElementById('insp-form-notes').value;
-    const weatherTemp = document.getElementById('insp-weather-temp').value;
-    const weatherCondition = document.getElementById('insp-weather-condition').value;
+    try {
+      const id = document.getElementById('insp-form-id').value;
+      
+      // Get checked checkboxes (either checkbox or hidden input)
+      const checkedCheckboxes = Array.from(document.querySelectorAll('.hive-checkbox')).filter(el => {
+        return el.type === 'hidden' || el.checked;
+      });
+      if (checkedCheckboxes.length === 0) {
+        alert('Bitte wähle mindestens ein Bienenvolk aus.');
+        return;
+      }
+      
+      const date = document.getElementById('insp-form-date').value;
+      const notes = document.getElementById('insp-form-notes').value;
+      const weatherTemp = document.getElementById('insp-weather-temp').value;
+      const weatherCondition = document.getElementById('insp-weather-condition').value;
 
-    if (id) {
-      // Edit mode: save single update
-      const inspection = {
-        id: id,
-        hiveId: checkedCheckboxes[0].value,
-        date: date,
-        broodStatus: '',
-        honeySuper: '',
-        temperament: 5,
-        weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
-        weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
-        feeding: '',
-        varroa: '',
-        notes: notes
-      };
-      await saveInspection(inspection);
-    } else {
-      // Creation mode: save separate inspections for each checked hive
-      for (const chk of checkedCheckboxes) {
+      if (id) {
+        // Edit mode: save single update
         const inspection = {
-          hiveId: chk.value,
+          id: id,
+          hiveId: checkedCheckboxes[0].value,
           date: date,
           broodStatus: '',
           honeySuper: '',
@@ -1106,18 +1096,38 @@ function setupForms() {
           notes: notes
         };
         await saveInspection(inspection);
+      } else {
+        // Creation mode: save separate inspections for each checked hive
+        for (const chk of checkedCheckboxes) {
+          const inspection = {
+            hiveId: chk.value,
+            date: date,
+            broodStatus: '',
+            honeySuper: '',
+            temperament: 5,
+            weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
+            weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
+            feeding: '',
+            varroa: '',
+            notes: notes
+          };
+          await saveInspection(inspection);
+        }
       }
-    }
 
-    closeModal('modal-inspection');
+      closeModal('modal-inspection');
 
-    // Refresh view
-    if (currentView === 'hive-detail') {
-      await renderHiveDetailView();
-    } else {
-      await navigate('dashboard');
+      // Refresh view
+      if (currentView === 'hive-detail') {
+        await renderHiveDetailView();
+      } else {
+        await navigate('dashboard');
+      }
+      await renderDashboardView();
+    } catch (err) {
+      console.error('Fehler beim Speichern der Durchsicht:', err);
+      alert('Fehler beim Speichern der Durchsicht: ' + (err.message || err));
     }
-    await renderDashboardView();
   });
 
   // Inspection Delete Button
@@ -1136,61 +1146,71 @@ function setupForms() {
   // Finance Form Submit (Expenses)
   document.getElementById('form-finance').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('finance-form-id').value;
-    const item = {
-      date: document.getElementById('finance-form-date').value,
-      description: document.getElementById('finance-form-description').value,
-      category: document.getElementById('finance-form-category').value,
-      price: parseFloat(document.getElementById('finance-form-price').value),
-      type: 'expense'
-    };
+    try {
+      const id = document.getElementById('finance-form-id').value;
+      const item = {
+        date: document.getElementById('finance-form-date').value,
+        description: document.getElementById('finance-form-description').value,
+        category: document.getElementById('finance-form-category').value,
+        price: parseFloat(document.getElementById('finance-form-price').value),
+        type: 'expense'
+      };
 
-    if (id) item.id = id;
+      if (id) item.id = id;
 
-    await saveFinance(item);
-    closeModal('modal-finance');
-    
-    if (currentView === 'finances') {
-      await renderFinanceView();
-    } else {
-      await navigate('finances');
+      await saveFinance(item);
+      closeModal('modal-finance');
+      
+      if (currentView === 'finances') {
+        await renderFinanceView();
+      } else {
+        await navigate('finances');
+      }
+      await renderDashboardView();
+    } catch (err) {
+      console.error('Fehler beim Speichern der Ausgabe:', err);
+      alert('Fehler beim Speichern der Ausgabe: ' + (err.message || err));
     }
-    await renderDashboardView();
   });
 
   // Honey Form Submit (Honey Harvests)
   document.getElementById('form-honey').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('honey-form-id').value;
-    const harvest = {
-      hiveId: document.getElementById('honey-form-hive-id').value,
-      date: document.getElementById('honey-form-date').value,
-      amount: parseFloat(document.getElementById('honey-form-amount').value),
-      type: document.getElementById('honey-form-type').value
-    };
+    try {
+      const id = document.getElementById('honey-form-id').value;
+      const harvest = {
+        hiveId: document.getElementById('honey-form-hive-id').value,
+        date: document.getElementById('honey-form-date').value,
+        amount: parseFloat(document.getElementById('honey-form-amount').value),
+        type: document.getElementById('honey-form-type').value
+      };
 
-    if (id) harvest.id = id;
+      if (id) harvest.id = id;
 
-    await saveHoneyHarvest(harvest);
-    closeModal('modal-honey');
+      await saveHoneyHarvest(harvest);
+      closeModal('modal-honey');
 
-    if (currentView === 'finances') {
-      currentFinanceTab = 'honey';
-      const tabExpenses = document.getElementById('tab-fin-expenses');
-      const tabHoney = document.getElementById('tab-fin-honey');
-      tabExpenses.classList.remove('active');
-      tabHoney.classList.add('active');
-      await renderFinanceView();
-    } else {
-      await navigate('finances');
-      currentFinanceTab = 'honey';
-      const tabExpenses = document.getElementById('tab-fin-expenses');
-      const tabHoney = document.getElementById('tab-fin-honey');
-      tabExpenses.classList.remove('active');
-      tabHoney.classList.add('active');
-      await renderFinanceView();
+      if (currentView === 'finances') {
+        currentFinanceTab = 'honey';
+        const tabExpenses = document.getElementById('tab-fin-expenses');
+        const tabHoney = document.getElementById('tab-fin-honey');
+        tabExpenses.classList.remove('active');
+        tabHoney.classList.add('active');
+        await renderFinanceView();
+      } else {
+        await navigate('finances');
+        currentFinanceTab = 'honey';
+        const tabExpenses = document.getElementById('tab-fin-expenses');
+        const tabHoney = document.getElementById('tab-fin-honey');
+        tabExpenses.classList.remove('active');
+        tabHoney.classList.add('active');
+        await renderFinanceView();
+      }
+      await renderDashboardView();
+    } catch (err) {
+      console.error('Fehler beim Speichern der Honigernte:', err);
+      alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
     }
-    await renderDashboardView();
   });
 
   // Force window layout refresh on input blur to fix iOS Safari touch target bug
