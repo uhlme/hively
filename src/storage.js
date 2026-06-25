@@ -5,7 +5,8 @@ const KEYS = {
   HIVES: 'bee_tracker_hives',
   INSPECTIONS: 'bee_tracker_inspections',
   FINANCES: 'bee_tracker_finances',
-  HONEY: 'bee_tracker_honey'
+  HONEY: 'bee_tracker_honey',
+  TASKS: 'bee_tracker_tasks'
 };
 
 // Check if user is logged in
@@ -68,6 +69,8 @@ function mapInspectionToDB(i) {
     brood_status: i.broodStatus || null,
     honey_super: i.honeySuper || null,
     temperament: i.temperament ? parseInt(i.temperament) : 5,
+    weather_temp: i.weatherTemp !== undefined && i.weatherTemp !== '' ? parseFloat(i.weatherTemp) : null,
+    weather_condition: i.weatherCondition || null,
     notes: i.notes || null,
     created_at: i.createdAt || new Date().toISOString(),
     updated_at: i.updatedAt || new Date().toISOString()
@@ -84,6 +87,8 @@ function mapInspectionFromDB(i) {
     broodStatus: i.brood_status,
     honeySuper: i.honey_super,
     temperament: i.temperament,
+    weatherTemp: i.weather_temp,
+    weatherCondition: i.weather_condition,
     notes: i.notes,
     createdAt: i.created_at,
     updatedAt: i.updated_at
@@ -417,6 +422,19 @@ export async function deleteHoneyHarvest(id) {
   let honey = await getHoneyHarvests();
   honey = honey.filter(h => h.id !== id);
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+}
+
+// Tasks State (Calendar)
+export async function getTasksState() {
+  return JSON.parse(localStorage.getItem(KEYS.TASKS)) || {};
+}
+
+export async function saveTaskState(month, taskId, isChecked) {
+  const tasks = JSON.parse(localStorage.getItem(KEYS.TASKS)) || {};
+  if (!tasks[month]) tasks[month] = {};
+  tasks[month][taskId] = isChecked;
+  localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks));
+  return true;
 }
 
 // Sync Local Data to Supabase

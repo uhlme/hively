@@ -16,11 +16,15 @@ import {
   exportData,
   importData,
   seedDemoData,
-  syncLocalToRemote
+  syncLocalToRemote,
+  getTasksState,
+  saveTaskState
 } from './storage.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
+import { fetchCurrentWeather, fetchDashboardWeatherAndPollen } from './weather.js';
+import { getWeatherInsightFromGemini } from './aiHelper.js';
 
 // --- State Variables ---
 let currentView = 'dashboard';
@@ -157,6 +161,11 @@ function setupRouting() {
     }
   });
 
+  // Settings header button
+  document.getElementById('btn-settings-header').addEventListener('click', async () => {
+    await navigate('settings');
+  });
+
   // Back button on detail view
   document.getElementById('btn-back-to-hives').addEventListener('click', async () => {
     await navigate('hives');
@@ -241,6 +250,8 @@ async function navigate(viewName) {
     await renderHiveDetailView();
   } else if (viewName === 'finances') {
     await renderFinanceView();
+  } else if (viewName === 'calendar') {
+    await renderCalendarView();
   }
 }
 
@@ -322,6 +333,147 @@ async function renderDashboardView() {
       } else if (act.type === 'honey') {
         openHoneyModal(act.raw);
       }
+    });
+  });
+
+  // Trigger radar load asynchronously
+  loadDashboardRadar();
+}
+
+async function loadDashboardRadar() {
+  const radarContent = document.getElementById('radar-content');
+  const radarLoading = document.getElementById('radar-loading');
+  const elTemp = document.getElementById('radar-temp');
+  const elCond = document.getElementById('radar-condition');
+  const elWind = document.getElementById('radar-wind');
+  const elPollen = document.getElementById('radar-pollen');
+  const elEmoji = document.getElementById('radar-weather-emoji');
+  const elInsight = document.getElementById('radar-insight');
+
+  if (!radarContent) return;
+
+  radarContent.style.display = 'none';
+  radarLoading.style.display = 'block';
+
+  const cached = sessionStorage.getItem('bienen_radar_cache');
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      if (Date.now() - data.timestamp < 2 * 60 * 60 * 1000) {
+        applyRadarData(data);
+        return;
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const weatherData = await fetchDashboardWeatherAndPollen();
+    const insight = await getWeatherInsightFromGemini(weatherData);
+    
+    const data = {
+      ...weatherData,
+      insight: insight,
+      timestamp: Date.now()
+    };
+    
+    sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+    applyRadarData(data);
+  } catch (err) {
+    radarLoading.innerText = 'Radar offline';
+    radarLoading.style.color = 'var(--danger)';
+  }
+
+  function applyRadarData(data) {
+    radarLoading.style.display = 'none';
+    radarContent.style.display = 'flex';
+    
+    elTemp.innerText = data.temperature;
+    elCond.innerText = data.conditionText;
+    elEmoji.innerText = data.conditionEmoji;
+    elWind.innerText = data.windSpeed;
+    elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
+    elInsight.innerText = data.insight;
+  }
+}
+
+const CALENDAR_TASKS = {
+  "1": ["Winterruhe der Bienen nicht stören.", "Flugloch auf Verstopfung prüfen.", "Material für die neue Saison reparieren/bestellen."],
+  "2": ["Reinigungsausflug beobachten.", "Futterkontrolle durch anheben der Beute (Gewicht).", "Tote Bienen am Flugloch entfernen."],
+  "3": ["Erste Frühjahrsdurchsicht bei >15°C.", "Mäusegitter entfernen.", "Boden reinigen."],
+  "4": ["Kirschblüte: Honigraum aufsetzen.", "Drohnenrahmen einhängen (Varroaprophylaxe).", "Schwarmkontrolle beginnen."],
+  "5": ["Wöchentliche Schwarmkontrolle (alle 7-9 Tage).", "Erste Ableger bilden.", "Honigräume kontrollieren und erweitern."],
+  "6": ["Letzte Schwarmkontrollen durchführen.", "Erste Honigernte (Frühtracht) schleudern.", "Trachtlücke beachten."],
+  "7": ["Sommertracht schleudern.", "1. Varroa-Behandlung (z.B. Ameisensäure) nach der Ernte.", "Erste Auffütterung starten."],
+  "8": ["Zweite Auffütterung abschließen.", "Erfolgskontrolle der Varroa-Behandlung (Milbenfall).", "Räuberei vermeiden (Fluglöcher einengen)."],
+  "9": ["2. Varroa-Behandlung (falls nötig).", "Volksstärke kontrollieren (winterfeste Bienen).", "Schwache Völker vereinigen."],
+  "10": ["Auffütterung muss beendet sein.", "Mäusegitter anbringen.", "Winterruhe kehrt ein."],
+  "11": ["Letzte Varroa-Kontrolle (Windel).", "Werkstattarbeiten: Rähmchen einschmelzen.", "Ausrüstung reinigen."],
+  "12": ["Winterbehandlung (Oxalsäure) brutfrei durchführen.", "Absolute Ruhe am Bienenstand."]
+};
+
+async function renderCalendarView() {
+  const container = document.getElementById('calendar-tasks-container');
+  const monthSelect = document.getElementById('calendar-month-select');
+  
+  if (!monthSelect.hasAttribute('data-initialized')) {
+    const currentMonth = new Date().getMonth() + 1;
+    monthSelect.value = currentMonth.toString();
+    monthSelect.setAttribute('data-initialized', 'true');
+    
+    monthSelect.addEventListener('change', async () => {
+      await renderCalendarView();
+    });
+  }
+
+  const selectedMonth = monthSelect.value;
+  const tasksForMonth = CALENDAR_TASKS[selectedMonth] || [];
+  const state = await getTasksState();
+  const monthState = state[selectedMonth] || {};
+
+  if (tasksForMonth.length === 0) {
+    container.innerHTML = `<p class="text-muted text-center">Keine Aufgaben für diesen Monat hinterlegt.</p>`;
+    return;
+  }
+
+  const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
+  let html = `
+    <div class="card" style="padding: 16px;">
+      <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+        📌 Imker-Aufgaben im ${monthNames[parseInt(selectedMonth) - 1]}
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+  `;
+
+  tasksForMonth.forEach((task, index) => {
+    const isChecked = monthState[index] ? 'checked' : '';
+    html += `
+      <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.1);">
+        <input type="checkbox" class="task-checkbox" data-month="${selectedMonth}" data-task-id="${index}" ${isChecked} style="margin-top: 4px; width: 18px; height: 18px;" />
+        <span style="font-size: 0.95rem; line-height: 1.4; color: ${isChecked ? 'var(--text-secondary)' : 'var(--text-primary)'}; text-decoration: ${isChecked ? 'line-through' : 'none'};">${task}</span>
+      </label>
+    `;
+  });
+
+  html += `</div></div>`;
+  container.innerHTML = html;
+
+  document.querySelectorAll('.task-checkbox').forEach(chk => {
+    chk.addEventListener('change', async (e) => {
+      const month = e.target.getAttribute('data-month');
+      const taskId = e.target.getAttribute('data-task-id');
+      const checked = e.target.checked;
+      
+      const span = e.target.nextElementSibling;
+      if (checked) {
+        span.style.color = 'var(--text-secondary)';
+        span.style.textDecoration = 'line-through';
+      } else {
+        span.style.color = 'var(--text-primary)';
+        span.style.textDecoration = 'none';
+      }
+      
+      await saveTaskState(month, taskId, checked);
     });
   });
 }
@@ -455,10 +607,12 @@ async function renderHiveDetailView() {
   }
 
   timeline.innerHTML = inspections.map(insp => {
+    const weatherString = (insp.weatherTemp !== undefined && insp.weatherTemp !== null) ? 
+        `<span style="margin-left: 8px; font-size: 0.85rem;" class="text-secondary">| ${insp.weatherCondition || ''} ${insp.weatherTemp}°C</span>` : '';
     return `
       <div class="log-item inspection-log-card" data-id="${insp.id}">
         <div class="log-item-header">
-          <span>${formatDateString(insp.date)}</span>
+          <span>${formatDateString(insp.date)}${weatherString}</span>
         </div>
         ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${insp.notes}</p>` : ''}
         <div style="text-align: right; margin-top: 8px;">
@@ -658,11 +812,21 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     return;
   }
 
+  const weatherStatusSection = document.getElementById('weather-status-section');
+  const weatherDisplay = document.getElementById('weather-display');
+  const btnWeatherRetry = document.getElementById('btn-weather-retry');
+  const inpWeatherTemp = document.getElementById('insp-weather-temp');
+  const inpWeatherCond = document.getElementById('insp-weather-condition');
+
   if (inspection) {
     document.getElementById('insp-form-id').value = inspection.id;
     document.getElementById('insp-form-date').value = inspection.date;
     document.getElementById('insp-form-notes').value = inspection.notes || '';
+    inpWeatherTemp.value = inspection.weatherTemp !== undefined ? inspection.weatherTemp : '';
+    inpWeatherCond.value = inspection.weatherCondition || '';
     deleteBtn.style.display = 'block';
+    
+    weatherStatusSection.style.display = 'none'; // Hide weather fetch for old ones
 
     const matchedHive = hives.find(h => h.id === inspection.hiveId);
     const hiveName = matchedHive ? matchedHive.name : 'Unbekanntes Volk';
@@ -677,6 +841,26 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     document.getElementById('insp-form-id').value = '';
     document.getElementById('insp-form-date').value = new Date().toISOString().split('T')[0];
     deleteBtn.style.display = 'none';
+    
+    weatherStatusSection.style.display = 'flex';
+    inpWeatherTemp.value = '';
+    inpWeatherCond.value = '';
+    
+    const loadWeather = async () => {
+      weatherDisplay.innerHTML = 'Wird ermittelt... ⏳';
+      btnWeatherRetry.style.display = 'none';
+      try {
+        const w = await fetchCurrentWeather();
+        weatherDisplay.innerHTML = `${w.conditionEmoji} ${w.temperature}°C`;
+        inpWeatherTemp.value = w.temperature;
+        inpWeatherCond.value = w.conditionText;
+      } catch (err) {
+        weatherDisplay.innerHTML = `<span class="text-danger">Wetter-Fehler</span>`;
+        btnWeatherRetry.style.display = 'block';
+      }
+    };
+    btnWeatherRetry.onclick = loadWeather;
+    loadWeather();
 
     hivesContainer.innerHTML = hives.map(h => {
       const isChecked = (preselectedHiveId === h.id) ? 'checked' : '';
@@ -809,6 +993,8 @@ function setupForms() {
     
     const date = document.getElementById('insp-form-date').value;
     const notes = document.getElementById('insp-form-notes').value;
+    const weatherTemp = document.getElementById('insp-weather-temp').value;
+    const weatherCondition = document.getElementById('insp-weather-condition').value;
 
     if (id) {
       // Edit mode: save single update
@@ -819,6 +1005,8 @@ function setupForms() {
         broodStatus: '',
         honeySuper: '',
         temperament: 5,
+        weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
+        weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
         feeding: '',
         varroa: '',
         notes: notes
@@ -833,6 +1021,8 @@ function setupForms() {
           broodStatus: '',
           honeySuper: '',
           temperament: 5,
+          weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
+          weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
           feeding: '',
           varroa: '',
           notes: notes
