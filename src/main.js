@@ -157,8 +157,10 @@ function setupRouting() {
     } else if (currentView === 'finances') {
       if (currentFinanceTab === 'expenses') {
         openFinanceModal();
-      } else {
+      } else if (currentFinanceTab === 'honey') {
         openHoneyModal();
+      } else if (currentFinanceTab === 'sponsorships') {
+        openSponsorshipModal();
       }
     } else {
       openHiveModal();
@@ -186,13 +188,23 @@ function setupRouting() {
     openInspectionModal(null, activeHiveIdForDetail);
   });
 
+  // Dashboard Finance Stat Card Navigation Click
+  const statCardFinance = document.getElementById('stat-card-finance');
+  if (statCardFinance) {
+    statCardFinance.addEventListener('click', async () => {
+      await navigate('finances');
+    });
+  }
+
   // Finance Tabs Segmented Control
   const tabExpenses = document.getElementById('tab-fin-expenses');
   const tabHoney = document.getElementById('tab-fin-honey');
+  const tabSponsorships = document.getElementById('tab-fin-sponsorships');
   
   tabExpenses.addEventListener('click', async () => {
     tabExpenses.classList.add('active');
     tabHoney.classList.remove('active');
+    tabSponsorships.classList.remove('active');
     currentFinanceTab = 'expenses';
     await renderFinanceView();
   });
@@ -200,13 +212,26 @@ function setupRouting() {
   tabHoney.addEventListener('click', async () => {
     tabHoney.classList.add('active');
     tabExpenses.classList.remove('active');
+    tabSponsorships.classList.remove('active');
     currentFinanceTab = 'honey';
+    await renderFinanceView();
+  });
+
+  tabSponsorships.addEventListener('click', async () => {
+    tabSponsorships.classList.add('active');
+    tabExpenses.classList.remove('active');
+    tabHoney.classList.remove('active');
+    currentFinanceTab = 'sponsorships';
     await renderFinanceView();
   });
 
   // Finance list buttons
   document.getElementById('btn-add-honey').addEventListener('click', () => {
     openHoneyModal();
+  });
+
+  document.getElementById('btn-add-sponsorship').addEventListener('click', () => {
+    openSponsorshipModal();
   });
 }
 
@@ -240,7 +265,13 @@ async function navigate(viewName) {
     quickAddBtn.innerText = '+ Volk';
   } else if (viewName === 'finances') {
     quickAddBtn.classList.remove('hidden');
-    quickAddBtn.innerText = currentFinanceTab === 'expenses' ? '+ Kauf' : '+ Ernte';
+    if (currentFinanceTab === 'expenses') {
+      quickAddBtn.innerText = '+ Kauf';
+    } else if (currentFinanceTab === 'honey') {
+      quickAddBtn.innerText = '+ Ernte';
+    } else {
+      quickAddBtn.innerText = '+ Paten.';
+    }
   } else {
     quickAddBtn.classList.add('hidden');
   }
@@ -275,7 +306,20 @@ async function renderDashboardView() {
   const totalExpenses = finances
     .filter(f => f.type === 'expense' || !f.type) // old data might not have type, fallback to expenses
     .reduce((sum, f) => sum + parseFloat(f.price || 0), 0);
-  document.getElementById('stat-expenses-sum').innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${totalExpenses.toFixed(2)}`;
+  const totalIncome = finances
+    .filter(f => f.type === 'sponsorship')
+    .reduce((sum, f) => sum + parseFloat(f.price || 0), 0);
+  const balance = totalIncome - totalExpenses;
+
+  const financeSumEl = document.getElementById('stat-finance-sum');
+  if (financeSumEl) {
+    financeSumEl.innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${balance.toFixed(2)}`;
+    if (balance >= 0) {
+      financeSumEl.style.color = 'var(--success)';
+    } else {
+      financeSumEl.style.color = 'var(--danger)';
+    }
+  }
 
   // Recent activities list (Inspections & Harvests merged, newest first)
   const inspections = await getInspections();
@@ -721,13 +765,16 @@ async function renderHiveDetailView() {
 async function renderFinanceView() {
   const expensesList = document.getElementById('expenses-list-container');
   const honeyList = document.getElementById('honey-list-container');
+  const sponsorshipsList = document.getElementById('sponsorships-list-container');
   const sectionExpenses = document.getElementById('section-expenses');
   const sectionHoney = document.getElementById('section-honey');
+  const sectionSponsorships = document.getElementById('section-sponsorships');
 
   // Toggle sections
   if (currentFinanceTab === 'expenses') {
     sectionExpenses.classList.remove('hidden');
     sectionHoney.classList.add('hidden');
+    sectionSponsorships.classList.add('hidden');
     document.getElementById('btn-quick-add').innerText = '+ Kauf';
     
     // Render Expenses
@@ -738,7 +785,7 @@ async function renderFinanceView() {
     }
 
     expensesList.innerHTML = finances.map(item => `
-      <div class="card" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <div class="card finance-card" data-id="${item.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
         <div>
           <h4 style="font-size: 1rem; font-weight: 600;">${item.description}</h4>
           <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
@@ -748,14 +795,27 @@ async function renderFinanceView() {
         </div>
         <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
           <span style="font-weight: 700; color: var(--danger); font-size: 1.1rem;">- ${parseFloat(item.price).toFixed(2)} CHF</span>
-          <button class="btn btn-sm btn-danger btn-delete-fin-item" data-id="${item.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger);">Löschen</button>
+          <button class="btn btn-sm btn-danger btn-delete-fin-item" data-id="${item.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
         </div>
       </div>
     `).join('');
 
+    // Click handler to edit a purchase
+    document.querySelectorAll('.finance-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-delete-fin-item')) return;
+        const id = card.getAttribute('data-id');
+        const purchase = finances.find(f => f.id === id);
+        if (purchase) {
+          openFinanceModal(purchase);
+        }
+      });
+    });
+
     // Delete buttons
     document.querySelectorAll('.btn-delete-fin-item').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         if (confirm('Kauf wirklich löschen?')) {
           await deleteFinance(btn.getAttribute('data-id'));
           await renderFinanceView();
@@ -764,9 +824,10 @@ async function renderFinanceView() {
       });
     });
 
-  } else {
+  } else if (currentFinanceTab === 'honey') {
     sectionExpenses.classList.add('hidden');
     sectionHoney.classList.remove('hidden');
+    sectionSponsorships.classList.add('hidden');
     document.getElementById('btn-quick-add').innerText = '+ Ernte';
 
     // Render Honey Yields
@@ -781,7 +842,7 @@ async function renderFinanceView() {
     honeyList.innerHTML = honey.map(harvest => {
       const hive = hives.find(h => h.id === harvest.hiveId);
       return `
-        <div class="card" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div class="card honey-card" data-id="${harvest.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
           <div>
             <h4 style="font-size: 1rem; font-weight: 600;">${hive ? hive.name : 'Unbekanntes Volk'}</h4>
             <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
@@ -791,17 +852,87 @@ async function renderFinanceView() {
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
             <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">🍯 ${parseFloat(harvest.amount).toFixed(1)} kg</span>
-            <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${harvest.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger);">Löschen</button>
+            <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${harvest.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
           </div>
         </div>
       `;
     }).join('');
 
+    // Click handler to edit an harvest
+    document.querySelectorAll('.honey-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-delete-honey-item')) return;
+        const id = card.getAttribute('data-id');
+        const harvest = honey.find(h => h.id === id);
+        if (harvest) {
+          openHoneyModal(harvest);
+        }
+      });
+    });
+
     // Delete buttons
     document.querySelectorAll('.btn-delete-honey-item').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         if (confirm('Erntebeleg wirklich löschen?')) {
           await deleteHoneyHarvest(btn.getAttribute('data-id'));
+          await renderFinanceView();
+          await renderDashboardView();
+        }
+      });
+    });
+  } else {
+    sectionExpenses.classList.add('hidden');
+    sectionHoney.classList.add('hidden');
+    sectionSponsorships.classList.remove('hidden');
+    document.getElementById('btn-quick-add').innerText = '+ Paten.';
+
+    // Render Bienenpatenschaften
+    const finances = (await getFinances()).filter(f => f.type === 'sponsorship');
+    const hives = await getHives();
+
+    if (finances.length === 0) {
+      sponsorshipsList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Patenschaften erfasst.</p>`;
+      return;
+    }
+
+    sponsorshipsList.innerHTML = finances.map(item => {
+      const hive = hives.find(h => h.id === item.hiveId);
+      return `
+        <div class="card sponsorship-card" data-id="${item.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+          <div>
+            <h4 style="font-size: 1rem; font-weight: 600;">👤 ${item.sponsorName || 'Unbekannter Pate'}</h4>
+            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
+              <span>${formatDateString(item.date)}</span> &bull; 
+              <span>Kasten: <strong>${hive ? hive.name : 'Gelöschtes Volk'}</strong></span>
+            </div>
+          </div>
+          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <span style="font-weight: 700; color: var(--success); font-size: 1.1rem;">+ ${parseFloat(item.price).toFixed(2)} CHF</span>
+            <button class="btn btn-sm btn-danger btn-delete-sponsorship-item" data-id="${item.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Click handler to edit a sponsorship
+    document.querySelectorAll('.sponsorship-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-delete-sponsorship-item')) return;
+        const id = card.getAttribute('data-id');
+        const sponsorship = finances.find(f => f.id === id);
+        if (sponsorship) {
+          openSponsorshipModal(sponsorship);
+        }
+      });
+    });
+
+    // Delete buttons
+    document.querySelectorAll('.btn-delete-sponsorship-item').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (confirm('Patenschaft wirklich löschen?')) {
+          await deleteFinance(btn.getAttribute('data-id'));
           await renderFinanceView();
           await renderDashboardView();
         }
@@ -1018,6 +1149,44 @@ async function openHoneyModal(honey = null) {
   openModal('modal-honey');
 }
 
+async function openSponsorshipModal(sponsorship = null) {
+  const form = document.getElementById('form-sponsorship');
+  const deleteBtn = document.getElementById('btn-delete-sponsorship');
+  form.reset();
+
+  // Populate Hive dropdown
+  const hiveSelect = document.getElementById('sponsorship-form-hive-id');
+  const hives = await getHives();
+
+  if (hives.length === 0) {
+    alert('Bitte erstelle zuerst ein Volk, bevor du eine Patenschaft buchst.');
+    openHiveModal();
+    return;
+  }
+
+  hiveSelect.innerHTML = hives.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+
+  if (sponsorship) {
+    document.getElementById('sponsorship-form-id').value = sponsorship.id;
+    document.getElementById('sponsorship-form-date').value = sponsorship.date;
+    document.getElementById('sponsorship-form-sponsor').value = sponsorship.sponsorName || '';
+    document.getElementById('sponsorship-form-hive-id').value = sponsorship.hiveId || hives[0].id;
+    document.getElementById('sponsorship-form-price').value = sponsorship.price;
+    document.getElementById('sponsorship-form-notes').value = sponsorship.notes || '';
+    deleteBtn.style.display = 'block';
+  } else {
+    document.getElementById('sponsorship-form-id').value = '';
+    document.getElementById('sponsorship-form-date').value = new Date().toISOString().split('T')[0];
+    deleteBtn.style.display = 'none';
+    
+    if (activeHiveIdForDetail) {
+      document.getElementById('sponsorship-form-hive-id').value = activeHiveIdForDetail;
+    }
+  }
+
+  openModal('modal-sponsorship');
+}
+
 // --- Form Submissions & Database Write Ops ---
 function setupForms() {
   // Hive Form Submit
@@ -1217,6 +1386,68 @@ function setupForms() {
     } catch (err) {
       console.error('Fehler beim Speichern der Honigernte:', err);
       alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
+    }
+  });
+
+  // Sponsorship Form Submit
+  document.getElementById('form-sponsorship').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const id = document.getElementById('sponsorship-form-id').value;
+      const sponsorName = document.getElementById('sponsorship-form-sponsor').value;
+      const item = {
+        date: document.getElementById('sponsorship-form-date').value,
+        description: `Patenschaft: ${sponsorName}`,
+        sponsorName: sponsorName,
+        hiveId: document.getElementById('sponsorship-form-hive-id').value,
+        price: parseFloat(document.getElementById('sponsorship-form-price').value),
+        category: 'Patenschaft',
+        notes: document.getElementById('sponsorship-form-notes').value,
+        type: 'sponsorship'
+      };
+
+      if (id) item.id = id;
+
+      await saveFinance(item);
+      closeModal('modal-sponsorship');
+
+      if (currentView === 'finances') {
+        currentFinanceTab = 'sponsorships';
+        const tabExpenses = document.getElementById('tab-fin-expenses');
+        const tabHoney = document.getElementById('tab-fin-honey');
+        const tabSponsorships = document.getElementById('tab-fin-sponsorships');
+        tabExpenses.classList.remove('active');
+        tabHoney.classList.remove('active');
+        tabSponsorships.classList.add('active');
+        await renderFinanceView();
+      } else {
+        await navigate('finances');
+        currentFinanceTab = 'sponsorships';
+        const tabExpenses = document.getElementById('tab-fin-expenses');
+        const tabHoney = document.getElementById('tab-fin-honey');
+        const tabSponsorships = document.getElementById('tab-fin-sponsorships');
+        tabExpenses.classList.remove('active');
+        tabHoney.classList.remove('active');
+        tabSponsorships.classList.add('active');
+        await renderFinanceView();
+      }
+      await renderDashboardView();
+    } catch (err) {
+      console.error('Fehler beim Speichern der Patenschaft:', err);
+      alert('Fehler beim Speichern der Patenschaft: ' + (err.message || err));
+    }
+  });
+
+  // Sponsorship Delete Button
+  document.getElementById('btn-delete-sponsorship').addEventListener('click', async () => {
+    const id = document.getElementById('sponsorship-form-id').value;
+    if (id && confirm('Diese Patenschaft wirklich löschen?')) {
+      await deleteFinance(id);
+      closeModal('modal-sponsorship');
+      if (currentView === 'finances') {
+        await renderFinanceView();
+      }
+      await renderDashboardView();
     }
   });
 

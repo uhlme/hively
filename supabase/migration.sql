@@ -56,6 +56,8 @@ create table if not exists public.finances (
     category text,
     price numeric(10, 2) not null,
     type text not null default 'expense'::text,
+    hive_id text references public.hives(id) on delete set null,
+    sponsor_name text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

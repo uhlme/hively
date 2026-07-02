@@ -40,9 +40,9 @@
               <div class="stat-label">Honig</div>
               <div class="stat-val text-primary-color" id="stat-honey-weight">0.0</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Ausgaben</div>
-              <div class="stat-val text-danger" id="stat-expenses-sum">0.00 CHF</div>
+            <div class="stat-card" id="stat-card-finance" style="cursor: pointer;">
+              <div class="stat-label" id="stat-finance-label">Bilanz</div>
+              <div class="stat-val" id="stat-finance-sum">0.00 CHF</div>
             </div>
           </div>
 
@@ -148,6 +148,7 @@
           <div class="segmented-control">
             <button id="tab-fin-expenses" class="active">Ausgaben / Einkäufe</button>
             <button id="tab-fin-honey">Honigerträge</button>
+            <button id="tab-fin-sponsorships">Patenschaften</button>
           </div>
 
           <!-- Section: Expenses -->
@@ -167,6 +168,17 @@
               <button id="btn-add-honey" class="btn btn-sm btn-primary">+ Ernte buchen</button>
             </div>
             <div id="honey-list-container">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Section: Sponsorships -->
+          <div id="section-sponsorships" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h2 style="font-size: 1.25rem;">Patenschaften</h2>
+              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft buchen</button>
+            </div>
+            <div id="sponsorships-list-container">
               <!-- Rendered via JS -->
             </div>
           </div>
@@ -466,6 +478,45 @@
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
               <button type="button" id="btn-delete-honey" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Bienenpatenschaft erfassen -->
+      <div id="modal-sponsorship" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="modal-sponsorship-title">Patenschaft erfassen</h2>
+            <button class="modal-close" data-close="modal-sponsorship">&times;</button>
+          </div>
+          <form id="form-sponsorship">
+            <input type="hidden" id="sponsorship-form-id" />
+            <div class="form-group">
+              <label for="sponsorship-form-date">Datum</label>
+              <input type="date" id="sponsorship-form-date" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorship-form-sponsor">Pate / Patin (Name)</label>
+              <input type="text" id="sponsorship-form-sponsor" class="form-control" placeholder="z.B. Max Mustermann" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorship-form-hive-id">Zugeordneter Kasten / Volk</label>
+              <select id="sponsorship-form-hive-id" class="form-control" required>
+                <!-- Rendered via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="sponsorship-form-price">Ertrag / Beitrag (CHF)</label>
+              <input type="number" step="0.01" id="sponsorship-form-price" class="form-control" placeholder="e.g. 150.00" required />
+            </div>
+            <div class="form-group">
+              <label for="sponsorship-form-notes">Bemerkungen</label>
+              <textarea id="sponsorship-form-notes" placeholder="z.B. Urkunde übergeben, Honiganteil vereinbart..."></textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-sponsorship" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
               <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
             </div>
           </form>

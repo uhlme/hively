@@ -104,6 +104,8 @@ function mapFinanceToDB(f) {
     category: f.category || null,
     price: parseFloat(f.price),
     type: f.type || 'expense',
+    hive_id: f.hiveId || null,
+    sponsor_name: f.sponsorName || null,
     created_at: f.createdAt || new Date().toISOString(),
     updated_at: f.updatedAt || new Date().toISOString()
   };
@@ -117,6 +119,8 @@ function mapFinanceFromDB(f) {
     category: f.category,
     price: parseFloat(f.price),
     type: f.type,
+    hiveId: f.hive_id,
+    sponsorName: f.sponsor_name,
     createdAt: f.created_at,
     updatedAt: f.updated_at
   };
