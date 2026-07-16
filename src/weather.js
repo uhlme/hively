@@ -57,17 +57,27 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`;
     const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
     
-    const [weatherRes, pollenRes] = await Promise.all([
+    const [weatherSettled, pollenSettled] = await Promise.allSettled([
         fetch(weatherUrl),
         fetch(pollenUrl)
     ]);
-    
-    if (!weatherRes.ok || !pollenRes.ok) {
+
+    if (weatherSettled.status !== 'fulfilled' || !weatherSettled.value.ok) {
         throw new Error("Fehler beim Abrufen der Wetterdaten");
     }
-    
-    const weatherData = await weatherRes.json();
-    const pollenData = await pollenRes.json();
+
+    const weatherData = await weatherSettled.value.json();
+    let pollenData = { current: {} };
+
+    if (pollenSettled.status === 'fulfilled' && pollenSettled.value.ok) {
+        try {
+            pollenData = await pollenSettled.value.json();
+        } catch (e) {
+            console.warn('Pollen-Daten konnten nicht gelesen werden:', e);
+        }
+    } else {
+        console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.');
+    }
     
     const temp = weatherData.current?.temperature_2m;
     const code = weatherData.current?.weather_code;

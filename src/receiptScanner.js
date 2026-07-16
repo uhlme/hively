@@ -1,4 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseGeminiJson } from './utils.js';
+
+const MAX_RECEIPT_BYTES = 8 * 1024 * 1024; // 8 MB
+const ALLOWED_RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 
 // Convert File/Blob to Base64
 function fileToBase64(file) {
@@ -18,6 +22,16 @@ export async function parseReceiptWithGemini(file) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Gemini API-Schlüssel fehlt. Bitte tragen Sie diesen in der .env Datei ein.');
+  }
+
+  if (!file) {
+    throw new Error('Keine Bilddatei ausgewählt.');
+  }
+  if (file.size > MAX_RECEIPT_BYTES) {
+    throw new Error('Beleg-Bild ist zu gross (max. 8 MB).');
+  }
+  if (file.type && !ALLOWED_RECEIPT_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
+    throw new Error('Bitte ein Bild als Beleg hochladen.');
   }
 
   const base64Image = await fileToBase64(file);
@@ -60,10 +74,29 @@ Wichtig:
     ]);
 
     const responseText = result.response.text();
-    console.log('Gemini receipt parse raw response:', responseText);
-    
-    const parsedData = JSON.parse(responseText.trim());
-    return parsedData;
+    const parsedData = parseGeminiJson(responseText);
+
+    if (!parsedData || typeof parsedData !== 'object') {
+      throw new Error('Ungültiges Antwortformat der KI');
+    }
+
+    const allowedCategories = ['Hardware', 'Futter', 'Bienen', 'Imkereibedarf', 'Sonstiges'];
+    const category = allowedCategories.includes(parsedData.category)
+      ? parsedData.category
+      : 'Sonstiges';
+    const price = Number(parsedData.price);
+    const today = new Date().toISOString().split('T')[0];
+
+    return {
+      date: typeof parsedData.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsedData.date)
+        ? parsedData.date
+        : today,
+      description: typeof parsedData.description === 'string' && parsedData.description.trim()
+        ? parsedData.description.trim()
+        : 'Unbekannter Beleg',
+      category,
+      price: Number.isFinite(price) ? price : 0
+    };
   } catch (error) {
     console.error('Error parsing receipt with Gemini:', error);
     throw new Error(`Fehler bei der Beleg-Analyse: ${error.message}`);

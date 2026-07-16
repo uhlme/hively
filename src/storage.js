@@ -1,5 +1,6 @@
 // Data storage utility for Bee-Tracker using localStorage or Supabase DB
 import { supabase } from './supabase.js';
+import { safeJsonParse } from './utils.js';
 
 const KEYS = {
   HIVES: 'bee_tracker_hives',
@@ -9,6 +10,14 @@ const KEYS = {
   TASKS: 'bee_tracker_tasks',
   SYNC_QUEUE: 'bee_tracker_sync_queue'
 };
+
+function readLocalArray(key) {
+  return safeJsonParse(localStorage.getItem(key), []) || [];
+}
+
+function readLocalObject(key) {
+  return safeJsonParse(localStorage.getItem(key), {}) || {};
+}
 
 // Check if user is logged in
 export async function getSession() {
@@ -106,6 +115,7 @@ function mapFinanceToDB(f) {
     type: f.type || 'expense',
     hive_id: f.hiveId || null,
     sponsor_name: f.sponsorName || null,
+    notes: f.notes || null,
     created_at: f.createdAt || new Date().toISOString(),
     updated_at: f.updatedAt || new Date().toISOString()
   };
@@ -121,6 +131,7 @@ function mapFinanceFromDB(f) {
     type: f.type,
     hiveId: f.hive_id,
     sponsorName: f.sponsor_name,
+    notes: f.notes,
     createdAt: f.created_at,
     updatedAt: f.updated_at
   };
@@ -164,7 +175,7 @@ export async function initStorage() {
 // --- Sync Queue (Outbox) Helpers ---
 
 function addToSyncQueue(action, type, payload) {
-  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
+  const queue = readLocalArray(KEYS.SYNC_QUEUE);
   const recordId = payload.id || payload;
   
   // Deduplicate upsert events to prevent flooding the database on sync
@@ -191,7 +202,7 @@ export async function processSyncQueue() {
   if (!session) return;
   const userId = session.user.id;
 
-  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
+  const queue = readLocalArray(KEYS.SYNC_QUEUE);
   if (queue.length === 0) return;
 
   console.log(`[Sync Queue] Processing ${queue.length} pending offline operations...`);
@@ -243,8 +254,7 @@ export async function processSyncQueue() {
 }
 
 export function getSyncQueueLength() {
-  const queue = JSON.parse(localStorage.getItem(KEYS.SYNC_QUEUE)) || [];
-  return queue.length;
+  return readLocalArray(KEYS.SYNC_QUEUE).length;
 }
 
 // --- Hives CRUD ---
@@ -262,7 +272,7 @@ export async function getHives() {
       console.warn('Failed to fetch hives from Supabase, loading from local cache:', err);
     }
   }
-  return JSON.parse(localStorage.getItem(KEYS.HIVES)) || [];
+  return readLocalArray(KEYS.HIVES);
 }
 
 export async function getHiveById(id) {
@@ -355,7 +365,7 @@ export async function getInspections(hiveId = null) {
     }
   }
 
-  const inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
+  const inspections = readLocalArray(KEYS.INSPECTIONS);
   if (hiveId) {
     return inspections
       .filter(i => i.hiveId === hiveId)
@@ -373,7 +383,7 @@ export async function saveInspection(inspection) {
   inspection.updatedAt = new Date().toISOString();
 
   // 1. Save locally
-  const inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
+  const inspections = readLocalArray(KEYS.INSPECTIONS);
   const idx = inspections.findIndex(i => i.id === inspection.id);
   if (idx !== -1) {
     inspections[idx] = { ...inspections[idx], ...inspection };
@@ -405,7 +415,7 @@ export async function deleteInspection(id) {
   const isRemote = await useRemote();
 
   // 1. Delete locally
-  let inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
+  let inspections = readLocalArray(KEYS.INSPECTIONS);
   inspections = inspections.filter(i => i.id !== id);
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
 
@@ -440,7 +450,7 @@ export async function getFinances() {
     }
   }
 
-  const finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
+  const finances = readLocalArray(KEYS.FINANCES);
   return finances.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
@@ -453,7 +463,7 @@ export async function saveFinance(item) {
   item.updatedAt = new Date().toISOString();
 
   // 1. Save locally
-  const finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
+  const finances = readLocalArray(KEYS.FINANCES);
   const idx = finances.findIndex(f => f.id === item.id);
   if (idx !== -1) {
     finances[idx] = { ...finances[idx], ...item };
@@ -485,7 +495,7 @@ export async function deleteFinance(id) {
   const isRemote = await useRemote();
 
   // 1. Delete locally
-  let finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
+  let finances = readLocalArray(KEYS.FINANCES);
   finances = finances.filter(f => f.id !== id);
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
 
@@ -520,7 +530,7 @@ export async function getHoneyHarvests() {
     }
   }
 
-  const honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
+  const honey = readLocalArray(KEYS.HONEY);
   return honey.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
@@ -533,7 +543,7 @@ export async function saveHoneyHarvest(harvest) {
   harvest.updatedAt = new Date().toISOString();
 
   // 1. Save locally
-  const honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
+  const honey = readLocalArray(KEYS.HONEY);
   const idx = honey.findIndex(h => h.id === harvest.id);
   if (idx !== -1) {
     honey[idx] = { ...honey[idx], ...harvest };
@@ -565,7 +575,7 @@ export async function deleteHoneyHarvest(id) {
   const isRemote = await useRemote();
 
   // 1. Delete locally
-  let honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
+  let honey = readLocalArray(KEYS.HONEY);
   honey = honey.filter(h => h.id !== id);
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
 
@@ -588,11 +598,11 @@ export async function deleteHoneyHarvest(id) {
 // --- Tasks State (Calendar) ---
 
 export async function getTasksState() {
-  return JSON.parse(localStorage.getItem(KEYS.TASKS)) || {};
+  return readLocalObject(KEYS.TASKS);
 }
 
 export async function saveTaskState(month, taskId, isChecked) {
-  const tasks = JSON.parse(localStorage.getItem(KEYS.TASKS)) || {};
+  const tasks = readLocalObject(KEYS.TASKS);
   if (!tasks[month]) tasks[month] = {};
   tasks[month][taskId] = isChecked;
   localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks));
@@ -606,39 +616,55 @@ export async function syncLocalToRemote() {
   if (!session) return false;
   
   const userId = session.user.id;
+  const errors = [];
 
   // Sync hives
-  const hives = JSON.parse(localStorage.getItem(KEYS.HIVES)) || [];
+  const hives = readLocalArray(KEYS.HIVES);
   if (hives.length > 0) {
     const dbHives = hives.map(h => ({ ...mapHiveToDB(h), user_id: userId }));
     const { error } = await supabase.from('hives').upsert(dbHives);
-    if (error) console.error('Error syncing hives:', error);
+    if (error) {
+      console.error('Error syncing hives:', error);
+      errors.push('Völker');
+    }
   }
 
   // Sync inspections
-  const inspections = JSON.parse(localStorage.getItem(KEYS.INSPECTIONS)) || [];
+  const inspections = readLocalArray(KEYS.INSPECTIONS);
   if (inspections.length > 0) {
     const dbInspections = inspections.map(i => ({ ...mapInspectionToDB(i), user_id: userId }));
     const { error } = await supabase.from('inspections').upsert(dbInspections);
-    if (error) console.error('Error syncing inspections:', error);
+    if (error) {
+      console.error('Error syncing inspections:', error);
+      errors.push('Durchsichten');
+    }
   }
 
   // Sync finances
-  const finances = JSON.parse(localStorage.getItem(KEYS.FINANCES)) || [];
+  const finances = readLocalArray(KEYS.FINANCES);
   if (finances.length > 0) {
     const dbFinances = finances.map(f => ({ ...mapFinanceToDB(f), user_id: userId }));
     const { error } = await supabase.from('finances').upsert(dbFinances);
-    if (error) console.error('Error syncing finances:', error);
+    if (error) {
+      console.error('Error syncing finances:', error);
+      errors.push('Finanzen');
+    }
   }
 
   // Sync honey
-  const honey = JSON.parse(localStorage.getItem(KEYS.HONEY)) || [];
+  const honey = readLocalArray(KEYS.HONEY);
   if (honey.length > 0) {
     const dbHoney = honey.map(h => ({ ...mapHoneyToDB(h), user_id: userId }));
     const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
-    if (error) console.error('Error syncing honey:', error);
+    if (error) {
+      console.error('Error syncing honey:', error);
+      errors.push('Honig');
+    }
   }
 
+  if (errors.length > 0) {
+    throw new Error('Sync fehlgeschlagen für: ' + errors.join(', '));
+  }
   return true;
 }
 
@@ -654,30 +680,51 @@ export async function exportData() {
   return JSON.stringify(data, null, 2);
 }
 
+function isBackupShape(data) {
+  if (!data || typeof data !== 'object') return false;
+  const keys = ['hives', 'inspections', 'finances', 'honey'];
+  return keys.some((k) => Array.isArray(data[k]));
+}
+
 export async function importData(jsonString) {
   try {
     const data = JSON.parse(jsonString);
+    if (!isBackupShape(data)) {
+      console.error('Import rejected: unrecognized backup format');
+      return false;
+    }
+
     const isRemote = await useRemote();
 
     if (isRemote) {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session.user.id;
+      const errors = [];
 
       if (data.hives && Array.isArray(data.hives)) {
         const dbHives = data.hives.map(h => ({ ...mapHiveToDB(h), user_id: userId }));
-        await supabase.from('hives').upsert(dbHives);
+        const { error } = await supabase.from('hives').upsert(dbHives);
+        if (error) errors.push(error);
       }
       if (data.inspections && Array.isArray(data.inspections)) {
         const dbInspections = data.inspections.map(i => ({ ...mapInspectionToDB(i), user_id: userId }));
-        await supabase.from('inspections').upsert(dbInspections);
+        const { error } = await supabase.from('inspections').upsert(dbInspections);
+        if (error) errors.push(error);
       }
       if (data.finances && Array.isArray(data.finances)) {
         const dbFinances = data.finances.map(f => ({ ...mapFinanceToDB(f), user_id: userId }));
-        await supabase.from('finances').upsert(dbFinances);
+        const { error } = await supabase.from('finances').upsert(dbFinances);
+        if (error) errors.push(error);
       }
       if (data.honey && Array.isArray(data.honey)) {
         const dbHoney = data.honey.map(h => ({ ...mapHoneyToDB(h), user_id: userId }));
-        await supabase.from('honey_harvests').upsert(dbHoney);
+        const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
+        if (error) errors.push(error);
+      }
+
+      if (errors.length > 0) {
+        console.error('Import had Supabase errors:', errors);
+        return false;
       }
     } else {
       if (data.hives && Array.isArray(data.hives)) {

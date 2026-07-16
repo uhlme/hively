@@ -1,20 +1,35 @@
-const CACHE_NAME = 'bee-tracker-v2';
+const CACHE_NAME = 'bee-tracker-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap'
+  '/favicon.svg'
 ];
+
+async function precacheAssets(cache) {
+  // Cache each asset individually so one missing/failed URL does not break install
+  await Promise.all(
+    ASSETS.map(async (url) => {
+      try {
+        await cache.add(url);
+      } catch (err) {
+        console.warn('[Service Worker] Failed to precache', url, err);
+      }
+    })
+  );
+}
 
 // Install Event - cache assets
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching all static assets');
-      return cache.addAll(ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('[Service Worker] Caching static assets');
+        return precacheAssets(cache);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -39,6 +54,10 @@ self.addEventListener('fetch', (e) => {
   // Only cache GET requests
   if (e.request.method !== 'GET') return;
 
+  // Skip non-http(s) and cross-origin API calls
+  const url = new URL(e.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   // Navigations / HTML -> network-first, so the app shell is always fresh
   // (falls back to cache only when offline).
   if (e.request.mode === 'navigate') {
@@ -54,13 +73,16 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Only runtime-cache same-origin responses
+  const isSameOrigin = url.origin === self.location.origin;
+
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
         // Return cached version immediately but fetch fresh copy in background (stale-while-revalidate)
         fetch(e.request)
           .then((networkResponse) => {
-            if (networkResponse.status === 200) {
+            if (isSameOrigin && networkResponse && networkResponse.status === 200) {
               caches.open(CACHE_NAME).then((cache) => cache.put(e.request, networkResponse));
             }
           })
@@ -73,10 +95,12 @@ self.addEventListener('fetch', (e) => {
           return networkResponse;
         }
 
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, responseToCache);
-        });
+        if (isSameOrigin) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseToCache);
+          });
+        }
 
         return networkResponse;
       }).catch(() => {
@@ -84,6 +108,7 @@ self.addEventListener('fetch', (e) => {
         if (e.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
+        return undefined;
       });
     })
   );

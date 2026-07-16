@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseGeminiJson } from './utils.js';
 
 let mediaRecorder = null;
 let audioChunks = [];
@@ -136,10 +137,16 @@ Wichtig:
     ]);
 
     const responseText = result.response.text();
-    console.log('Gemini audio parse raw response:', responseText);
-    
-    const parsedData = JSON.parse(responseText.trim());
-    return parsedData;
+    const parsedData = parseGeminiJson(responseText);
+
+    if (!parsedData || typeof parsedData !== 'object') {
+      throw new Error('Ungültiges Antwortformat der KI');
+    }
+
+    return {
+      hiveNames: Array.isArray(parsedData.hiveNames) ? parsedData.hiveNames.map(String) : [],
+      notes: typeof parsedData.notes === 'string' ? parsedData.notes : ''
+    };
   } catch (error) {
     console.error('Error parsing audio with Gemini:', error);
     throw new Error(`Fehler bei der KI-Analyse: ${error.message}`);
