@@ -524,6 +524,127 @@ textarea {
   animation: pulse-red 1.2s infinite;
 }
 
+/* --- Saison-Kalender --- */
+.calendar-month-header {
+  margin-bottom: 14px;
+}
+
+.calendar-month-header h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.calendar-month-progress {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.calendar-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+
+.calendar-task {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.calendar-task.is-done {
+  opacity: 0.72;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.calendar-task-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.calendar-task-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+}
+
+.calendar-task-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.calendar-task-title {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.calendar-task.is-done .calendar-task-title {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.calendar-task-toggle {
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--primary);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.calendar-task-toggle.is-open,
+.calendar-task-toggle:hover {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.calendar-task-meta {
+  margin-top: 8px;
+  padding-left: 28px;
+}
+
+.calendar-task-date {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 6px;
+  padding: 3px 8px;
+  line-height: 1.3;
+}
+
+.calendar-task-guide {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  border-left: 3px solid var(--primary);
+}
+
+.calendar-task-guide-text {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: normal;
+}
+
 /* Fix for iOS Safari WebKit form input/select focus and click bugs */
 input, textarea, select {
   -webkit-user-select: text !important;

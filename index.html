@@ -187,9 +187,9 @@
 
         <!-- View 5: Kalender -->
         <section id="view-calendar" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="font-size: 1.25rem;">Saison-Kalender</h2>
-            <select id="calendar-month-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.9rem; margin-bottom: 0;">
+            <select id="calendar-month-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.9rem; margin-bottom: 0;" aria-label="Monat wählen">
               <option value="1">Januar</option>
               <option value="2">Februar</option>
               <option value="3">März</option>
@@ -204,6 +204,9 @@
               <option value="12">Dezember</option>
             </select>
           </div>
+          <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+            Arbeitsschritte mit Richttermin und kurzer Anleitung – an Wetter und Tracht anpassen.
+          </p>
           
           <div id="calendar-tasks-container">
             <!-- Rendered via JS -->

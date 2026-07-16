@@ -28,6 +28,7 @@ import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
 import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
+import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass } from './utils.js';
 
 // --- State Variables ---
@@ -532,20 +533,16 @@ async function loadDashboardRadar() {
   }
 }
 
-const CALENDAR_TASKS = {
-  "1": ["Winterruhe der Bienen nicht stören.", "Flugloch auf Verstopfung prüfen.", "Material für die neue Saison reparieren/bestellen."],
-  "2": ["Reinigungsausflug beobachten.", "Futterkontrolle durch anheben der Beute (Gewicht).", "Tote Bienen am Flugloch entfernen."],
-  "3": ["Erste Frühjahrsdurchsicht bei >15°C.", "Mäusegitter entfernen.", "Boden reinigen."],
-  "4": ["Kirschblüte: Honigraum aufsetzen.", "Drohnenrahmen einhängen (Varroaprophylaxe).", "Schwarmkontrolle beginnen."],
-  "5": ["Wöchentliche Schwarmkontrolle (alle 7-9 Tage).", "Erste Ableger bilden.", "Honigräume kontrollieren und erweitern."],
-  "6": ["Letzte Schwarmkontrollen durchführen.", "Erste Honigernte (Frühtracht) schleudern.", "Trachtlücke beachten."],
-  "7": ["Sommertracht schleudern.", "1. Varroa-Behandlung (z.B. Ameisensäure) nach der Ernte.", "Erste Auffütterung starten."],
-  "8": ["Zweite Auffütterung abschließen.", "Erfolgskontrolle der Varroa-Behandlung (Milbenfall).", "Räuberei vermeiden (Fluglöcher einengen)."],
-  "9": ["2. Varroa-Behandlung (falls nötig).", "Volksstärke kontrollieren (winterfeste Bienen).", "Schwache Völker vereinigen."],
-  "10": ["Auffütterung muss beendet sein.", "Mäusegitter anbringen.", "Winterruhe kehrt ein."],
-  "11": ["Letzte Varroa-Kontrolle (Windel).", "Werkstattarbeiten: Rähmchen einschmelzen.", "Ausrüstung reinigen."],
-  "12": ["Winterbehandlung (Oxalsäure) brutfrei durchführen.", "Absolute Ruhe am Bienenstand."]
-};
+function formatGuideHtml(guide) {
+  return escapeHtml(guide).replace(/\n/g, '<br>');
+}
+
+function isTaskDone(monthState, task, index) {
+  if (monthState[task.id]) return true;
+  // Backward compatible with older index-based checkbox state
+  if (monthState[index] || monthState[String(index)]) return true;
+  return false;
+}
 
 async function renderCalendarView() {
   const container = document.getElementById('calendar-tasks-container');
@@ -571,27 +568,42 @@ async function renderCalendarView() {
     return;
   }
 
-  const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const monthName = CALENDAR_MONTH_NAMES[parseInt(selectedMonth, 10) - 1];
+  const doneCount = tasksForMonth.filter((task, index) => isTaskDone(monthState, task, index)).length;
 
   let html = `
-    <div class="card" style="padding: 16px;">
-      <h3 style="font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-        📌 Imker-Aufgaben im ${monthNames[parseInt(selectedMonth) - 1]}
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="calendar-month-header">
+      <h3>📌 Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
+      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung</p>
+    </div>
+    <div class="calendar-task-list">
   `;
 
   tasksForMonth.forEach((task, index) => {
-    const isChecked = monthState[index] ? 'checked' : '';
+    const done = isTaskDone(monthState, task, index);
+    const checked = done ? 'checked' : '';
     html += `
-      <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.1);">
-        <input type="checkbox" class="task-checkbox" data-month="${selectedMonth}" data-task-id="${index}" ${isChecked} style="margin-top: 4px; width: 18px; height: 18px;" />
-        <span style="font-size: 0.95rem; line-height: 1.4; color: ${isChecked ? 'var(--text-secondary)' : 'var(--text-primary)'}; text-decoration: ${isChecked ? 'line-through' : 'none'};">${task}</span>
-      </label>
+      <article class="calendar-task ${done ? 'is-done' : ''}" data-task-id="${escapeHtml(task.id)}">
+        <div class="calendar-task-main">
+          <label class="calendar-task-check">
+            <input type="checkbox" class="task-checkbox" data-month="${escapeHtml(selectedMonth)}" data-task-id="${escapeHtml(task.id)}" data-task-index="${index}" ${checked} />
+            <span class="calendar-task-title">${escapeHtml(task.title)}</span>
+          </label>
+          <button type="button" class="calendar-task-toggle" aria-expanded="false" aria-controls="guide-${escapeHtml(task.id)}" data-guide-toggle="${escapeHtml(task.id)}">
+            Anleitung
+          </button>
+        </div>
+        <div class="calendar-task-meta">
+          <span class="calendar-task-date" title="Richttermin">🗓 ${escapeHtml(task.approxDate)}</span>
+        </div>
+        <div id="guide-${escapeHtml(task.id)}" class="calendar-task-guide hidden" hidden>
+          <p class="calendar-task-guide-text">${formatGuideHtml(task.guide)}</p>
+        </div>
+      </article>
     `;
   });
 
-  html += `</div></div>`;
+  html += `</div>`;
   container.innerHTML = html;
 
   document.querySelectorAll('.task-checkbox').forEach(chk => {
@@ -599,17 +611,43 @@ async function renderCalendarView() {
       const month = e.target.getAttribute('data-month');
       const taskId = e.target.getAttribute('data-task-id');
       const checked = e.target.checked;
-      
-      const span = e.target.nextElementSibling;
-      if (checked) {
-        span.style.color = 'var(--text-secondary)';
-        span.style.textDecoration = 'line-through';
-      } else {
-        span.style.color = 'var(--text-primary)';
-        span.style.textDecoration = 'none';
+      const card = e.target.closest('.calendar-task');
+
+      if (card) {
+        card.classList.toggle('is-done', checked);
       }
-      
+
       await saveTaskState(month, taskId, checked);
+
+      const progress = container.querySelector('.calendar-month-progress');
+      if (progress) {
+        const total = tasksForMonth.length;
+        const doneNow = container.querySelectorAll('.task-checkbox:checked').length;
+        progress.textContent = `${doneNow} von ${total} erledigt · Tippe auf einen Schritt für die Anleitung`;
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-guide-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-guide-toggle');
+      const guide = document.getElementById(`guide-${id}`);
+      if (!guide) return;
+
+      const willOpen = guide.hasAttribute('hidden');
+      if (willOpen) {
+        guide.hidden = false;
+        guide.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('is-open');
+        btn.textContent = 'Schliessen';
+      } else {
+        guide.hidden = true;
+        guide.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.remove('is-open');
+        btn.textContent = 'Anleitung';
+      }
     });
   });
 }
