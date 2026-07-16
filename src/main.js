@@ -28,6 +28,7 @@ import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
 import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
+import { escapeHtml, statusToCssClass } from './utils.js';
 
 // --- State Variables ---
 let currentView = 'dashboard';
@@ -116,7 +117,11 @@ function bindAppHeight() {
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
-  await initStorage();
+  try {
+    await initStorage();
+  } catch (err) {
+    console.error('Storage-Initialisierung fehlgeschlagen:', err);
+  }
   setupRouting();
   setupModals();
   setupForms();
@@ -134,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial render
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
-  if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings'].includes(viewParam)) {
+  if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings', 'calendar'].includes(viewParam)) {
     currentView = viewParam;
   }
   await navigate(currentView);
@@ -307,13 +312,13 @@ async function renderDashboardView() {
     .filter(f => f.type === 'expense' || !f.type) // old data might not have type, fallback to expenses
     .reduce((sum, f) => sum + parseFloat(f.price || 0), 0);
   const totalIncome = finances
-    .filter(f => f.type === 'sponsorship')
+    .filter(f => f.type === 'sponsorship' || f.type === 'income')
     .reduce((sum, f) => sum + parseFloat(f.price || 0), 0);
   const balance = totalIncome - totalExpenses;
 
   const financeSumEl = document.getElementById('stat-finance-sum');
   if (financeSumEl) {
-    financeSumEl.innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${balance.toFixed(2)}`;
+    financeSumEl.innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${escapeHtml(balance.toFixed(2))}`;
     if (balance >= 0) {
       financeSumEl.style.color = 'var(--success)';
     } else {
@@ -355,39 +360,43 @@ async function renderDashboardView() {
   const recentList = document.getElementById('dashboard-recent-activities');
   if (activities.length === 0) {
     recentList.innerHTML = `<p class="text-muted text-center" style="padding: 20px;">Keine Aktivitäten vorhanden.</p>`;
-    return;
+  } else {
+    recentList.innerHTML = activities.slice(0, 5).map((act, index) => `
+      <div class="card recent-activity-card" data-index="${index}" style="padding: 12px; margin-bottom: 10px; cursor: pointer;" role="button" tabindex="0">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span class="text-primary-color" style="font-size: 0.85rem; font-weight: 600;">${escapeHtml(act.tag)}</span>
+          <span class="text-muted" style="font-size: 0.75rem;">${escapeHtml(formatDateString(act.date))}</span>
+        </div>
+        <div style="font-weight: 500; font-size: 0.95rem;">${escapeHtml(act.hiveName)}</div>
+        <div class="text-secondary" style="font-size: 0.85rem; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${escapeHtml(act.details)}
+        </div>
+      </div>
+    `).join('');
+
+    // Attach click handlers to open edit modals
+    document.querySelectorAll('.recent-activity-card').forEach(card => {
+      const openActivity = () => {
+        const idx = parseInt(card.getAttribute('data-index'));
+        const act = activities[idx];
+        if (act.type === 'inspection') {
+          openInspectionModal(act.raw);
+        } else if (act.type === 'honey') {
+          openHoneyModal(act.raw);
+        }
+      };
+      card.addEventListener('click', openActivity);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openActivity();
+        }
+      });
+    });
   }
 
-  recentList.innerHTML = activities.slice(0, 5).map((act, index) => `
-    <div class="card recent-activity-card" data-index="${index}" style="padding: 12px; margin-bottom: 10px; cursor: pointer;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span class="text-primary-color" style="font-size: 0.85rem; font-weight: 600;">${act.tag}</span>
-        <span class="text-muted" style="font-size: 0.75rem;">${formatDateString(act.date)}</span>
-      </div>
-      <div style="font-weight: 500; font-size: 0.95rem;">${act.hiveName}</div>
-      <div class="text-secondary" style="font-size: 0.85rem; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        ${act.details}
-      </div>
-    </div>
-  `).join('');
-
-  // Attach click handlers to open edit modals
-  document.querySelectorAll('.recent-activity-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const idx = parseInt(card.getAttribute('data-index'));
-      const act = activities[idx];
-      if (act.type === 'inspection') {
-        openInspectionModal(act.raw);
-      } else if (act.type === 'honey') {
-        openHoneyModal(act.raw);
-      }
-    });
-  });
-
-  // Trigger radar load asynchronously
+  // Always load radar + offline memos (even with zero activities)
   loadDashboardRadar();
-  
-  // Render pending offline memos/scans
   await renderOfflineMemos();
 }
 
@@ -623,19 +632,23 @@ async function renderHivesView() {
   container.innerHTML = hives.map(hive => {
     const qColorClass = getQueenColorClass(hive.queenYear);
     const qColorName = getQueenColorName(hive.queenYear);
+    const statusClass = statusToCssClass(hive.status);
+    const queenLabel = hive.queenName
+      ? `"${escapeHtml(hive.queenName)}"`
+      : 'Ohne Namen';
     return `
-      <div class="card hive-card" data-id="${hive.id}">
+      <div class="card hive-card" data-id="${escapeHtml(hive.id)}" role="button" tabindex="0">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
           <div>
-            <h3 style="font-size: 1.15rem; font-weight: 600;">${hive.name}</h3>
-            <span class="text-muted" style="font-size: 0.85rem;">Rasse: ${hive.breed || 'Nicht definiert'}</span>
+            <h3 style="font-size: 1.15rem; font-weight: 600;">${escapeHtml(hive.name)}</h3>
+            <span class="text-muted" style="font-size: 0.85rem;">Rasse: ${escapeHtml(hive.breed || 'Nicht definiert')}</span>
           </div>
-          <span class="status-badge status-${hive.status.toLowerCase().replace(' ', '-')}">${hive.status}</span>
+          <span class="status-badge status-${statusClass}">${escapeHtml(hive.status)}</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="queen-badge ${qColorClass}">${hive.queenYear ? hive.queenYear.toString().slice(-2) : '?' }</span>
-            <span class="text-secondary" style="font-size: 0.85rem;">Königin ${hive.queenName ? `"${hive.queenName}"` : 'Ohne Namen'} (${hive.queenYear || 'Unbekannt'}, ${qColorName})</span>
+            <span class="queen-badge ${qColorClass}">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?' }</span>
+            <span class="text-secondary" style="font-size: 0.85rem;">Königin ${queenLabel} (${escapeHtml(hive.queenYear || 'Unbekannt')}, ${escapeHtml(qColorName)})</span>
           </div>
           <span class="text-primary-color" style="font-size: 0.85rem; font-weight: 500;">Details anzeigen →</span>
         </div>
@@ -645,9 +658,16 @@ async function renderHivesView() {
 
   // Add click handlers for hive cards
   document.querySelectorAll('.hive-card').forEach(card => {
-    card.addEventListener('click', async () => {
+    const openHive = async () => {
       activeHiveIdForDetail = card.getAttribute('data-id');
       await navigate('hive-detail');
+    };
+    card.addEventListener('click', openHive);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openHive();
+      }
     });
   });
 }
@@ -669,44 +689,44 @@ async function renderHiveDetailView() {
   
   infoBlock.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <span class="status-badge status-${hive.status.toLowerCase().replace(' ', '-')}">${hive.status}</span>
+      <span class="status-badge status-${statusToCssClass(hive.status)}">${escapeHtml(hive.status)}</span>
       <button id="btn-edit-hive-details" class="btn btn-secondary btn-sm">Stammdaten bearbeiten</button>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Name der Königin</span>
-      <span style="font-weight: 500;">${hive.queenName || 'Kein Name vergeben'}</span>
+      <span style="font-weight: 500;">${escapeHtml(hive.queenName || 'Kein Name vergeben')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Rasse / Herkunft</span>
-      <span style="font-weight: 500;">${hive.breed || 'Nicht angegeben'}</span>
+      <span style="font-weight: 500;">${escapeHtml(hive.breed || 'Nicht angegeben')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Königinnen-Jahrgang</span>
       <div style="display: flex; align-items: center; gap: 6px;">
-        <span class="queen-badge ${qColorClass}" style="width: 20px; height: 20px; font-size: 0.65rem;">${hive.queenYear ? hive.queenYear.toString().slice(-2) : '?'}</span>
-        <span style="font-weight: 500;">${hive.queenYear || 'Unbekannt'} (${qColorName})</span>
+        <span class="queen-badge ${qColorClass}" style="width: 20px; height: 20px; font-size: 0.65rem;">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?'}</span>
+        <span style="font-weight: 500;">${escapeHtml(hive.queenYear || 'Unbekannt')} (${escapeHtml(qColorName)})</span>
       </div>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Brutraum (Waben)</span>
-      <span style="font-weight: 500;">${hive.broodFrames || 0}</span>
+      <span style="font-weight: 500;">${escapeHtml(hive.broodFrames || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">1. Honigraum (Waben)</span>
-      <span style="font-weight: 500;">${hive.honeyFrames1 || 0}</span>
+      <span style="font-weight: 500;">${escapeHtml(hive.honeyFrames1 || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">2. Honigraum (Waben)</span>
-      <span style="font-weight: 500;">${hive.honeyFrames2 || 0}</span>
+      <span style="font-weight: 500;">${escapeHtml(hive.honeyFrames2 || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Erstellt am</span>
-      <span style="font-weight: 500;">${formatDateString(hive.createdAt)}</span>
+      <span style="font-weight: 500;">${escapeHtml(formatDateString(hive.createdAt))}</span>
     </div>
     ${hive.notes ? `
       <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
         <span class="text-muted" style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Notizen:</span>
-        <p class="text-secondary" style="font-size: 0.9rem; white-space: pre-wrap;">${hive.notes}</p>
+        <p class="text-secondary" style="font-size: 0.9rem; white-space: pre-wrap;">${escapeHtml(hive.notes)}</p>
       </div>
     ` : ''}
   `;
@@ -735,15 +755,15 @@ async function renderHiveDetailView() {
 
   timeline.innerHTML = inspections.map(insp => {
     const weatherString = (insp.weatherTemp !== undefined && insp.weatherTemp !== null) ? 
-        `<span style="margin-left: 8px; font-size: 0.85rem;" class="text-secondary">| ${insp.weatherCondition || ''} ${insp.weatherTemp}°C</span>` : '';
+        `<span style="margin-left: 8px; font-size: 0.85rem;" class="text-secondary">| ${escapeHtml(insp.weatherCondition || '')} ${escapeHtml(insp.weatherTemp)}°C</span>` : '';
     return `
-      <div class="log-item inspection-log-card" data-id="${insp.id}">
+      <div class="log-item inspection-log-card" data-id="${escapeHtml(insp.id)}">
         <div class="log-item-header">
-          <span>${formatDateString(insp.date)}${weatherString}</span>
+          <span>${escapeHtml(formatDateString(insp.date))}${weatherString}</span>
         </div>
-        ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${insp.notes}</p>` : ''}
+        ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${escapeHtml(insp.notes)}</p>` : ''}
         <div style="text-align: right; margin-top: 8px;">
-          <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${insp.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.75rem;">Bearbeiten</button>
+          <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${escapeHtml(insp.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.75rem;">Bearbeiten</button>
         </div>
       </div>
     `;
@@ -785,17 +805,17 @@ async function renderFinanceView() {
     }
 
     expensesList.innerHTML = finances.map(item => `
-      <div class="card finance-card" data-id="${item.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+      <div class="card finance-card" data-id="${escapeHtml(item.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
         <div>
-          <h4 style="font-size: 1rem; font-weight: 600;">${item.description}</h4>
+          <h4 style="font-size: 1rem; font-weight: 600;">${escapeHtml(item.description)}</h4>
           <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-            <span>${formatDateString(item.date)}</span> &bull; 
-            <span style="color: var(--primary);">${item.category}</span>
+            <span>${escapeHtml(formatDateString(item.date))}</span> &bull; 
+            <span style="color: var(--primary);">${escapeHtml(item.category)}</span>
           </div>
         </div>
         <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-          <span style="font-weight: 700; color: var(--danger); font-size: 1.1rem;">- ${parseFloat(item.price).toFixed(2)} CHF</span>
-          <button class="btn btn-sm btn-danger btn-delete-fin-item" data-id="${item.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+          <span style="font-weight: 700; color: var(--danger); font-size: 1.1rem;">- ${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
+          <button class="btn btn-sm btn-danger btn-delete-fin-item" data-id="${escapeHtml(item.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
         </div>
       </div>
     `).join('');
@@ -842,17 +862,17 @@ async function renderFinanceView() {
     honeyList.innerHTML = honey.map(harvest => {
       const hive = hives.find(h => h.id === harvest.hiveId);
       return `
-        <div class="card honey-card" data-id="${harvest.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <div class="card honey-card" data-id="${escapeHtml(harvest.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
           <div>
-            <h4 style="font-size: 1rem; font-weight: 600;">${hive ? hive.name : 'Unbekanntes Volk'}</h4>
+            <h4 style="font-size: 1rem; font-weight: 600;">${escapeHtml(hive ? hive.name : 'Unbekanntes Volk')}</h4>
             <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-              <span>${formatDateString(harvest.date)}</span> &bull; 
-              <span>Sorte: <strong>${harvest.type || 'Frühtracht'}</strong></span>
+              <span>${escapeHtml(formatDateString(harvest.date))}</span> &bull; 
+              <span>Sorte: <strong>${escapeHtml(harvest.type || 'Frühtracht')}</strong></span>
             </div>
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">🍯 ${parseFloat(harvest.amount).toFixed(1)} kg</span>
-            <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${harvest.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+            <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">🍯 ${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
+            <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
           </div>
         </div>
       `;
@@ -899,17 +919,17 @@ async function renderFinanceView() {
     sponsorshipsList.innerHTML = finances.map(item => {
       const hive = hives.find(h => h.id === item.hiveId);
       return `
-        <div class="card sponsorship-card" data-id="${item.id}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <div class="card sponsorship-card" data-id="${escapeHtml(item.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
           <div>
-            <h4 style="font-size: 1rem; font-weight: 600;">👤 ${item.sponsorName || 'Unbekannter Pate'}</h4>
+            <h4 style="font-size: 1rem; font-weight: 600;">👤 ${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
             <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-              <span>${formatDateString(item.date)}</span> &bull; 
-              <span>Kasten: <strong>${hive ? hive.name : 'Gelöschtes Volk'}</strong></span>
+              <span>${escapeHtml(formatDateString(item.date))}</span> &bull; 
+              <span>Kasten: <strong>${escapeHtml(hive ? hive.name : 'Gelöschtes Volk')}</strong></span>
             </div>
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span style="font-weight: 700; color: var(--success); font-size: 1.1rem;">+ ${parseFloat(item.price).toFixed(2)} CHF</span>
-            <button class="btn btn-sm btn-danger btn-delete-sponsorship-item" data-id="${item.id}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+            <span style="font-weight: 700; color: var(--success); font-size: 1.1rem;">+ ${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
+            <button class="btn btn-sm btn-danger btn-delete-sponsorship-item" data-id="${escapeHtml(item.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
           </div>
         </div>
       `;
@@ -946,6 +966,8 @@ function setupModals() {
   // Setup overlay click to close
   const overlays = document.querySelectorAll('.modal-overlay');
   overlays.forEach(overlay => {
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
         closeModal(overlay.id);
@@ -956,10 +978,20 @@ function setupModals() {
   // Setup close buttons via selector [data-close]
   const closeBtns = document.querySelectorAll('[data-close]');
   closeBtns.forEach(btn => {
+    if (!btn.getAttribute('aria-label')) {
+      btn.setAttribute('aria-label', 'Schliessen');
+    }
     btn.addEventListener('click', () => {
       const modalId = btn.getAttribute('data-close');
       closeModal(modalId);
     });
+  });
+
+  // Escape closes the topmost open modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('.modal-overlay.active');
+    if (open) closeModal(open.id);
   });
 }
 
@@ -967,6 +999,10 @@ function openModal(id) {
   const modal = document.getElementById(id);
   if (modal) {
     modal.classList.add('active');
+    const focusTarget = modal.querySelector('input, select, textarea, button:not([data-close])');
+    if (focusTarget) {
+      setTimeout(() => focusTarget.focus(), 50);
+    }
   }
 }
 
@@ -1046,10 +1082,10 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     const hiveName = matchedHive ? matchedHive.name : 'Unbekanntes Volk';
     hivesContainer.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: space-between; font-weight: 500;">
-        <span>${hiveName}</span>
+        <span>${escapeHtml(hiveName)}</span>
         <span class="text-muted" style="font-size: 0.75rem;">(Nicht änderbar)</span>
       </div>
-      <input type="hidden" class="hive-checkbox" value="${inspection.hiveId}" checked />
+      <input type="hidden" class="hive-checkbox" value="${escapeHtml(inspection.hiveId)}" checked />
     `;
   } else {
     document.getElementById('insp-form-id').value = '';
@@ -1065,7 +1101,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
       btnWeatherRetry.style.display = 'none';
       try {
         const w = await fetchCurrentWeather();
-        weatherDisplay.innerHTML = `${w.conditionEmoji} ${w.temperature}°C`;
+        weatherDisplay.innerHTML = `${escapeHtml(w.conditionEmoji)} ${escapeHtml(w.temperature)}°C`;
         inpWeatherTemp.value = w.temperature;
         inpWeatherCond.value = w.conditionText;
       } catch (err) {
@@ -1080,8 +1116,8 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
       const isChecked = (preselectedHiveId === h.id) ? 'checked' : '';
       return `
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; margin: 0; padding: 4px; transition: background-color 0.2s;">
-          <input type="checkbox" class="hive-checkbox" value="${h.id}" ${isChecked} id="hive-chk-${h.id}" style="width: auto; margin: 0;" />
-          <span>${h.name}</span>
+          <input type="checkbox" class="hive-checkbox" value="${escapeHtml(h.id)}" ${isChecked} id="hive-chk-${escapeHtml(h.id)}" style="width: auto; margin: 0;" />
+          <span>${escapeHtml(h.name)}</span>
         </label>
       `;
     }).join('');
@@ -1126,7 +1162,7 @@ async function openHoneyModal(honey = null) {
     return;
   }
 
-  hiveSelect.innerHTML = hives.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+  hiveSelect.innerHTML = hives.map(h => `<option value="${escapeHtml(h.id)}">${escapeHtml(h.name)}</option>`).join('');
 
   if (honey) {
     document.getElementById('honey-form-id').value = honey.id;
@@ -1164,7 +1200,7 @@ async function openSponsorshipModal(sponsorship = null) {
     return;
   }
 
-  hiveSelect.innerHTML = hives.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+  hiveSelect.innerHTML = hives.map(h => `<option value="${escapeHtml(h.id)}">${escapeHtml(h.name)}</option>`).join('');
 
   if (sponsorship) {
     document.getElementById('sponsorship-form-id').value = sponsorship.id;
@@ -1349,6 +1385,24 @@ function setupForms() {
     }
   });
 
+  // Finance Delete Button (modal)
+  document.getElementById('btn-delete-finance').addEventListener('click', async () => {
+    const id = document.getElementById('finance-form-id').value;
+    if (id && confirm('Diesen Kauf wirklich löschen?')) {
+      try {
+        await deleteFinance(id);
+        closeModal('modal-finance');
+        if (currentView === 'finances') {
+          await renderFinanceView();
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Löschen der Ausgabe:', err);
+        alert('Fehler beim Löschen: ' + (err.message || err));
+      }
+    }
+  });
+
   // Honey Form Submit (Honey Harvests)
   document.getElementById('form-honey').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1386,6 +1440,25 @@ function setupForms() {
     } catch (err) {
       console.error('Fehler beim Speichern der Honigernte:', err);
       alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
+    }
+  });
+
+  // Honey Delete Button (modal)
+  document.getElementById('btn-delete-honey').addEventListener('click', async () => {
+    const id = document.getElementById('honey-form-id').value;
+    if (id && confirm('Diese Honigernte wirklich löschen?')) {
+      try {
+        await deleteHoneyHarvest(id);
+        closeModal('modal-honey');
+        if (currentView === 'finances') {
+          currentFinanceTab = 'honey';
+          await renderFinanceView();
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Löschen der Honigernte:', err);
+        alert('Fehler beim Löschen: ' + (err.message || err));
+      }
     }
   });
 
@@ -1574,12 +1647,22 @@ function setupAuth() {
       btnAuthAction.innerText = 'Logout';
       
       // Check if there is local data to sync
-      const localHives = JSON.parse(localStorage.getItem('bee_tracker_hives')) || [];
+      let localHives = [];
+      try {
+        localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
+      } catch {
+        localHives = [];
+      }
       const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
       if (localHives.length > 0 && !hasDeclinedSync) {
         if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in dein Online-Konto übertragen?')) {
-          await syncLocalToRemote();
-          alert('Daten erfolgreich synchronisiert!');
+          try {
+            await syncLocalToRemote();
+            alert('Daten erfolgreich synchronisiert!');
+          } catch (syncErr) {
+            console.error('Sync fehlgeschlagen:', syncErr);
+            alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+          }
         } else {
           localStorage.setItem('bee_tracker_sync_declined', 'true');
         }

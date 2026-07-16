@@ -10,6 +10,4 @@ export const supabase = supabaseUrl && supabaseAnonKey
 
 if (!supabase) {
   console.warn('Supabase credentials missing. App is running in Local-Only mode.');
-} else {
-  console.log('Supabase client initialized successfully.');
 }

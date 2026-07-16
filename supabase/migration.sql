@@ -36,6 +36,8 @@ create table if not exists public.inspections (
     brood_status text,
     honey_super text,
     temperament integer default 5,
+    weather_temp numeric(5, 2),
+    weather_condition text,
     notes text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -58,6 +60,7 @@ create table if not exists public.finances (
     type text not null default 'expense'::text,
     hive_id text references public.hives(id) on delete set null,
     sponsor_name text,
+    notes text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -85,3 +88,9 @@ create policy "Users can only select their own honey harvests" on public.honey_h
 create policy "Users can only insert their own honey harvests" on public.honey_harvests for insert with check (auth.uid() = user_id);
 create policy "Users can only update their own honey harvests" on public.honey_harvests for update using (auth.uid() = user_id);
 create policy "Users can only delete their own honey harvests" on public.honey_harvests for delete using (auth.uid() = user_id);
+
+-- 5. Incremental ALTER statements for existing deployments
+-- (safe to re-run: IF NOT EXISTS where supported, otherwise ignore duplicate-column errors)
+alter table public.inspections add column if not exists weather_temp numeric(5, 2);
+alter table public.inspections add column if not exists weather_condition text;
+alter table public.finances add column if not exists notes text;

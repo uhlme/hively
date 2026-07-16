@@ -2,7 +2,7 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Hively" />
@@ -23,7 +23,7 @@
           <span id="user-status" class="user-status-text" style="font-size: 0.8rem; opacity: 0.8;">Lokal</span>
           <button id="btn-auth-action" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">Login</button>
           <button id="btn-quick-add" class="btn btn-sm btn-primary">+ Volk</button>
-          <button id="btn-settings-header" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; background: none; border: none;" title="Einstellungen">⚙️</button>
+          <button id="btn-settings-header" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; background: none; border: none;" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
         </div>
       </header>
 
@@ -83,6 +83,7 @@
                 <span style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 4px;">🤖 KI-Einschätzung:</span>
                 <span id="radar-insight" style="font-size: 0.9rem; font-style: italic; line-height: 1.4;">--</span>
               </div>
+            </div>
           </div>
           
           <!-- Offline Memos Queue -->
