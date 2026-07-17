@@ -319,12 +319,15 @@ async function renderDashboardView() {
 
   const financeSumEl = document.getElementById('stat-finance-sum');
   if (financeSumEl) {
-    financeSumEl.innerHTML = `<span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-right: 2px;">CHF</span>${escapeHtml(balance.toFixed(2))}`;
-    if (balance >= 0) {
-      financeSumEl.style.color = 'var(--success)';
-    } else {
-      financeSumEl.style.color = 'var(--danger)';
-    }
+    const amountStr = balance.toFixed(2);
+    // Long amounts (e.g. -2097.99) need a smaller type size to stay inside the card
+    const amountClass = amountStr.replace('-', '').length >= 7
+      ? 'stat-amount stat-amount-sm'
+      : 'stat-amount';
+    financeSumEl.innerHTML = `<span class="stat-currency">CHF</span><span class="${amountClass}">${escapeHtml(amountStr)}</span>`;
+    financeSumEl.classList.toggle('is-positive', balance >= 0);
+    financeSumEl.classList.toggle('is-negative', balance < 0);
+    financeSumEl.style.color = '';
   }
 
   // Recent activities list (Inspections & Harvests merged, newest first)
