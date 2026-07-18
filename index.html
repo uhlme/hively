@@ -17,13 +17,13 @@
     <div id="app">
       <!-- Header -->
       <header>
-        <h1 id="app-title">🐝 Hively</h1>
-        <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
-          <span id="connection-status" style="font-size: 1rem; display: flex; align-items: center; cursor: pointer;" title="Online">🟢</span>
-          <span id="user-status" class="user-status-text" style="font-size: 0.8rem; opacity: 0.8;">Lokal</span>
-          <button id="btn-auth-action" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">Login</button>
-          <button id="btn-quick-add" class="btn btn-sm btn-primary">+ Volk</button>
-          <button id="btn-settings-header" class="btn btn-sm btn-secondary" style="width: auto; padding: 6px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; background: none; border: none;" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
+        <h1 id="app-title"><span class="brand-mark" aria-hidden="true">🐝</span>Hively</h1>
+        <div class="header-actions">
+          <span id="connection-status" class="header-status-dot" title="Online" aria-label="Online">🟢</span>
+          <span id="user-status" class="user-status-text">Lokal</span>
+          <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn">Login</button>
+          <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn">+ Volk</button>
+          <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
         </div>
       </header>
 
