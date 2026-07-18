@@ -540,6 +540,36 @@ function formatGuideHtml(guide) {
   return escapeHtml(guide).replace(/\n/g, '<br>');
 }
 
+function renderVisualStepsHtml(steps = []) {
+  if (!steps.length) return '';
+
+  const items = steps.map((step, i) => {
+    const src = escapeHtml(step.src);
+    const fallback = escapeHtml(step.fallback || step.src);
+    const alt = escapeHtml(step.alt || step.caption || 'Bildanleitung');
+    const caption = escapeHtml(step.caption || '');
+    return `
+      <figure class="calendar-visual-step">
+        <div class="calendar-visual-step-media">
+          <span class="calendar-visual-step-num">${i + 1}</span>
+          <picture>
+            <source srcset="${src}" type="image/webp" />
+            <img src="${fallback}" alt="${alt}" loading="lazy" decoding="async" />
+          </picture>
+        </div>
+        <figcaption>${caption}</figcaption>
+      </figure>
+    `;
+  }).join('');
+
+  return `
+    <div class="calendar-visual-steps">
+      <h4 class="calendar-visual-heading">Bildanleitung Schweizerkasten</h4>
+      ${items}
+    </div>
+  `;
+}
+
 function isTaskDone(monthState, task, index) {
   if (monthState[task.id]) return true;
   // Backward compatible with older index-based checkbox state
@@ -577,7 +607,7 @@ async function renderCalendarView() {
   let html = `
     <div class="calendar-month-header">
       <h3>📌 Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
-      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung</p>
+      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung (Schweizerkasten)</p>
     </div>
     <div class="calendar-task-list">
   `;
@@ -585,6 +615,7 @@ async function renderCalendarView() {
   tasksForMonth.forEach((task, index) => {
     const done = isTaskDone(monthState, task, index);
     const checked = done ? 'checked' : '';
+    const hasVisuals = Array.isArray(task.visualSteps) && task.visualSteps.length > 0;
     html += `
       <article class="calendar-task ${done ? 'is-done' : ''}" data-task-id="${escapeHtml(task.id)}">
         <div class="calendar-task-main">
@@ -598,9 +629,11 @@ async function renderCalendarView() {
         </div>
         <div class="calendar-task-meta">
           <span class="calendar-task-date" title="Richttermin">🗓 ${escapeHtml(task.approxDate)}</span>
+          ${hasVisuals ? '<span class="calendar-task-visual-badge">Bilder</span>' : ''}
         </div>
         <div id="guide-${escapeHtml(task.id)}" class="calendar-task-guide hidden" hidden>
           <p class="calendar-task-guide-text">${formatGuideHtml(task.guide)}</p>
+          ${renderVisualStepsHtml(task.visualSteps || [])}
         </div>
       </article>
     `;

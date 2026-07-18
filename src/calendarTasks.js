@@ -1,7 +1,8 @@
 /**
- * Saisonkalender: Imker-Arbeitsschritte mit Richttermin und Anleitung.
- * Zeitangaben beziehen sich grob auf das Schweizer Mittelland / ähnliche Klimazonen
- * und dienen als Orientierung – je nach Wetter und Trachtlage anpassen.
+ * Saisonkalender: Imker-Arbeitsschritte mit Richttermin, Anleitung
+ * und Bildschritten für den Schweizerkasten (Heckbedienung).
+ *
+ * Zeitangaben: grob Schweizer Mittelland – an Wetter/Tracht anpassen.
  */
 
 export const CALENDAR_MONTH_NAMES = [
@@ -9,8 +10,36 @@ export const CALENDAR_MONTH_NAMES = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ];
 
+/** Shared image paths for Schweizerkasten visual steps */
+const IMG = {
+  exterior: '/calendar/swiss-hive-exterior.webp',
+  flight: '/calendar/swiss-hive-flight-entrance.webp',
+  rear: '/calendar/swiss-hive-rear-frames.webp',
+  weight: '/calendar/swiss-hive-weight-check.webp',
+  honey: '/calendar/swiss-hive-honey-super.webp',
+  drone: '/calendar/swiss-hive-drone-frame.webp',
+  feed: '/calendar/swiss-hive-feeding.webp',
+  treat: '/calendar/swiss-hive-treatment.webp',
+  harvest: '/calendar/swiss-hive-harvest.webp',
+  winter: '/calendar/swiss-hive-winter.webp'
+};
+
+const JPG = Object.fromEntries(
+  Object.entries(IMG).map(([k, v]) => [k, v.replace(/\.webp$/, '.jpg')])
+);
+
+function step(key, caption, alt) {
+  return {
+    src: IMG[key],
+    fallback: JPG[key],
+    caption,
+    alt: alt || caption
+  };
+}
+
 /**
- * @typedef {{ id: string, title: string, approxDate: string, guide: string }} CalendarTask
+ * @typedef {{ src: string, fallback?: string, caption: string, alt: string }} VisualStep
+ * @typedef {{ id: string, title: string, approxDate: string, guide: string, visualSteps?: VisualStep[] }} CalendarTask
  * @type {Record<string, CalendarTask[]>}
  */
 export const CALENDAR_TASKS = {
@@ -19,43 +48,50 @@ export const CALENDAR_TASKS = {
       id: 'jan-ruhe',
       title: 'Winterruhe der Bienen nicht stören',
       approxDate: 'ganzer Januar',
-      guide: `Im Januar sind die Völker in der Wintertraube und verbrauchen Futter, ohne die Beute zu öffnen.
+      guide: `Im Januar bleibt der Schweizerkasten geschlossen. Die Wintertraube sitzt innen – jede Öffnung der Hintertür kostet Wärme und Futter.
 
 So gehst du vor:
-• Beuten nur von aussen beobachten – Deckel und Rähmchen bleiben zu.
-• Keine unnötigen Vibrationen (Rasenmäher, Klopfen, Verschieben).
-• Bei Schnee: Flugloch und Beutenboden freischaufeln, damit die Luft zirkuliert.
-• Totbienen vor dem Flugloch nur vorsichtig wegfegen, ohne die Beute anzuheben.
+• Nur von aussen beobachten (Flugloch, Beutenfront).
+• Hintertür, Fenster und Deckel nicht öffnen.
+• Keine Vibrationen am Stand (Rasenmäher, Klopfen, Verschieben).
+• Bei Schnee: Flugloch und Stand freischaufeln, damit Luft zirkuliert.
 
-Tipp: Ein kurzer Blick auf das Flugloch bei frostfreien Tagen reicht. Wenn du viele frische Totbienen oder Unruhe siehst, notiere das für Februar.`
+Tipp: Kurzer Blick bei frostfreien Tagen reicht. Viele frische Totbienen oder Unruhe → für Februar notieren.`,
+      visualSteps: [
+        step('winter', 'Schweizerkasten im Winter: geschlossen lassen, nur von aussen beobachten.', 'Geschlossener Schweizerkasten im Winter'),
+        step('exterior', 'Flugloch und Beutenfront von vorne prüfen – ohne die Hintertür zu öffnen.', 'Schweizerkasten von aussen')
+      ]
     },
     {
       id: 'jan-flugloch',
       title: 'Flugloch auf Verstopfung prüfen',
       approxDate: 'ca. 5.–20. Januar · frostfrei',
-      guide: `Tote Bienen und Eis können das Flugloch verstopfen – dann erstickt die Traube oder es staut sich Feuchtigkeit.
+      guide: `Tote Bienen und Eis können das Flugloch verstopfen – dann leidet die Luftzufuhr der Wintertraube.
 
-So gehst du vor:
-• An einem frostfreien Tag das Flugloch von aussen prüfen.
-• Mit einem dünnen Stock oder Draht vorsichtig freimachen (nicht tief in die Beute stossen).
-• Mäusegitter auf Sitz prüfen – es muss fest sitzen, aber Luft durchlassen.
-• Bei starker Feuchtigkeit am Flugloch: Standort und Deckel/Isolation prüfen.
+So gehst du vor (Schweizerkasten):
+• An einem frostfreien Tag das Flugloch von vorne prüfen.
+• Mit dünnem Stock/Draht vorsichtig freimachen – nicht tief in den Kasten stossen.
+• Mäusegitter auf festen Sitz prüfen (Luft muss durchkönnen).
+• Hintertür bleibt zu.
 
-Achtung: Beute nicht öffnen. Nur von aussen arbeiten.`
+Achtung: Nur von aussen arbeiten.`,
+      visualSteps: [
+        step('flight', 'Flugloch mit Mäusegitter: auf Verstopfung und festen Sitz prüfen.', 'Flugloch und Mäusegitter am Schweizerkasten')
+      ]
     },
     {
       id: 'jan-material',
       title: 'Material für die neue Saison reparieren/bestellen',
       approxDate: 'Mitte bis Ende Januar',
-      guide: `Jetzt ist die beste Zeit für Werkstattarbeit, bevor die Saison startet.
+      guide: `Werkstattzeit, bevor die Saison startet.
 
-Checkliste:
-• Rähmchen richten, Draht spannen, Mittelwände einlöten.
-• Beuten, Böden und Deckel auf Risse und undichte Stellen prüfen.
-• Absperrgitter, Fütterer und Varroa-Mittelbestand inventarisieren.
-• Fehlendes Material bestellen (Mittelwände, Zucker, Behandlungsmittel, Gläser).
+Checkliste für Schweizerkasten-Betriebe:
+• Rähmchen richten, Draht spannen, Mittelwände einlöten (Schweizer-/Kuntzschmass beachten).
+• Hintertüren, Fenster, Dichtungen und Böden prüfen.
+• Absperrgitter, Fütterer, Mäusegitter und Varroa-Mittel inventarisieren.
+• Fehlendes Material bestellen.
 
-Tipp: Notiere dir, welche Völker im Vorjahr schwärmten oder schwach waren – dafür Ablegerkästen und Reservevölker einplanen.`
+Tipp: Schwache/schwärmende Völker vom Vorjahr notieren – Ablegerkästen einplanen.`
     }
   ],
 
@@ -64,43 +100,53 @@ Tipp: Notiere dir, welche Völker im Vorjahr schwärmten oder schwach waren – 
       id: 'feb-reinigung',
       title: 'Reinigungsausflug beobachten',
       approxDate: 'ca. 10.–28. Februar · ab ca. 10 °C',
-      guide: `An den ersten warmen Tagen fliegen die Bienen aus, um sich zu entleeren. Das ist ein wichtiger Gesundheits-Check.
+      guide: `An den ersten warmen Tagen fliegen die Bienen aus. Das ist ein Gesundheits-Check – ohne Öffnen.
 
 So beobachtest du:
-• Stehe seitlich am Stand und zähle grob den Flugverkehr.
+• Seitlich am Stand stehen, Flugverkehr grob einschätzen.
 • Starke Völker fliegen lebhaft; schwache nur vereinzelt.
-• Achte auf Krabbler vor dem Flugloch (Verdacht auf Krankheit/Varroa).
-• Kotspuren an der Beutenfront notieren – bei massiven Spuren später genauer kontrollieren.
+• Krabbler vor dem Flugloch beachten.
+• Kotspuren an der Front notieren.
 
-Nicht öffnen: Auch bei Flugbetrieb die Beute geschlossen lassen, solange es unter ca. 12–14 °C ist.`
+Schweizerkasten: Hintertür auch bei Flugbetrieb geschlossen lassen, solange es unter ca. 12–14 °C ist.`,
+      visualSteps: [
+        step('exterior', 'Beobachtung am Flugloch: Verkehr, Krabbler und Kotspuren von aussen beurteilen.', 'Schweizerkasten Flugbeobachtung')
+      ]
     },
     {
       id: 'feb-futter',
       title: 'Futterkontrolle durch Anheben der Beute',
       approxDate: 'Mitte Februar · windstill',
-      guide: `Viele Völker verhungern im Spätwinter. Ohne Öffnen kannst du das Gewicht abschätzen.
+      guide: `Viele Völker verhungern im Spätwinter. Beim Schweizerkasten kannst du das Gewicht von hinten abschätzen – ohne volles Öffnen.
 
 So gehst du vor:
-• Beute hinten leicht anheben (Hebelwirkung) und mit anderen Völkern vergleichen.
-• Sehr leichte Völker markieren – Notfütterung vorbereiten (Futterteig von oben).
-• Nur bei milder Witterung und möglichst kurz öffnen, falls Teig nötig ist.
-• Futterteig direkt über die Traube (Folie/Abdeckung mit Loch), Deckel rasch wieder drauf.
+• Kasten hinten leicht anheben (Hebel) und mit Nachbarvölkern vergleichen.
+• Sehr leichte Völker markieren.
+• Notfütterung nur bei milder Witterung: Hintertür kurz, Futterteig möglichst nah an die Traube, sofort wieder schliessen.
+• Flugloch eng halten.
 
-Richtwert: Eine Zander-Zarge sollte sich «kräftig» anfühlen. Im Zweifel lieber stützen als riskieren.`
+Im Zweifel lieber stützen als riskieren.`,
+      visualSteps: [
+        step('weight', 'Gewichtskontrolle: Schweizerkasten hinten leicht anheben und vergleichen.', 'Gewichtskontrolle am Schweizerkasten'),
+        step('feed', 'Notfütterung nur kurz über die geöffnete Hinterseite – rasch wieder schliessen.', 'Notfütterung Schweizerkasten')
+      ]
     },
     {
       id: 'feb-totbienen',
       title: 'Tote Bienen am Flugloch entfernen',
       approxDate: 'ganzer Februar · bei Bedarf',
-      guide: `Ein paar Totbienen sind normal. Ein Haufen blockiert aber den Ausgang.
+      guide: `Ein paar Totbienen sind normal. Ein Haufen blockiert den Ausgang.
 
 So gehst du vor:
-• Mit Handfeger oder Stock tote Bienen und Abfall vor dem Flugloch entfernen.
-• Menge grob schätzen: handvoll = normal; grosse Haufen = Volk genauer beobachten.
-• Auf weisse Verpilzung oder üblen Geruch achten (Faulbrut-Verdacht → Fachberatung).
-• Fluglochweite wintertauglich belassen (eng, aber offen).
+• Mit Handfeger/Stock Totbienen vor dem Flugloch entfernen.
+• Menge schätzen: handvoll = normal; grosse Haufen = genauer beobachten.
+• Auf Verpilzung oder üblen Geruch achten.
+• Mäusegitter und Fluglochweite wintertauglich belassen.
 
-Dokumentiere auffällige Völker in Hively, damit du sie bei der ersten Durchsicht priorisierst.`
+Auffällige Völker in Hively markieren.`,
+      visualSteps: [
+        step('flight', 'Flugloch freimachen: Totbienen und Abfall entfernen, Gitter belassen.', 'Flugloch reinigen')
+      ]
     }
   ],
 
@@ -109,48 +155,58 @@ Dokumentiere auffällige Völker in Hively, damit du sie bei der ersten Durchsic
       id: 'mar-durchsicht',
       title: 'Erste Frühjahrsdurchsicht',
       approxDate: 'ca. 15.–31. März · bei >15 °C',
-      guide: `Ziel: Königin/Brut bestätigen, Futter und Platz prüfen – kurz und warm.
+      guide: `Beim Schweizerkasten arbeitest du von hinten: Hintertür öffnen, Rahmen nach hinten herausziehen – nicht wie beim Magazin von oben.
 
 Voraussetzungen:
-• Tagestemperatur über ca. 15 °C, wenig Wind, Bienen fliegen.
-• Rauchbereit, frische Waben/Mittelwände griffbereit.
+• >15 °C, wenig Wind, Bienen fliegen.
+• Raucher, Stockmeissel, Reserve-Waben bereit.
 
-Ablauf:
-1. Deckel öffnen, kurz rauchen, oberste Folie/Abdeckung abheben.
-2. Prüfen: Ist Brut vorhanden (Eier/offene/verdeckelte Brut)?
-3. Futtervorrat schätzen (mind. einige volle Futterwaben).
-4. Weiselrichtigkeit: Brutnest geschlossen und harmonisch?
-5. Kranke/schimmelige Waben ausscheiden, Beute wieder schliessen.
+Ablauf Schweizerkasten:
+1. Kurz rauchen am Flugloch, dann Hintertür öffnen.
+2. Rahmen nacheinander herausziehen: Brut (Eier/offen/verdeckelt)?
+3. Futtervorrat an den Randwaben schätzen.
+4. Weiselrichtigkeit am Brutbild prüfen.
+5. Kranke/schimmelige Waben ausscheiden, Hintertür fest schliessen.
 
-Dauer: Pro Volk idealerweise unter 10 Minuten. Bei Kälte sofort abbrechen.`
+Dauer: ideal unter 10 Minuten. Bei Kälte sofort abbrechen.`,
+      visualSteps: [
+        step('rear', 'Hintertür öffnen und Rahmen nach hinten herausziehen – typische Schweizerkasten-Arbeit.', 'Frühjahrsdurchsicht Schweizerkasten'),
+        step('exterior', 'Vor dem Öffnen: Temperatur und Flugbetrieb prüfen.', 'Vorbereitung Durchsicht')
+      ]
     },
     {
       id: 'mar-maeuse',
       title: 'Mäusegitter entfernen',
       approxDate: 'Ende März · nach letztem Frost',
-      guide: `Sobald keine Nachtfröste mehr drohen und der Pollenflug läuft, kommt das Mäusegitter weg.
+      guide: `Sobald Nachtfröste vorbei sind und Pollen fliegt, kommt das Mäusegitter weg.
 
 So gehst du vor:
-• Gitter abnehmen und lagern (beschriften/reinigen).
-• Flugloch auf die frühjahrsgerechte Weite einstellen.
-• Boden kurz auf Nagerkot oder Nester kontrollieren.
-• Bei Verdacht auf Mäusebefall: Beute gründlicher prüfen und Volk umweiseln/stärken falls nötig.
+• Gitter am Flugloch abnehmen, reinigen, lagern.
+• Flugloch auf frühjahrsgerechte Weite einstellen.
+• Boden/Einschub kurz auf Nagerhinweise prüfen.
+• Bei Verdacht: bei der Durchsicht von hinten genauer kontrollieren.
 
-Zu früh entfernen riskiert Kälteeinbrüche mit Mäusen – lieber eine Woche warten als zu eilig sein.`
+Lieber eine Woche warten als zu früh entfernen.`,
+      visualSteps: [
+        step('flight', 'Mäusegitter am Flugloch demontieren und Fluglochweite anpassen.', 'Mäusegitter entfernen')
+      ]
     },
     {
       id: 'mar-boden',
       title: 'Boden reinigen',
       approxDate: 'Ende März · bei der ersten Durchsicht',
-      guide: `Wintergemüll und Totbienen belasten Hygiene und Luftfeuchtigkeit.
+      guide: `Wintergemüll belasten Hygiene und Feuchtigkeit.
 
-So gehst du vor:
-• Bei offenen Böden: Windel/Einschub ziehen und reinigen.
-• Gemüllmenge und Milben (Varroa) grob beurteilen.
-• Bei festem Boden: nur wenn nötig und warm – Boden tauschen oder auskehren.
-• Alles trocken und sauber wieder einsetzen.
+So gehst du vor (Schweizerkasten):
+• Falls vorhanden: Windel/Einschub ziehen und reinigen.
+• Gemüll und Milben grob beurteilen.
+• Bei festem Boden nur bei Wärme kehren oder tauschen.
+• Alles trocken wiedereinsetzen, Hintertür schliessen.
 
-Tipp: Hoher Milbenfall jetzt schon → Varroa-Strategie fürs Frühjahr anpassen (Drohnenrahmen, Ableger).`
+Hoher Milbenfall → Drohnenrahmen und Ableger früh einplanen.`,
+      visualSteps: [
+        step('rear', 'Bei der Durchsicht von hinten Bodenbereich und Gemüll mitbeurteilen.', 'Bodenkontrolle Schweizerkasten')
+      ]
     }
   ],
 
@@ -159,52 +215,53 @@ Tipp: Hoher Milbenfall jetzt schon → Varroa-Strategie fürs Frühjahr anpassen
       id: 'apr-honigraum',
       title: 'Kirschblüte: Honigraum aufsetzen',
       approxDate: 'ca. 10.–25. April · Kirsch-/Löwenzahnblüte',
-      guide: `Wenn das Brutnest eng wird und Tracht einsetzt, brauchen die Bienen Platz oben – sonst droht Schwarmstimmung.
+      guide: `Wenn das Brutnest eng wird und Tracht einsetzt, brauchen die Bienen Platz – sonst droht Schwarmstimmung.
 
-So erkennst du den Zeitpunkt:
-• Flugbetrieb stark, Pollen kommt reichlich rein.
-• Brutnest nimmt den Grossteil der Brutraumwaben ein.
-• An den Randwaben bereits Nektar/Honig.
+Schweizerkasten:
+• Honigraum je nach Bauart oben aufsetzen oder Honigrahmen im hinteren/oberen Bereich einhängen.
+• Absperrgitter nutzen, falls in deiner Betriebsweise üblich.
+• Nach 3–5 Tagen kontrollieren, ob der Raum angenommen wird.
 
-Vorgehen:
-1. Absperrgitter auf den Brutraum legen (falls genutzt).
-2. Honigraum mit ausgebauten Waben oder Mittelwänden aufsetzen.
-3. Bei starken Völkern frühzeitig zweiten Raum vorbereiten.
-4. Nach 3–5 Tagen kontrollieren, ob der Honigraum angenommen wird.
-
-Zu spätes Aufsetzen ist ein klassischer Schwarm-Auslöser.`
+Zu spätes Erweitern ist ein klassischer Schwarm-Auslöser.`,
+      visualSteps: [
+        step('honey', 'Honigraum am Schweizerkasten erweitern – rechtzeitig bei Trachtbeginn.', 'Honigraum aufsetzen'),
+        step('rear', 'Kontrolle von hinten: Wird der Honigraum angenommen?', 'Honigraum-Kontrolle')
+      ]
     },
     {
       id: 'apr-drohnen',
       title: 'Drohnenrahmen einhängen (Varroa-Prophylaxe)',
       approxDate: 'Mitte April · Beginn Drohnenbrut',
-      guide: `Varroa bevorzugt Drohnenbrut. Ein Drohnenrahmen wirkt als biologische Falle.
+      guide: `Varroa bevorzugt Drohnenbrut. Der Drohnenrahmen ist eine biologische Falle.
 
-So gehst du vor:
-1. Einen leeren/ausgeschnittenen Drohnenrahmen an den Brutnestrand hängen.
-2. Nach Verdeckelung (ca. 7–12 Tage je nach Lage) den Rahmen entnehmen.
-3. Verdeckelte Drohnenbrut ausschneiden oder einfrieren und entsorgen.
-4. Rahmen erneut einhängen – Zyklus die Saison über wiederholen.
+Schweizerkasten-Ablauf:
+1. Hintertür öffnen, Drohnenrahmen an den Brutnestrand einhängen.
+2. Nach Verdeckelung (ca. 7–12 Tage) Rahmen nach hinten herausziehen.
+3. Verdeckelte Drohnenbrut ausschneiden oder einfrieren/entsorgen.
+4. Rahmen wieder einhängen – Zyklus wiederholen.
 
-Wichtig: Nicht vergessen auszuschneiden, sonst vermehrt ihr die Milben.`
+Wichtig: Ausschneiden nicht vergessen.`,
+      visualSteps: [
+        step('drone', 'Drohnenrahmen von hinten in den Schweizerkasten einhängen.', 'Drohnenrahmen einhängen'),
+        step('rear', 'Zum Ausschneiden den verdeckelten Drohnenrahmen wieder nach hinten entnehmen.', 'Drohnenrahmen entnehmen')
+      ]
     },
     {
       id: 'apr-schwarm',
       title: 'Schwarmkontrolle beginnen',
       approxDate: 'Ende April · alle 7–9 Tage',
-      guide: `Ab warmer Witterung und guter Tracht starten die Völker in die Schwarmphase.
+      guide: `Beim Schweizerkasten ziehst du die Brutrahmen von hinten und prüfst besonders die Unterkanten auf Spielnäpfchen und Weiselzellen.
 
 Kontrollpunkte:
-• Spielnäpfchen und Weiselzellen an den Wabenunterkanten.
-• Enge im Brutraum, viele Drohnen, «Bärte» vor dem Flugloch.
-• Honigraum voll, aber Brutraum verhonigt.
+• Weiselzellen an Rahmenunterkanten.
+• Enge im Brutraum, viele Drohnen, Bärte am Flugloch.
+• Honigraum voll / Brutraum verhonigt.
 
-Massnahmen bei Schwarmstimmung:
-• Platz geben (Honigraum/Waben).
-• Ableger oder Zwischenableger bilden.
-• Verdeckelte Weiselzellen gezielt brechen (nur wenn Strategie klar ist).
-
-Intervall: Alle 7–9 Tage – exakt an den Entwicklungszyklus der Königinnenzelle gekoppelt.`
+Massnahmen: Platz geben, Ableger bilden, Zellen nach Betriebsweise behandeln.
+Intervall: alle 7–9 Tage.`,
+      visualSteps: [
+        step('rear', 'Schwarmkontrolle: Rahmen von hinten ziehen und Wabenunterkanten prüfen.', 'Schwarmkontrolle Schweizerkasten')
+      ]
     }
   ],
 
@@ -213,45 +270,54 @@ Intervall: Alle 7–9 Tage – exakt an den Entwicklungszyklus der Königinnenze
       id: 'mai-schwarm',
       title: 'Wöchentliche Schwarmkontrolle',
       approxDate: 'ganzer Mai · alle 7–9 Tage',
-      guide: `Mai ist Hochsaison für Schwärme. Disziplin bei den Intervallen zählt mehr als Perfektion bei jeder Wabe.
+      guide: `Mai ist Hochsaison. Disziplin bei den Intervallen zählt.
 
-Routine:
-1. Datum der letzten Kontrolle notieren (z. B. in Hively).
-2. Brutraum kurz auf Weiselzellen prüfen (besonders Rahmenkanten).
-3. Platz und Trachtsituation checken.
-4. Bei Zellen: Ableger bilden oder Zellen nach Betriebsweise behandeln.
-5. Nächstes Kontrolldatum sofort einplanen.
-
-Bei sehr starken Völkern lieber einen Tag früher als einen zu spät.`
+Routine Schweizerkasten:
+1. Letztes Kontrolldatum notieren (z. B. in Hively).
+2. Hintertür öffnen, Brutrahmen auf Weiselzellen prüfen.
+3. Platz und Tracht checken.
+4. Bei Zellen: Ableger oder geplante Massnahme.
+5. Nächstes Datum sofort einplanen.`,
+      visualSteps: [
+        step('rear', 'Wöchentlich: Hintertür öffnen, Rahmen ziehen, Weiselzellen suchen.', 'Wöchentliche Schwarmkontrolle')
+      ]
     },
     {
       id: 'mai-ableger',
       title: 'Erste Ableger bilden',
       approxDate: 'Mitte Mai · stabile Tracht & warm',
-      guide: `Ableger entlasten das Wirtschaftsvolk und sichern Reserve/Königinnen.
+      guide: `Ableger entlasten das Wirtschaftsvolk.
 
-Klassischer Brut-Ableger (kurz):
-1. 2–3 Brutwaben mit Bienen (ohne alte Königin) entnehmen.
-2. 1–2 Futter-/Pollenwaben dazu, in Ablegerkasten setzen.
-3. Flugbienen abfliegen lassen bzw. Standplatz beachten.
-4. Nach 1 Tag Zuchtzelle zusetzen oder selbst nachziehen lassen.
-5. Eng halten, füttern falls nötig, vor Räuberei schützen.
+Aus dem Schweizerkasten:
+1. 2–3 Brutwaben mit Bienen (ohne alte Königin) nach hinten entnehmen.
+2. 1–2 Futter-/Pollenwaben dazu in den Ablegerkasten.
+3. Flugbienen/Standort beachten.
+4. Nachziehen lassen oder Zuchtzelle zusetzen.
+5. Eng halten, bei Bedarf füttern, vor Räuberei schützen.
 
-Voraussetzung: Spendervolk muss stark genug bleiben.`
+Spendervolk muss stark genug bleiben.`,
+      visualSteps: [
+        step('rear', 'Brut- und Futterwaben von hinten entnehmen und in den Ableger setzen.', 'Ablegerbildung aus Schweizerkasten'),
+        step('feed', 'Jungvölker bei Bedarf eng und mit Futter schützen.', 'Ableger füttern')
+      ]
     },
     {
       id: 'mai-honigraum',
       title: 'Honigräume kontrollieren und erweitern',
       approxDate: 'Mai · je nach Tracht alle paar Tage',
-      guide: `In der Haupttracht kann ein Honigraum in wenigen Tagen voll sein.
+      guide: `In der Haupttracht füllt sich der Honigraum schnell.
 
-So gehst du vor:
-• Gewicht und Verdeckelung prüfen.
-• Fast volle Räume nach oben setzen, leeren Raum darunter («Magazinieren»).
-• Mittelwände nur geben, wenn die Tracht trägt – sonst werden sie verbaut/zerknabbert.
-• Bei Trachtstopp keinen leeren Raum zu viel halten (Auskühlung).
+Schweizerkasten:
+• Von hinten Verdeckelung und Füllung prüfen.
+• Rechtzeitig erweitern / weitere Honigrahmen geben.
+• Mittelwände nur bei tragender Tracht.
+• Bei Trachtstopp kein unnötiges Leervolumen.
 
-Ziel: Immer genug Platz, aber kein unnötiges Volumen.`
+Ziel: genug Platz, ohne auszukühlen.`,
+      visualSteps: [
+        step('honey', 'Honigraum bei voller Tracht rechtzeitig erweitern.', 'Honigraum erweitern'),
+        step('harvest', 'Füllung und Verdeckelung an den Honigrahmen prüfen.', 'Honigrahmen prüfen')
+      ]
     }
   ],
 
@@ -260,43 +326,50 @@ Ziel: Immer genug Platz, aber kein unnötiges Volumen.`
       id: 'jun-schwarm-ende',
       title: 'Letzte Schwarmkontrollen durchführen',
       approxDate: 'Anfang bis Mitte Juni',
-      guide: `Die Schwarmneigung lässt je nach Lage im Juni nach – aber nicht abrupt.
+      guide: `Die Schwarmneigung lässt oft nach – aber nicht abrupt.
 
 So gehst du vor:
 • Intervalle beibehalten, bis kaum noch Näpfchen angesetzt werden.
-• Besonders Jungvölker und enge Kästen weiter beobachten.
-• Nach der Sonnenwende oft Entspannung – trotzdem einmal zu viel kontrollieren schadet weniger als ein Schwarm.
-
-Danach Fokus auf Ernte und Volksgesundheit legen.`
+• Jungvölker und enge Kästen weiter von hinten kontrollieren.
+• Danach Fokus auf Ernte und Gesundheit legen.`,
+      visualSteps: [
+        step('rear', 'Letzte Schwarmkontrollen weiterhin über die Hintertür.', 'Späte Schwarmkontrolle')
+      ]
     },
     {
       id: 'jun-ernte',
       title: 'Erste Honigernte (Frühtracht) schleudern',
       approxDate: 'ca. 10.–30. Juni · je nach Blüte',
-      guide: `Ernte erst, wenn der Honig reif ist (verdeckelt bzw. spritzt nicht aus der Wabe).
+      guide: `Ernte erst bei reifem Honig (verdeckelt / Spritzprobe).
 
-Ablauf:
-1. Reife prüfen (Spritzprobe / Verdeckelung).
-2. Honigraum abkehren oder Bienenflucht nutzen.
-3. Waben transportieren, schleudern, sieben, klären lassen.
-4. Leere Waben zurückgeben oder lagern (Wachs-/Mottenchutz).
-5. Ertrag in Hively pro Volk verbuchen.
+Schweizerkasten-Ablauf:
+1. Reife prüfen.
+2. Honigrahmen von hinten entnehmen (abkehren oder Bienenflucht).
+3. Schleudern, sieben, klären.
+4. Leere Waben zurück oder lagern (Mottenchutz).
+5. Ertrag in Hively verbuchen.
 
-Lebensmittelhygiene beachten: saubere Eimer, Siebe, Gläser. Wassergehalt bei Unsicherheit messen.`
+Lebensmittelhygiene beachten.`,
+      visualSteps: [
+        step('harvest', 'Reife Honigrahmen von hinten aus dem Schweizerkasten entnehmen.', 'Honigernte Schweizerkasten'),
+        step('honey', 'Honigraum nach der Ernte ordnen bzw. leere Waben zurückgeben.', 'Nach der Ernte')
+      ]
     },
     {
       id: 'jun-trachtluecke',
       title: 'Trachtlücke beachten',
       approxDate: 'Ende Juni · nach Frühtracht',
-      guide: `Zwischen Früh- und Sommertracht kann das Nektarangebot einbrechen.
+      guide: `Zwischen Früh- und Sommertracht kann das Angebot einbrechen.
 
-Was du tun solltest:
-• Völker auf Futter kontrollieren (besonders Ableger).
-• Bei Bedarf leicht und vorsichtig füttern – Räuberei vermeiden (abends, Flugloch eng).
-• Keine grossen offenen Futterquellen am Stand.
-• Schwache Völker nicht unnötig öffnen.
-
-Eine kurze Lücke ist normal; längere Trockenheit braucht aktives Gegensteuern.`
+Massnahmen:
+• Futter kontrollieren (Gewicht / kurze Sicht von hinten).
+• Bei Bedarf abends füttern, Flugloch eng.
+• Keine offenen Futterreste am Stand.
+• Schwache Völker nicht unnötig öffnen.`,
+      visualSteps: [
+        step('weight', 'In der Trachtlücke Gewicht und Futterlage im Blick behalten.', 'Futterkontrolle Trachtlücke'),
+        step('feed', 'Nur dosiert und abends füttern – Räuberei vermeiden.', 'Dosierte Fütterung')
+      ]
     }
   ],
 
@@ -305,45 +378,55 @@ Eine kurze Lücke ist normal; längere Trockenheit braucht aktives Gegensteuern.
       id: 'jul-sommerernte',
       title: 'Sommertracht schleudern',
       approxDate: 'ca. 10.–25. Juli',
-      guide: `Oft die Haupternte. Danach beginnt die kritische Phase für Varroa und Wintervorbereitung.
+      guide: `Oft die Haupternte. Danach starten Varroa-Behandlung und Wintervorbereitung.
 
-Ablauf wie bei der Frühtracht:
-• Nur reifen Honig ernten.
-• Völker nicht komplett «ausräumen» – Reserven im Brutraum belassen.
-• Ernte dokumentieren (Menge, Sorte).
-• Direkt den Behandlungsplan für Varroa terminieren.
+• Nur reifen Honig ernten (Rahmen von hinten).
+• Reserven im Brutraum belassen.
+• Ernte dokumentieren.
+• Behandlungsplan sofort terminieren.
 
-Nach der letzten Ernte keine Honigräume mehr über längere Zeit mit offenen Futterwaben stehen lassen (Räuberei).`
+Keine offenen Honigreste am Stand stehen lassen.`,
+      visualSteps: [
+        step('harvest', 'Sommerhonig: verdeckelte Rahmen von hinten entnehmen.', 'Sommerernte'),
+        step('rear', 'Nach der Ernte Brutraum prüfen und auf Behandlung vorbereiten.', 'Nach der Sommerernte')
+      ]
     },
     {
       id: 'jul-varroa',
       title: '1. Varroa-Behandlung nach der Ernte',
       approxDate: 'Ende Juli · direkt nach letzter Ernte',
-      guide: `Ohne rechtzeitige Behandlung brechen Völker im Herbst/Winter oft ein.
+      guide: `Ohne rechtzeitige Behandlung brechen Völker oft im Winter ein.
 
-Grundregeln:
-• Nur nach der letzten Honigernte behandeln (Wartezeiten/Mittel beachten).
-• Zugelassenes Mittel wählen (z. B. Ameisensäure-Systeme) und Packungsanweisung exakt befolgen.
-• Temperaturfenster des Mittels einhalten.
-• Windel/Gemüll zur Erfolgskontrolle nutzen.
-• Schutzausrüstung tragen, Nachbarn/Standplatz beachten.
+Schweizerkasten:
+• Nur nach letzter Honigernte behandeln.
+• Mittel nach Packung – z. B. Verdunster von hinten einsetzen.
+• Temperaturfenster beachten.
+• Windel/Gemüll zur Erfolgskontrolle.
+• Schutzausrüstung tragen.
 
-Dokumentiere Datum, Mittel und Völker – das gehört zum Behandlungstagebuch.`
+Datum, Mittel und Völker dokumentieren.`,
+      visualSteps: [
+        step('treat', 'Behandlungsmittel von hinten in den Schweizerkasten einsetzen (nach Packungsangabe).', 'Varroa-Behandlung Schweizerkasten'),
+        step('rear', 'Platzierung und Volksruhe nach dem Einsetzen kontrollieren, dann schliessen.', 'Behandlung abschliessen')
+      ]
     },
     {
       id: 'jul-fuetterung',
       title: 'Erste Auffütterung starten',
       approxDate: 'Ende Juli · nach Behandlung/Ernte',
-      guide: `Winterbienen brauchen rechtzeitig Futter und Platz zum Verdeckeln.
+      guide: `Winterbienen brauchen rechtzeitig Futter.
 
-So gehst du vor:
-1. Futtervorrat schätzen (Gewicht / Blick auf Randwaben).
-2. Mit Zuckerwasser oder Fertigfutter in mehreren Gaben füttern.
-3. Flugloch eng halten, abends füttern gegen Räuberei.
-4. Nicht alles auf einmal kippen – besser portionieren.
-5. Fortschritt nach 3–5 Tagen kontrollieren.
+Schweizerkasten:
+1. Vorrat schätzen (Gewicht / Randwaben von hinten).
+2. Fütterer von hinten bedienen – Zuckerwasser/Fertigfutter portionieren.
+3. Flugloch eng, abends füttern.
+4. Nach 3–5 Tagen Fortschritt prüfen.
 
-Richtwert (grob): Je nach Beutenmass oft 15–20 kg Winterfutter – an Betriebsweise anpassen.`
+Richtwert grob 15–20 kg – an Betriebsweise anpassen.`,
+      visualSteps: [
+        step('feed', 'Auffütterung über die Hinterseite: Fütterer einsetzen und portionieren.', 'Auffütterung Schweizerkasten'),
+        step('weight', 'Fortschritt am Gewicht und an den Randwaben kontrollieren.', 'Futterfortschritt prüfen')
+      ]
     }
   ],
 
@@ -352,15 +435,16 @@ Richtwert (grob): Je nach Beutenmass oft 15–20 kg Winterfutter – an Betriebs
       id: 'aug-fuetterung',
       title: 'Auffütterung abschliessen',
       approxDate: 'Mitte August',
-      guide: `Bis Mitte/Ende August sollte der Grossteil des Winterfutters eingetragen und verdeckelt sein.
+      guide: `Bis Mitte/Ende August sollte das Winterfutter weitgehend eingetragen und verdeckelt sein.
 
-Kontrollen:
-• Beute anheben: deutliches Gewicht.
-• Noch flüssiges Futter? Dann Zeit zum Verdeckeln lassen.
-• Überfüllte Bruträume entlasten bzw. Futterwaben sinnvoll anordnen.
-• Ableger und Wirtschaftsvölker getrennt beurteilen.
-
-Zu spätes Auffüttern stresst das Volk und kann die Wintertraube stören.`
+• Gewicht prüfen.
+• Flüssiges Futter Zeit zum Verdeckeln geben.
+• Wabenordnung von hinten korrigieren falls nötig.
+• Ableger und Wirtschaftsvölker getrennt beurteilen.`,
+      visualSteps: [
+        step('weight', 'Abschlusskontrolle: Kasten muss sich kräftig anfühlen.', 'Auffütterung abschliessen'),
+        step('feed', 'Nur noch kleine Korrekturen – keine grossen Gaben mehr.', 'Letzte Futtergaben')
+      ]
     },
     {
       id: 'aug-milben',
@@ -368,28 +452,30 @@ Zu spätes Auffüttern stresst das Volk und kann die Wintertraube stören.`
       approxDate: 'ca. 10.–25. August',
       guide: `Nach der Sommerbehandlung den Milbenfall auswerten.
 
-So gehst du vor:
-• Windel 48–72 h einschieben und Milben zählen (bei deinem System üblich).
-• Hoher Restbefall → Nachbehandlung planen (Mittelwechsel/Strategie).
-• Schwache oder stark befallene Völker markieren.
-• Drohnenrahmen-Zyklen beenden, wenn nicht mehr nötig.
-
-Ohne Kontrolle weisst du nicht, ob die Behandlung gewirkt hat.`
+• Windel 48–72 h (falls vorhanden).
+• Hoher Restbefall → Nachbehandlung planen.
+• Auffällige Völker markieren.
+• Drohnenrahmen-Zyklen beenden, wenn nicht mehr nötig.`,
+      visualSteps: [
+        step('treat', 'Nach der Behandlung den Erfolg kontrollieren – nicht nur «einmal behandeln und fertig».', 'Erfolgskontrolle Varroa')
+      ]
     },
     {
       id: 'aug-raeuberei',
       title: 'Räuberei vermeiden (Fluglöcher einengen)',
       approxDate: 'ganzer August',
-      guide: `Ab Trachtende steigt die Räubereigefahr massiv.
+      guide: `Ab Trachtende steigt die Räubereigefahr.
 
-Massnahmen:
-• Fluglöcher auf wenige cm einengen.
-• Keine offenen Honig-/Futterreste am Stand.
-• Schwache Völker besonders schützen oder vereinigen.
-• Durchsichten kurz halten, Beuten dicht schliessen.
-• Bei Räuberei: Flugloch stark verengen, Volk evtl. versetzen, Ruhe.
-
-Ein enggestelltes Flugloch ist jetzt Standard – nicht erst bei Chaos.`
+Massnahmen am Schweizerkasten:
+• Flugloch auf wenige cm einengen.
+• Hintertür immer dicht schliessen.
+• Keine offenen Honig-/Futterreste.
+• Durchsichten kurz halten.
+• Schwache Völker besonders schützen.`,
+      visualSteps: [
+        step('flight', 'Flugloch stark einengen – wichtigster Schutz gegen Räuberei.', 'Flugloch einengen'),
+        step('exterior', 'Stand ruhig halten, keine offenen Süssstoffe liegen lassen.', 'Stand gegen Räuberei sichern')
+      ]
     }
   ],
 
@@ -398,43 +484,51 @@ Ein enggestelltes Flugloch ist jetzt Standard – nicht erst bei Chaos.`
       id: 'sep-varroa2',
       title: '2. Varroa-Behandlung (falls nötig)',
       approxDate: 'Anfang bis Mitte September',
-      guide: `Wenn die Erfolgskontrolle zu hohe Werte zeigt oder das Volk auffällig ist, greift die zweite Behandlung.
+      guide: `Bei zu hohen Restwerten oder auffälligen Völkern nachbehandeln.
 
-So gehst du vor:
 • Befall und Volksstärke bewerten.
-• Passendes Mittel/Konzept wählen (nicht einfach «dasselbe nochmal» ohne Plan).
-• Temperatur und Brutstatus beachten.
-• Wieder dokumentieren und nachkontrollieren.
+• Passendes Konzept wählen (nicht planlos dasselbe wiederholen).
+• Von hinten einsetzen, Temperatur/Brutstatus beachten.
+• Dokumentieren und nachkontrollieren.
 
-Ziel: Winterbienen sollen möglichst milbenarm schlüpfen.`
+Ziel: milbenarme Winterbienen.`,
+      visualSteps: [
+        step('treat', 'Zweite Behandlung nur nach Kontrolle und mit klarem Konzept.', 'Zweite Varroa-Behandlung')
+      ]
     },
     {
       id: 'sep-staerke',
       title: 'Volksstärke kontrollieren (winterfeste Bienen)',
       approxDate: 'Mitte September',
-      guide: `Jetzt entscheidet sich, welche Völker sicher überwintern.
+      guide: `Kurze Kontrolle von hinten:
 
-Prüfpunkte:
-• Sitz der Bienen: mehrere Wabengassen dicht besetzt?
-• Junge Bienen / Brut vorhanden?
-• Ausreichend Futter und gesunder Eindruck?
-• Königin leistungsfähig (Brutbild)?
+• Mehrere Wabengassen dicht besetzt?
+• Junge Bienen / noch etwas Brut?
+• Genug Futter, gesunder Eindruck?
+• Brutbild der Königin in Ordnung?
 
-Zu schwache Völker nicht «mit Hoffnung» allein lassen – siehe Vereinigung.`
+Zu schwache Völker nicht allein lassen – siehe Vereinigung.`,
+      visualSteps: [
+        step('rear', 'Volksstärke von hinten an Sitz und Wabengassen ablesen.', 'Volksstärke prüfen')
+      ]
     },
     {
       id: 'sep-vereinigen',
       title: 'Schwache Völker vereinigen',
       approxDate: 'Ende September',
-      guide: `Lieber ein starkes Wintervolk als zwei schwache Verluste.
+      guide: `Lieber ein starkes Wintervolk als zwei Verluste.
 
-Typisches Vorgehen (Zeitungsmethode o. Ä.):
-1. Schwaches Volk entweiseln (falls nötig/gewollt).
-2. Auf starkes Volk setzen, getrennt durch Zeitungspapier mit Schlitzen.
+Beim Schweizerkasten oft über Waben umhängen oder angepasste Zeitungsmethode:
+1. Schwaches Volk entweiseln (falls geplant).
+2. Waben/Bienen zum Starkvolk bringen bzw. Kästen kontrolliert vereinigen.
 3. Flugloch eng, einige Tage Ruhe.
-4. Nach dem Durchfressen der Zeitung Waben ordnen und Futter prüfen.
+4. Futter und Sitz danach prüfen.
 
-Zeitpunkt: Früh genug, damit sich das Volk noch zusammenfindet.`
+Früh genug, damit sich das Volk noch findet.`,
+      visualSteps: [
+        step('rear', 'Waben von hinten umhängen bzw. Völker kontrolliert zusammenführen.', 'Völker vereinigen'),
+        step('flight', 'Nach dem Vereinigen Flugloch eng halten.', 'Flugloch nach Vereinigung')
+      ]
     }
   ],
 
@@ -443,43 +537,46 @@ Zeitpunkt: Früh genug, damit sich das Volk noch zusammenfindet.`
       id: 'okt-fuetterung-ende',
       title: 'Auffütterung muss beendet sein',
       approxDate: 'Anfang Oktober',
-      guide: `Spätes Füttern stört die Winterruhe und wird schlechter verarbeitet.
+      guide: `Spätes Füttern stört die Winterruhe.
 
-Kontrolle:
-• Gewicht nochmals prüfen.
+• Gewicht final prüfen.
 • Flüssiges Futter sollte weitgehend verdeckelt sein.
-• Notfalls nur noch kleine Korrekturen mit Futterteig.
-• Keine grossen offenen Futtergaben mehr bei kalter Witterung.
-
-Ab jetzt: Stabilität vor Optimierung.`
+• Notfalls nur noch kleiner Futterteig von hinten.
+• Keine grossen offenen Gaben bei Kälte.`,
+      visualSteps: [
+        step('weight', 'Finale Gewichtskontrolle vor dem Einwintern.', 'Auffütterung beendet')
+      ]
     },
     {
       id: 'okt-maeuse',
       title: 'Mäusegitter anbringen',
       approxDate: 'Mitte Oktober · vor ersten Frösten',
-      guide: `Mäuse suchen ab kühleren Nächten Unterschlupf in Beuten.
+      guide: `Mäuse suchen ab kühlen Nächten Unterschlupf.
 
 So gehst du vor:
 • Passendes Gitter fest am Flugloch montieren.
-• Sicherstellen, dass Bienen trotzdem aus-/einfliegen können.
-• Bodeneinschub und Umgebung auf Nagerhinweise prüfen.
-• Gitterliste führen: Welches Volk ist geschützt?
-
-Ein vergessenes Volk ohne Gitter kann im Winter schwer geschädigt werden.`
+• Sicherstellen, dass Bienen noch passieren können.
+• Umgebung auf Nagerhinweise prüfen.
+• Liste führen: Welches Volk ist geschützt?`,
+      visualSteps: [
+        step('flight', 'Mäusegitter vor dem Winter fest am Flugloch montieren.', 'Mäusegitter anbringen'),
+        step('winter', 'Kasten winterfest: Gitter drauf, Hintertür dicht, Stand ruhig.', 'Winterfertig Schweizerkasten')
+      ]
     },
     {
       id: 'okt-ruhe',
       title: 'Winterruhe einleiten',
       approxDate: 'Ende Oktober',
-      guide: `Der Stand wird ruhig – das ist gewollt.
+      guide: `Ab jetzt: Beobachten statt Manipulieren.
 
-Massnahmen:
-• Durchsichten einstellen.
-• Beuten wind- und wettersicher ausrichten, Deckel beschweren.
-• Spechte/Störungen am Standort bedenken.
-• Letzte Notizen in Hively machen (Völkerstatus, Futter, Behandlung).
-
-Ab jetzt gilt: Beobachten statt Manipulieren.`
+• Keine Durchsichten mehr.
+• Deckel/Dach beschweren, windgeschützt ausrichten.
+• Specht-/Sturmschäden im Blick behalten.
+• Letzte Notizen in Hively setzen.`,
+      visualSteps: [
+        step('winter', 'Winterruhe: Schweizerkasten geschlossen, Standort gesichert.', 'Winterruhe einleiten'),
+        step('exterior', 'Nur noch äussere Kontrollen – keine Hintertür mehr öffnen.', 'Nur noch Aussenkontrolle')
+      ]
     }
   ],
 
@@ -488,43 +585,38 @@ Ab jetzt gilt: Beobachten statt Manipulieren.`
       id: 'nov-windel',
       title: 'Letzte Varroa-Kontrolle (Windel)',
       approxDate: 'Anfang bis Mitte November',
-      guide: `Ein kurzer Gemüll-Check zeigt, ob die Winterbehandlung nötig wird.
+      guide: `Kurzer Gemüll-Check zeigt, ob die Winterbehandlung nötig wird.
 
-So gehst du vor:
-• Windel für 2–3 Tage einschieben (bei geeignetem Boden).
-• Milben fallen zählen und interpretieren.
-• Starke Abweichungen zwischen Völkern notieren.
-• Termin für Oxalsäure (brutfrei) grob planen.
+• Windel 2–3 Tage (falls System vorhanden).
+• Milben zählen, Völker vergleichen.
+• Termin für Oxalsäure (brutfrei) planen.
 
-Nicht jedes System hat eine Windel – dann alternative Diagnose nach deiner Betriebsweise nutzen.`
+Ohne Windel: Diagnose nach deiner Betriebsweise.`,
+      visualSteps: [
+        step('treat', 'Befallslage vor der Winterbehandlung nochmals einschätzen.', 'Varroa-Kontrolle November')
+      ]
     },
     {
       id: 'nov-wachs',
       title: 'Werkstatt: Rähmchen einschmelzen',
       approxDate: 'November · Werkstattwetter',
-      guide: `Alte und aussortierte Waben jetzt verarbeiten, nicht bis zum Frühjahr liegen lassen (Wachsmotte).
+      guide: `Altwaben jetzt verarbeiten (Wachsmotte!).
 
-Ablauf:
-• Altwaben ausschmelzen (Dampfwachsschmelzer o. Ä.).
-• Wachs klären und lagern.
-• Rähmchen reinigen, desinfizieren, neu drahten.
-• Ausschuss und Plastikteile fachgerecht entsorgen.
+• Ausschmelzen, Wachs klären.
+• Rähmchen reinigen, drahten, Mittelwände vorbereiten.
+• Ausschuss entsorgen.
 
-Saubere Rähmchen im Frühjahr sparen Nerven und Zeit.`
+Saubere Schweizer-/Kuntzschrähmchen sparen Zeit im März.`
     },
     {
       id: 'nov-ausruestung',
       title: 'Ausrüstung reinigen',
       approxDate: 'Mitte bis Ende November',
-      guide: `Stockmeissel, Smoker, Anzüge und Kisten gehören vor dem Frühjahr gereinigt.
-
-Checkliste:
-• Textilien waschen, Rauchmaterial trocknen lagern.
-• Beuten/Ablegerkästen trocknen und stapeln.
-• Behandlungsmaterial und Haltbarkeit prüfen.
-• Verbrauchsmaterial fürs nächste Jahr notieren.
-
-Ein aufgeräumter Winterlagerplatz verhindert Chaos im März.`
+      guide: `Checkliste:
+• Textilien, Smoker, Anzug reinigen.
+• Reserve-Kästen und Hintertüren trocknen lagern.
+• Behandlungsmittel-Haltbarkeit prüfen.
+• Bestellliste fürs Frühjahr schreiben.`
     }
   ],
 
@@ -533,38 +625,37 @@ Ein aufgeräumter Winterlagerplatz verhindert Chaos im März.`
       id: 'dez-oxal',
       title: 'Winterbehandlung (Oxalsäure) brutfrei',
       approxDate: 'ca. 10.–28. Dezember · brutfrei & kalt',
-      guide: `Oxalsäure wirkt am besten, wenn keine Brut vorhanden ist (Milben sitzen auf den Bienen).
+      guide: `Oxalsäure wirkt am besten brutfrei.
 
-Voraussetzungen:
-• Volk möglichst brutfrei (typisch nach Frostperiode).
-• Tageswahl nach Mittel/Verfahren (Träufeln/Sublimieren) und Wetter.
-• Schutzausrüstung zwingend.
+Schweizerkasten (Träufeln – Prinzip):
+1. Mittel nach Anleitung anmischen, Schutzausrüstung anziehen.
+2. Hintertür kurz öffnen, Gassen träufeln.
+3. Sofort schliessen – nicht auskühlen lassen.
+4. Datum/Menge dokumentieren.
 
-Ablauf (träufeln – Prinzip):
-1. Mittel nach Anleitung anmischen.
-2. Beute kurz öffnen, Gassen träufeln.
-3. Sofort wieder schliessen, Volk nicht auskühlen lassen.
-4. Datum und Menge dokumentieren.
-
-Packungsbeilage und lokale Vorschriften haben Vorrang vor dieser Kurzfassung.`
+Packungsbeilage und Vorschriften haben Vorrang. Sublimieren nur mit geeignetem Gerät/Schutz.`,
+      visualSteps: [
+        step('treat', 'Winterbehandlung: Kasten nur kurz von hinten öffnen, rasch wieder schliessen.', 'Oxalsäure am Schweizerkasten'),
+        step('winter', 'Danach absolute Ruhe – Beute geschlossen lassen.', 'Nach der Winterbehandlung')
+      ]
     },
     {
       id: 'dez-ruhe',
       title: 'Absolute Ruhe am Bienenstand',
       approxDate: 'ganzer Dezember',
-      guide: `Nach der Winterbehandlung heisst es: Hände weg.
-
-Do’s:
-• Flugloch freilegen bei Schnee.
+      guide: `Do’s:
+• Flugloch bei Schnee freilegen.
 • Von aussen auf Specht-/Sturmschäden achten.
-• Futter nur in echten Notfällen (sehr leichte Beute) mit Teig stützen.
+• Nur in echter Not mit Teig stützen.
 
 Don’ts:
-• Keine neugierigen Öffnungen «nur zum Schauen».
-• Kein Verschieben der Beuten ohne Not.
-• Keine lauten Arbeiten direkt am Stand.
-
-Die beste Dezember-Arbeit ist oft: nichts tun und beobachten.`
+• Keine neugierigen Öffnungen der Hintertür.
+• Kein Verschieben ohne Not.
+• Keine lauten Arbeiten direkt am Stand.`,
+      visualSteps: [
+        step('winter', 'Beste Dezember-Arbeit: nichts tun und von aussen beobachten.', 'Winterruhe Dezember'),
+        step('flight', 'Nur Flugloch freilegen – sonst den Kasten in Ruhe lassen.', 'Flugloch im Winter freilegen')
+      ]
     }
   ]
 };
