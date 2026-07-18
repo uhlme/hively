@@ -84,27 +84,113 @@ body {
 }
 
 header {
+  --header-control-h: 36px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  padding: calc(var(--safe-top) + 12px) 20px 12px;
+  padding: calc(var(--safe-top) + 10px) 14px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   z-index: 10;
+  min-height: calc(var(--safe-top) + 56px);
 }
 
 header h1 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+header h1 .brand-mark {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 header .header-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-status-dot {
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: var(--header-control-h);
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.user-status-text {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  color: var(--text-secondary);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.header-btn {
+  height: var(--header-control-h);
+  min-height: var(--header-control-h);
+  padding: 0 10px;
+  font-size: 0.8rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: auto;
+}
+
+.header-icon-btn {
+  width: var(--header-control-h);
+  height: var(--header-control-h);
+  min-height: var(--header-control-h);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.header-icon-btn:hover,
+.header-icon-btn:focus-visible {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 380px) {
+  .user-status-text {
+    display: none;
+  }
+
+  header h1 {
+    font-size: 1.15rem;
+  }
 }
 
 /* Main scrollable viewport */
