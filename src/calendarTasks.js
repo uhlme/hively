@@ -170,7 +170,7 @@ Ablauf Schweizerkasten:
 
 Dauer: ideal unter 10 Minuten. Bei Kälte sofort abbrechen.`,
       visualSteps: [
-        step('rear', 'Hintertür öffnen und Rahmen nach hinten herausziehen – typische Schweizerkasten-Arbeit.', 'Frühjahrsdurchsicht Schweizerkasten'),
+        step('rear', 'Waben laufen vorne→hinten: Rahmen an der Hintertür herausziehen (nicht links–rechts).', 'Frühjahrsdurchsicht Schweizerkasten'),
         step('exterior', 'Vor dem Öffnen: Temperatur und Flugbetrieb prüfen.', 'Vorbereitung Durchsicht')
       ]
     },
@@ -242,8 +242,8 @@ Schweizerkasten-Ablauf:
 
 Wichtig: Ausschneiden nicht vergessen.`,
       visualSteps: [
-        step('drone', 'Drohnenrahmen von hinten in den Schweizerkasten einhängen.', 'Drohnenrahmen einhängen'),
-        step('rear', 'Zum Ausschneiden den verdeckelten Drohnenrahmen wieder nach hinten entnehmen.', 'Drohnenrahmen entnehmen')
+        step('drone', 'Drohnenrahmen in Flugrichtung (vorne→hinten) einhängen – siehe Schema.', 'Drohnenrahmen einhängen'),
+        step('rear', 'Zum Ausschneiden den Rahmen nach hinten entnehmen (Achse vorne–hinten).', 'Drohnenrahmen entnehmen')
       ]
     },
     {
@@ -351,8 +351,8 @@ Schweizerkasten-Ablauf:
 
 Lebensmittelhygiene beachten.`,
       visualSteps: [
-        step('harvest', 'Reife Honigrahmen von hinten aus dem Schweizerkasten entnehmen.', 'Honigernte Schweizerkasten'),
-        step('honey', 'Honigraum nach der Ernte ordnen bzw. leere Waben zurückgeben.', 'Nach der Ernte')
+        step('harvest', 'Honigrahmen von hinten entnehmen; lange Rahmenachse zeigt vorne→hinten.', 'Honigernte Schweizerkasten'),
+        step('honey', 'Honigraum: auch hier Waben von vorne nach hinten führen.', 'Nach der Ernte')
       ]
     },
     {
@@ -387,8 +387,8 @@ Massnahmen:
 
 Keine offenen Honigreste am Stand stehen lassen.`,
       visualSteps: [
-        step('harvest', 'Sommerhonig: verdeckelte Rahmen von hinten entnehmen.', 'Sommerernte'),
-        step('rear', 'Nach der Ernte Brutraum prüfen und auf Behandlung vorbereiten.', 'Nach der Sommerernte')
+        step('harvest', 'Blick von hinten: Rahmen-Enden sichtbar, Waben gehen in die Tiefe nach vorne.', 'Sommerernte'),
+        step('rear', 'Nach der Ernte: Brutraum prüfen – weiterhin Wabenrichtung vorne→hinten.', 'Nach der Sommerernte')
       ]
     },
     {
