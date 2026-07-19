@@ -20,7 +20,9 @@ import {
   getTasksState,
   saveTaskState,
   processSyncQueue,
-  getSyncQueueLength
+  getSyncQueueLength,
+  getLastSyncSummary,
+  syncNow
 } from './storage.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
@@ -28,8 +30,52 @@ import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
 import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
+import {
+  getNetworkPrefs,
+  saveNetworkPrefs,
+  shouldUseBackgroundNetwork,
+  shouldAutoProcessMedia,
+  getConnectionType,
+  isConstrainedConnection
+} from './network.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass } from './utils.js';
+
+const RADAR_CACHE_KEY = 'hively_radar_cache';
+const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
+const RADAR_STALE_OK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function readRadarCache() {
+  try {
+    const raw = localStorage.getItem(RADAR_CACHE_KEY) || sessionStorage.getItem('bienen_radar_cache');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeRadarCache(data) {
+  try {
+    localStorage.setItem(RADAR_CACHE_KEY, JSON.stringify(data));
+    sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+  } catch (e) {
+    console.warn('Radar-Cache konnte nicht gespeichert werden:', e);
+  }
+}
+
+async function buildRadarPayload(forceLocation) {
+  const weatherData = await fetchDashboardWeatherAndPollen(forceLocation);
+  let insight = 'Wetterdaten geladen (ohne KI-Einschätzung – Datensparmodus).';
+  if (shouldUseBackgroundNetwork()) {
+    insight = await getWeatherInsightFromGemini(weatherData);
+  }
+  return {
+    ...weatherData,
+    insight,
+    timestamp: Date.now()
+  };
+}
 
 // --- State Variables ---
 let currentView = 'dashboard';
@@ -293,6 +339,8 @@ async function navigate(viewName) {
     await renderFinanceView();
   } else if (viewName === 'calendar') {
     await renderCalendarView();
+  } else if (viewName === 'settings') {
+    refreshNetworkSettingsUI();
   }
 }
 
@@ -420,24 +468,38 @@ async function loadDashboardRadar() {
 
   if (!radarContent) return;
 
+  function applyRadarData(data, { stale = false } = {}) {
+    radarLoading.style.display = 'none';
+    if (btnLocate) btnLocate.style.display = 'block';
+    radarContent.style.display = 'flex';
+    radarContent.style.opacity = '1';
+
+    elTemp.innerText = data.temperature;
+    elCond.innerText = data.conditionText;
+    elEmoji.innerText = data.conditionEmoji;
+    elWind.innerText = data.windSpeed;
+    elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
+    const ageHint = stale ? ' (Cache)' : '';
+    elInsight.innerText = (data.insight || '') + ageHint;
+  }
+
   // Bind click handlers (safely overwrite)
   if (btnSetup) {
     btnSetup.onclick = async () => {
       setupPrompt.style.display = 'none';
       radarLoading.style.display = 'block';
-      radarLoading.innerText = 'Standort ermitteln... ⏳';
+      radarLoading.innerText = 'Standort ermitteln...';
       try {
-        const weatherData = await fetchDashboardWeatherAndPollen(true);
-        const insight = await getWeatherInsightFromGemini(weatherData);
-        const data = {
-          ...weatherData,
-          insight: insight,
-          timestamp: Date.now()
-        };
-        sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+        const data = await buildRadarPayload(true);
+        writeRadarCache(data);
         applyRadarData(data);
       } catch (err) {
-        radarLoading.innerText = 'Standort-Fehler ❌';
+        const stale = readRadarCache();
+        if (stale) {
+          applyRadarData(stale, { stale: true });
+          return;
+        }
+        radarLoading.innerText = 'Standort-Fehler';
         setTimeout(() => {
           radarLoading.style.display = 'none';
           setupPrompt.style.display = 'flex';
@@ -451,21 +513,19 @@ async function loadDashboardRadar() {
       e.stopPropagation();
       btnLocate.style.display = 'none';
       radarLoading.style.display = 'block';
-      radarLoading.innerText = 'Ortung... ⏳';
+      radarLoading.innerText = 'Ortung...';
       radarContent.style.opacity = '0.5';
       try {
-        const weatherData = await fetchDashboardWeatherAndPollen(true);
-        const insight = await getWeatherInsightFromGemini(weatherData);
-        const data = {
-          ...weatherData,
-          insight: insight,
-          timestamp: Date.now()
-        };
-        sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
-        radarContent.style.opacity = '1';
+        const data = await buildRadarPayload(true);
+        writeRadarCache(data);
         applyRadarData(data);
       } catch (err) {
-        radarLoading.innerText = 'Fehler ❌';
+        const stale = readRadarCache();
+        if (stale) {
+          applyRadarData(stale, { stale: true });
+          return;
+        }
+        radarLoading.innerText = 'Fehler';
         radarContent.style.opacity = '1';
         setTimeout(() => {
           radarLoading.style.display = 'none';
@@ -478,7 +538,13 @@ async function loadDashboardRadar() {
   // Check if we have cached coordinates
   const cachedLoc = getCachedLocation();
   if (!cachedLoc) {
-    // Show location request card
+    // Show location request card — but prefer any persisted radar cache
+    const stale = readRadarCache();
+    if (stale && Date.now() - stale.timestamp < RADAR_STALE_OK_MS) {
+      if (setupPrompt) setupPrompt.style.display = 'none';
+      applyRadarData(stale, { stale: true });
+      return;
+    }
     radarContent.style.display = 'none';
     radarLoading.style.display = 'none';
     if (btnLocate) btnLocate.style.display = 'none';
@@ -490,49 +556,33 @@ async function loadDashboardRadar() {
   if (setupPrompt) setupPrompt.style.display = 'none';
   if (btnLocate) btnLocate.style.display = 'block';
 
-  const cached = sessionStorage.getItem('bienen_radar_cache');
-  if (cached) {
-    try {
-      const data = JSON.parse(cached);
-      if (Date.now() - data.timestamp < 2 * 60 * 60 * 1000) {
-        applyRadarData(data);
-        return;
-      }
-    } catch (e) {}
+  const cached = readRadarCache();
+  if (cached && Date.now() - cached.timestamp < RADAR_FRESH_MS) {
+    applyRadarData(cached);
+    return;
+  }
+
+  // Weak link: keep showing stale cache instead of burning data/time on refresh
+  if (cached && !shouldUseBackgroundNetwork() && Date.now() - cached.timestamp < RADAR_STALE_OK_MS) {
+    applyRadarData(cached, { stale: true });
+    return;
   }
 
   radarContent.style.display = 'none';
   radarLoading.style.display = 'block';
-  radarLoading.innerText = 'Lädt... ⏳';
+  radarLoading.innerText = 'Lädt...';
 
   try {
-    const weatherData = await fetchDashboardWeatherAndPollen(false);
-    const insight = await getWeatherInsightFromGemini(weatherData);
-    
-    const data = {
-      ...weatherData,
-      insight: insight,
-      timestamp: Date.now()
-    };
-    
-    sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
+    const data = await buildRadarPayload(false);
+    writeRadarCache(data);
     applyRadarData(data);
   } catch (err) {
+    if (cached && Date.now() - cached.timestamp < RADAR_STALE_OK_MS) {
+      applyRadarData(cached, { stale: true });
+      return;
+    }
     radarLoading.innerText = 'Radar offline';
     radarLoading.style.color = 'var(--danger)';
-  }
-
-  function applyRadarData(data) {
-    radarLoading.style.display = 'none';
-    if (btnLocate) btnLocate.style.display = 'block';
-    radarContent.style.display = 'flex';
-    
-    elTemp.innerText = data.temperature;
-    elCond.innerText = data.conditionText;
-    elEmoji.innerText = data.conditionEmoji;
-    elWind.innerText = data.windSpeed;
-    elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
-    elInsight.innerText = data.insight;
   }
 }
 
@@ -1606,8 +1656,99 @@ function setupForms() {
   });
 }
 
+function formatSyncStatusText() {
+  const summary = getLastSyncSummary();
+  const prefs = getNetworkPrefs();
+  const conn = getConnectionType();
+  const parts = [];
+
+  if (!navigator.onLine) {
+    parts.push('Offline – Änderungen bleiben lokal.');
+  } else if (prefs.fieldMode && isConstrainedConnection()) {
+    parts.push(`Funkloch-Modus aktiv (${conn || 'schwaches Netz'}).`);
+  } else {
+    parts.push(conn ? `Online (${conn}).` : 'Online.');
+  }
+
+  parts.push(summary.pending > 0
+    ? `${summary.pending} Änderung(en) warten auf Sync.`
+    : 'Keine ausstehenden Sync-Änderungen.');
+
+  if (summary.lastPullAt) {
+    const when = new Date(summary.lastPullAt).toLocaleString('de-CH', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    parts.push(`Letzter Abruf: ${when}.`);
+  }
+
+  return parts.join(' ');
+}
+
+function refreshNetworkSettingsUI() {
+  const prefs = getNetworkPrefs();
+  const fieldEl = document.getElementById('pref-field-mode');
+  const wifiEl = document.getElementById('pref-wifi-only-media');
+  const statusEl = document.getElementById('network-sync-status');
+  if (fieldEl) fieldEl.checked = !!prefs.fieldMode;
+  if (wifiEl) wifiEl.checked = !!prefs.wifiOnlyMedia;
+  if (statusEl) statusEl.textContent = formatSyncStatusText();
+}
+
 // --- Backup & Settings Administration ---
 function setupSettings() {
+  const fieldEl = document.getElementById('pref-field-mode');
+  const wifiEl = document.getElementById('pref-wifi-only-media');
+  const syncBtn = document.getElementById('btn-sync-now');
+
+  if (fieldEl) {
+    fieldEl.addEventListener('change', () => {
+      saveNetworkPrefs({ fieldMode: fieldEl.checked });
+      refreshNetworkSettingsUI();
+      updateConnectionStatusUI();
+    });
+  }
+  if (wifiEl) {
+    wifiEl.addEventListener('change', () => {
+      saveNetworkPrefs({ wifiOnlyMedia: wifiEl.checked });
+      refreshNetworkSettingsUI();
+    });
+  }
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        alert('Keine Verbindung – Sync ist offline nicht möglich.');
+        return;
+      }
+      syncBtn.disabled = true;
+      const prev = syncBtn.innerText;
+      syncBtn.innerText = 'Synchronisiere...';
+      try {
+        const result = await syncNow();
+        if (shouldAutoProcessMedia()) {
+          await processOfflineMemosQueue();
+        }
+        alert(result.pending > 0
+          ? `Teilweise synchronisiert. Noch ${result.pending} ausstehend.`
+          : 'Synchronisation abgeschlossen.');
+        refreshNetworkSettingsUI();
+        updateConnectionStatusUI();
+        if (currentView === 'dashboard') await renderDashboardView();
+      } catch (err) {
+        console.error(err);
+        alert('Sync fehlgeschlagen: ' + (err.message || err));
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.innerText = prev;
+        refreshNetworkSettingsUI();
+      }
+    });
+  }
+
+  refreshNetworkSettingsUI();
+
   // Export Data
   document.getElementById('btn-export-backup').addEventListener('click', async () => {
     const dataStr = await exportData();
@@ -1892,19 +2033,27 @@ function setupVoiceAssistant() {
     }
   }
 
+  async function queueVoiceMemoLocally(audioBlob, message) {
+    updateUIForStatus('idle');
+    previewDiv.style.display = 'none';
+    try {
+      const base64 = await blobToBase64(audioBlob);
+      await saveOfflineMemo('voice', base64, audioBlob.type || 'audio/webm');
+      alert(message);
+      await renderOfflineMemos();
+    } catch (err) {
+      console.error(err);
+      alert('Fehler beim lokalen Speichern der Sprachnotiz.');
+    }
+  }
+
   async function handleAudioProcessing(audioBlob) {
-    if (!navigator.onLine) {
-      updateUIForStatus('idle');
-      previewDiv.style.display = 'none';
-      try {
-        const base64 = await blobToBase64(audioBlob);
-        await saveOfflineMemo('voice', base64, audioBlob.type);
-        alert('Offline-Modus: Dein Diktat wurde lokal gespeichert. Sobald du Internetverbindung hast, wird es automatisch verarbeitet! 💾');
-        await renderOfflineMemos();
-      } catch (err) {
-        console.error(err);
-        alert('Fehler beim lokalen Speichern der Sprachnotiz.');
-      }
+    // Weak / offline links: never burn mobile data on large audio uploads
+    if (!shouldAutoProcessMedia()) {
+      const msg = !navigator.onLine
+        ? 'Offline: Diktat lokal gespeichert. Verarbeitung bei besserer Verbindung.'
+        : 'Funkloch-Modus: Diktat lokal gespeichert. KI-Verarbeitung wartet auf gutes Netz/WLAN.';
+      await queueVoiceMemoLocally(audioBlob, msg);
       return;
     }
 
@@ -1966,9 +2115,21 @@ function setupVoiceAssistant() {
 
     } catch (err) {
       console.error(err);
-      errorDiv.innerText = formatGeminiError(err, 'Fehler bei der KI-Verarbeitung.');
-      errorDiv.style.display = 'block';
-      resetUI();
+      // Network/API failure: keep the recording locally instead of losing it
+      try {
+        const base64 = await blobToBase64(audioBlob);
+        await saveOfflineMemo('voice', base64, audioBlob.type || 'audio/webm');
+        errorDiv.innerText = 'Analyse fehlgeschlagen – Diktat lokal gespeichert und später erneut verarbeitbar.';
+        errorDiv.style.display = 'block';
+        await renderOfflineMemos();
+        resetUI();
+        previewDiv.style.display = 'none';
+      } catch (saveErr) {
+        console.error(saveErr);
+        errorDiv.innerText = formatGeminiError(err, 'Fehler bei der KI-Verarbeitung.');
+        errorDiv.style.display = 'block';
+        resetUI();
+      }
     }
   }
 }
@@ -2016,11 +2177,13 @@ function setupReceiptScanner() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!navigator.onLine) {
+    if (!shouldAutoProcessMedia()) {
       try {
         const base64 = await blobToBase64(file);
-        await saveOfflineMemo('receipt', base64, file.type);
-        alert('Offline-Modus: Der Beleg wurde lokal gesichert. Er wird analysiert, sobald du wieder online bist! 💾');
+        await saveOfflineMemo('receipt', base64, file.type || 'image/jpeg');
+        alert(!navigator.onLine
+          ? 'Offline: Beleg lokal gespeichert. Analyse bei besserer Verbindung.'
+          : 'Funkloch-Modus: Beleg lokal gespeichert. KI-Analyse wartet auf gutes Netz/WLAN.');
         await renderOfflineMemos();
       } catch (err) {
         console.error(err);
@@ -2072,8 +2235,17 @@ function setupReceiptScanner() {
 
     } catch (err) {
       console.error(err);
-      errorDiv.innerText = formatGeminiError(err, 'Fehler beim Analysieren des Belegs.');
-      errorDiv.style.display = 'block';
+      try {
+        const base64 = await blobToBase64(file);
+        await saveOfflineMemo('receipt', base64, file.type || 'image/jpeg');
+        errorDiv.innerText = 'Analyse fehlgeschlagen – Beleg lokal gespeichert und später erneut verarbeitbar.';
+        errorDiv.style.display = 'block';
+        await renderOfflineMemos();
+      } catch (saveErr) {
+        console.error(saveErr);
+        errorDiv.innerText = formatGeminiError(err, 'Fehler beim Analysieren des Belegs.');
+        errorDiv.style.display = 'block';
+      }
       updateUI('idle');
     } finally {
       fileInput.value = '';
@@ -2115,42 +2287,56 @@ function formatGeminiError(err, defaultMessage) {
 
 function setupConnectionTracking() {
   updateConnectionStatusUI();
-  
+
   window.addEventListener('online', async () => {
     updateConnectionStatusUI();
-    console.log('[Connection] Online! Synchronisiere Daten...');
+    console.log('[Connection] Online – prüfe Sync...');
     try {
-      await processSyncQueue();
-      await processOfflineMemosQueue();
+      if (shouldUseBackgroundNetwork()) {
+        await processSyncQueue();
+      }
+      if (shouldAutoProcessMedia()) {
+        await processOfflineMemosQueue();
+      }
     } catch (e) {
       console.error('[Connection] Error auto-syncing:', e);
     }
     updateConnectionStatusUI();
-    
-    // Also re-render dashboard if we are currently viewing it
+    refreshNetworkSettingsUI();
+
     if (currentView === 'dashboard') {
       await renderDashboardView();
     }
   });
-  
+
   window.addEventListener('offline', () => {
     updateConnectionStatusUI();
+    refreshNetworkSettingsUI();
     console.log('[Connection] Offline.');
     if (currentView === 'dashboard') {
       renderOfflineMemos();
     }
   });
 
-  // Initial sync check
-  if (navigator.onLine) {
-    processSyncQueue().then(() => {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn && typeof conn.addEventListener === 'function') {
+    conn.addEventListener('change', () => {
       updateConnectionStatusUI();
-      processOfflineMemosQueue().then(() => {
-        if (currentView === 'dashboard') {
-          renderDashboardView();
-        }
-      });
+      refreshNetworkSettingsUI();
     });
+  }
+
+  // Initial sync only when the link looks usable
+  if (navigator.onLine && shouldUseBackgroundNetwork()) {
+    processSyncQueue().then(async () => {
+      updateConnectionStatusUI();
+      if (shouldAutoProcessMedia()) {
+        await processOfflineMemosQueue();
+      }
+      if (currentView === 'dashboard') {
+        await renderDashboardView();
+      }
+    }).catch((e) => console.error('[Connection] Initial sync failed:', e));
   }
 }
 
@@ -2158,18 +2344,29 @@ function updateConnectionStatusUI() {
   const statusEl = document.getElementById('connection-status');
   if (!statusEl) return;
 
-  if (navigator.onLine) {
-    const pendingCount = getSyncQueueLength();
-    if (pendingCount > 0) {
-      statusEl.innerText = '🔄';
-      statusEl.title = `Online - ${pendingCount} Änderungen ausstehend...`;
-    } else {
-      statusEl.innerText = '🟢';
-      statusEl.title = 'Online - Synchronisiert';
-    }
-  } else {
+  const pendingCount = getSyncQueueLength();
+  const prefs = getNetworkPrefs();
+
+  if (!navigator.onLine) {
     statusEl.innerText = '🔌';
-    statusEl.title = 'Offline - Änderungen werden lokal gespeichert';
+    statusEl.title = 'Offline – Änderungen werden lokal gespeichert';
+    return;
+  }
+
+  if (prefs.fieldMode && isConstrainedConnection()) {
+    statusEl.innerText = pendingCount > 0 ? '📡' : '🟡';
+    statusEl.title = pendingCount > 0
+      ? `Funkloch-Modus – ${pendingCount} Änderungen lokal wartend`
+      : `Funkloch-Modus (${getConnectionType() || 'schwaches Netz'}) – lokale Daten`;
+    return;
+  }
+
+  if (pendingCount > 0) {
+    statusEl.innerText = '🔄';
+    statusEl.title = `Online – ${pendingCount} Änderungen ausstehend`;
+  } else {
+    statusEl.innerText = '🟢';
+    statusEl.title = 'Online – synchronisiert';
   }
 }
 
@@ -2199,13 +2396,14 @@ async function renderOfflineMemos() {
           <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
         </div>
         <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${memo.id}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
-          ${navigator.onLine ? 'Verarbeiten' : 'Wartet auf Netz'}
+          ${shouldAutoProcessMedia() ? 'Verarbeiten' : (navigator.onLine ? 'Wartet auf WLAN' : 'Wartet auf Netz')}
         </button>
       </div>
     `;
   }).join('');
 
   document.querySelectorAll('.btn-process-offline-memo').forEach(btn => {
+    // Manual process allowed whenever online (user explicitly taps)
     btn.disabled = !navigator.onLine;
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
@@ -2297,7 +2495,7 @@ async function processSingleOfflineMemo(id) {
 }
 
 async function processOfflineMemosQueue() {
-  if (!navigator.onLine) return;
+  if (!shouldAutoProcessMedia()) return;
   const memos = await getOfflineMemos();
   for (const memo of memos) {
     try {

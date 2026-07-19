@@ -216,6 +216,29 @@
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
           <h2 style="font-size: 1.25rem; margin-bottom: 16px;">App-Einstellungen</h2>
+
+          <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Funkloch / Offline</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+              Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
+            </p>
+            <label style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; cursor: pointer;">
+              <input type="checkbox" id="pref-field-mode" style="margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0;" />
+              <span>
+                <strong style="display: block; font-size: 0.9rem;">Funkloch-Modus</strong>
+                <span class="text-secondary" style="font-size: 0.8rem;">Bei schwachem Netz nur lokal lesen/schreiben; Sync bei besserer Verbindung oder manuell.</span>
+              </span>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; cursor: pointer;">
+              <input type="checkbox" id="pref-wifi-only-media" style="margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0;" />
+              <span>
+                <strong style="display: block; font-size: 0.9rem;">KI-Medien nur bei gutem Netz</strong>
+                <span class="text-secondary" style="font-size: 0.8rem;">Sprachnotizen und Belege werden lokal gespeichert und erst bei WLAN/4G an die KI gesendet.</span>
+              </span>
+            </label>
+            <button id="btn-sync-now" class="btn btn-primary" style="width: 100%;">Jetzt synchronisieren</button>
+            <p id="network-sync-status" class="text-secondary" style="font-size: 0.8rem; margin-top: 12px; margin-bottom: 0;"></p>
+          </div>
           
           <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Datenverwaltung</h3>

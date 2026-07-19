@@ -1,6 +1,7 @@
 /**
  * weather.js - Handles fetching weather data based on geolocation.
  */
+import { fetchWithTimeout } from './network.js';
 
 const WMO_CODES = {
     0: { label: 'Sonnig', emoji: '☀️' },
@@ -58,8 +59,8 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
     const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
     
     const [weatherSettled, pollenSettled] = await Promise.allSettled([
-        fetch(weatherUrl),
-        fetch(pollenUrl)
+        fetchWithTimeout(weatherUrl, {}, 8000),
+        fetchWithTimeout(pollenUrl, {}, 8000)
     ]);
 
     if (weatherSettled.status !== 'fulfilled' || !weatherSettled.value.ok) {
@@ -111,7 +112,7 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
 
 async function fetchCurrentWeatherByCoords(lat, lon) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, {}, 8000);
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
