@@ -20,6 +20,7 @@
         <h1 id="app-title"><span class="brand-mark" aria-hidden="true">🐝</span>Hively</h1>
         <div class="header-actions">
           <span id="connection-status" class="header-status-dot" title="Online" aria-label="Online">🟢</span>
+          <button id="btn-operation-switcher" class="btn btn-sm btn-secondary header-btn header-op-btn" type="button" title="Betrieb wechseln" style="display: none;">Betrieb</button>
           <span id="user-status" class="user-status-text">Lokal</span>
           <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn">Login</button>
           <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn">+ Volk</button>
@@ -216,6 +217,45 @@
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
           <h2 style="font-size: 1.25rem; margin-bottom: 16px;">App-Einstellungen</h2>
+
+          <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenbetrieb</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
+              Gemeinsamer Datenraum für mehrere Imker. Einträge gehören zum Betrieb.
+            </p>
+            <div id="operation-settings-summary" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
+              Lokal-Modus – melde dich an, um Betriebe zu nutzen.
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="btn-open-operations" class="btn btn-secondary" type="button">Betrieb wählen / verwalten</button>
+              <button id="btn-join-operation" class="btn btn-secondary" type="button">Mit Code beitreten</button>
+            </div>
+            <div id="operation-owner-panel" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+              <h4 style="font-size: 0.9rem; margin-bottom: 8px;">Adresse & Einladung</h4>
+              <div class="form-group">
+                <label for="op-settings-name">Name</label>
+                <input type="text" id="op-settings-name" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label for="op-settings-address">Adresszeile</label>
+                <input type="text" id="op-settings-address" class="form-control" placeholder="Strasse Nr." />
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label for="op-settings-zip">PLZ</label>
+                  <input type="text" id="op-settings-zip" class="form-control" />
+                </div>
+                <div class="form-group">
+                  <label for="op-settings-city">Ort</label>
+                  <input type="text" id="op-settings-city" class="form-control" />
+                </div>
+              </div>
+              <button id="btn-save-operation" class="btn btn-primary" type="button" style="margin-bottom: 12px;">Betrieb speichern</button>
+              <button id="btn-create-invite" class="btn btn-secondary" type="button">Einladungscode erzeugen</button>
+              <div id="operation-invite-result" class="text-secondary" style="font-size: 0.8rem; margin-top: 10px; display: none;"></div>
+              <div id="operation-members-list" style="margin-top: 14px;"></div>
+            </div>
+          </div>
 
           <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Funkloch / Offline</h3>
@@ -575,6 +615,70 @@
             <div style="display: flex; gap: 12px; margin-top: 24px;">
               <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%;">Anmelden</button>
             </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Betriebe -->
+      <div id="modal-operations" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Bienenbetrieb</h2>
+            <button class="modal-close" data-close="modal-operations">&times;</button>
+          </div>
+          <div id="operations-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="btn-op-create-open" class="btn btn-primary" type="button">Neuen Betrieb anlegen</button>
+            <button id="btn-op-join-open" class="btn btn-secondary" type="button">Mit Code beitreten</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Betrieb anlegen -->
+      <div id="modal-operation-create" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Betrieb anlegen</h2>
+            <button class="modal-close" data-close="modal-operation-create">&times;</button>
+          </div>
+          <form id="form-operation-create">
+            <div class="form-group">
+              <label for="op-create-name">Name</label>
+              <input type="text" id="op-create-name" class="form-control" placeholder="z.B. Imkerei Muster" required />
+            </div>
+            <div class="form-group">
+              <label for="op-create-address">Adresszeile</label>
+              <input type="text" id="op-create-address" class="form-control" placeholder="Strasse Nr." />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="op-create-zip">PLZ</label>
+                <input type="text" id="op-create-zip" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label for="op-create-city">Ort</label>
+                <input type="text" id="op-create-city" class="form-control" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Anlegen</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Mit Code beitreten -->
+      <div id="modal-operation-join" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Betrieb beitreten</h2>
+            <button class="modal-close" data-close="modal-operation-join">&times;</button>
+          </div>
+          <form id="form-operation-join">
+            <div class="form-group">
+              <label for="op-join-code">Einladungscode</label>
+              <input type="text" id="op-join-code" class="form-control" placeholder="z.B. ABCD2345" required autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.08em;" />
+            </div>
+            <p id="op-join-preview" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px; display: none;"></p>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Beitreten</button>
           </form>
         </div>
       </div>

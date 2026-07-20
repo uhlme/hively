@@ -9,12 +9,25 @@ const { supabaseMock, createQueryBuilder, session } = vi.hoisted(() => {
   function createQueryBuilder({ data = [], error = null } = {}) {
     const builder = {
       select: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
       order: vi.fn(async () => ({ data, error })),
       upsert: vi.fn(async () => ({ data: null, error })),
       delete: vi.fn(() => builder),
-      eq: vi.fn(async () => ({ data: null, error })),
       in: vi.fn(async () => ({ data: null, error }))
     };
+    // delete().eq() path used by deletes
+    builder.eq = vi.fn((...args) => {
+      // When chained after delete(), resolve; when after select(), keep chaining
+      if (builder._deleted) {
+        return Promise.resolve({ data: null, error });
+      }
+      return builder;
+    });
+    const originalDelete = builder.delete;
+    builder.delete = vi.fn(() => {
+      builder._deleted = true;
+      return builder;
+    });
     return builder;
   }
 
@@ -37,6 +50,8 @@ const storage = await import('../src/storage.js');
 describe('storage local-first + sync queue', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('hively_active_operation_id', 'op-test-1');
+    localStorage.setItem('hively_active_operation_role', 'owner');
     vi.clearAllMocks();
     supabaseMock.auth.getSession.mockResolvedValue({ data: { session } });
     supabaseMock.from.mockImplementation(() => createQueryBuilder());
@@ -123,6 +138,8 @@ describe('storage local-first + sync queue', () => {
     const rows = builder.upsert.mock.calls[0][0];
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.user_id === 'user-1')).toBe(true);
+    expect(rows.every((r) => r.operation_id === 'op-test-1')).toBe(true);
+    expect(rows.every((r) => r.created_by === 'user-1')).toBe(true);
   });
 
   it('applies backoff after sync failures and keeps pending items', async () => {
