@@ -54,7 +54,10 @@ import {
   isOperationOwner,
   clearActiveOperation,
   getProfileMap,
-  previewInvite
+  previewInvite,
+  canEditOperation,
+  isOperationViewer,
+  roleLabel
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading } from './utils.js';
@@ -466,11 +469,19 @@ async function renderDashboardView() {
       </div>
     `).join('');
 
-    // Attach click handlers to open edit modals
+    // Attach click handlers to open edit modals (or hive detail for viewers)
     document.querySelectorAll('.recent-activity-card').forEach(card => {
-      const openActivity = () => {
+      const openActivity = async () => {
         const idx = parseInt(card.getAttribute('data-index'));
         const act = activities[idx];
+        const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+        if (!canEdit) {
+          if (act.raw?.hiveId) {
+            activeHiveIdForDetail = act.raw.hiveId;
+            await navigate('hive-detail');
+          }
+          return;
+        }
         if (act.type === 'inspection') {
           openInspectionModal(act.raw);
         } else if (act.type === 'honey') {
@@ -685,6 +696,7 @@ async function renderCalendarView() {
   const tasksForMonth = CALENDAR_TASKS[selectedMonth] || [];
   const state = await getTasksState();
   const monthState = state[selectedMonth] || {};
+  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
 
   if (tasksForMonth.length === 0) {
     container.innerHTML = `<p class="text-muted text-center">Keine Aufgaben für diesen Monat hinterlegt.</p>`;
@@ -706,11 +718,12 @@ async function renderCalendarView() {
     const done = isTaskDone(monthState, task, index);
     const checked = done ? 'checked' : '';
     const hasVisuals = Array.isArray(task.visualSteps) && task.visualSteps.length > 0;
+    const disabledAttr = canEdit ? '' : 'disabled';
     html += `
       <article class="calendar-task ${done ? 'is-done' : ''}" data-task-id="${escapeHtml(task.id)}">
         <div class="calendar-task-main">
           <label class="calendar-task-check">
-            <input type="checkbox" class="task-checkbox" data-month="${escapeHtml(selectedMonth)}" data-task-id="${escapeHtml(task.id)}" data-task-index="${index}" ${checked} />
+            <input type="checkbox" class="task-checkbox" data-month="${escapeHtml(selectedMonth)}" data-task-id="${escapeHtml(task.id)}" data-task-index="${index}" ${checked} ${disabledAttr} />
             <span class="calendar-task-title">${escapeHtml(task.title)}</span>
           </label>
           <button type="button" class="calendar-task-toggle" aria-expanded="false" aria-controls="guide-${escapeHtml(task.id)}" data-guide-toggle="${escapeHtml(task.id)}">
@@ -733,6 +746,7 @@ async function renderCalendarView() {
   container.innerHTML = html;
 
   document.querySelectorAll('.task-checkbox').forEach(chk => {
+    if (!canEdit) return;
     chk.addEventListener('change', async (e) => {
       const month = e.target.getAttribute('data-month');
       const taskId = e.target.getAttribute('data-task-id');
@@ -781,15 +795,16 @@ async function renderCalendarView() {
 async function renderHivesView() {
   const hives = await getHives();
   const container = document.getElementById('hives-list-container');
+  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
   
   if (hives.length === 0) {
     container.innerHTML = `
       <div class="card text-center" style="padding: 40px 20px;">
-        <p class="text-muted" style="margin-bottom: 20px;">Du hast noch keine Völker erfasst.</p>
-        <button id="btn-add-hive-empty" class="btn btn-primary" style="width: auto; margin: 0 auto;">Erstes Volk erfassen</button>
+        <p class="text-muted" style="margin-bottom: 20px;">${canEdit ? 'Du hast noch keine Völker erfasst.' : 'In diesem Betrieb sind noch keine Völker erfasst.'}</p>
+        ${canEdit ? '<button id="btn-add-hive-empty" class="btn btn-primary" style="width: auto; margin: 0 auto;">Erstes Volk erfassen</button>' : ''}
       </div>
     `;
-    document.getElementById('btn-add-hive-empty').addEventListener('click', () => openHiveModal());
+    document.getElementById('btn-add-hive-empty')?.addEventListener('click', () => openHiveModal());
     return;
   }
 
@@ -846,6 +861,8 @@ async function renderHiveDetailView() {
   // Set Title
   document.getElementById('detail-hive-title').innerText = hive.name;
 
+  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+
   // Render Hive Details Info Block
   const infoBlock = document.getElementById('detail-hive-info');
   const qColorClass = getQueenColorClass(hive.queenYear);
@@ -854,7 +871,7 @@ async function renderHiveDetailView() {
   infoBlock.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <span class="status-badge status-${statusToCssClass(hive.status)}">${escapeHtml(hive.status)}</span>
-      <button id="btn-edit-hive-details" class="btn btn-secondary btn-sm">Stammdaten bearbeiten</button>
+      ${canEdit ? '<button id="btn-edit-hive-details" class="btn btn-secondary btn-sm">Stammdaten bearbeiten</button>' : ''}
     </div>
     <div class="detail-row">
       <span class="text-secondary">Name der Königin</span>
@@ -896,7 +913,7 @@ async function renderHiveDetailView() {
   `;
 
   // Attach event to edit hive stammdaten
-  document.getElementById('btn-edit-hive-details').addEventListener('click', () => {
+  document.getElementById('btn-edit-hive-details')?.addEventListener('click', () => {
     openHiveModal(hive);
   });
 
@@ -908,10 +925,10 @@ async function renderHiveDetailView() {
     timeline.innerHTML = `
       <div class="card text-center" style="padding: 24px; border-style: dashed;">
         <p class="text-muted">Keine Durchsichten erfasst.</p>
-        <button id="btn-new-insp-empty" class="btn btn-sm btn-secondary" style="margin-top: 12px;">Erste Durchsicht eintragen</button>
+        ${canEdit ? '<button id="btn-new-insp-empty" class="btn btn-sm btn-secondary" style="margin-top: 12px;">Erste Durchsicht eintragen</button>' : ''}
       </div>
     `;
-    document.getElementById('btn-new-insp-empty').addEventListener('click', () => {
+    document.getElementById('btn-new-insp-empty')?.addEventListener('click', () => {
       openInspectionModal(null, activeHiveIdForDetail);
     });
     return;
@@ -941,9 +958,10 @@ async function renderHiveDetailView() {
           ${byChip}
         </div>
         ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${escapeHtml(insp.notes)}</p>` : ''}
+        ${canEdit ? `
         <div style="text-align: right; margin-top: 8px;">
           <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${escapeHtml(insp.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.75rem;">Bearbeiten</button>
-        </div>
+        </div>` : ''}
       </div>
     `;
   }).join('');
@@ -1195,6 +1213,10 @@ function closeModal(id) {
 // --- Form Population & Display ---
 
 function openHiveModal(hive = null) {
+  if (supabase && getActiveOperationId() && !canEditOperation()) {
+    alert('Als Betrachter kannst du Völker nur ansehen.');
+    return;
+  }
   const form = document.getElementById('form-hive');
   const deleteBtn = document.getElementById('btn-delete-hive');
   const title = document.getElementById('modal-hive-title');
@@ -1229,6 +1251,10 @@ function openHiveModal(hive = null) {
 }
 
 async function openInspectionModal(inspection = null, preselectedHiveId = null) {
+  if (supabase && getActiveOperationId() && !canEditOperation()) {
+    alert('Als Betrachter kannst du Durchsichten nur ansehen.');
+    return;
+  }
   const form = document.getElementById('form-inspection');
   const deleteBtn = document.getElementById('btn-delete-inspection');
   form.reset();
@@ -1995,13 +2021,14 @@ function updateOperationChrome() {
   }
   btn.style.display = '';
   btn.textContent = meta.name || 'Betrieb';
-  btn.title = meta.role === 'owner'
-    ? `${meta.name} (Inhaber)`
-    : `${meta.name} (Mitarbeiter)`;
+  btn.title = `${meta.name} (${roleLabel(meta.role)})`;
 }
 
 function applyRoleBasedUI() {
   const owner = !supabase || !getActiveOperationId() || isOperationOwner();
+  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+  const viewer = supabase && getActiveOperationId() && isOperationViewer();
+
   const financeNav = document.querySelector('nav.bottom-nav .nav-item[data-view="finances"]');
   if (financeNav) {
     financeNav.style.display = owner ? '' : 'none';
@@ -2010,7 +2037,25 @@ function applyRoleBasedUI() {
   if (financeCard) {
     financeCard.style.display = owner ? '' : 'none';
   }
-  // If editor landed on finances, bounce to dashboard
+
+  const quickAdd = document.getElementById('btn-quick-add');
+  if (quickAdd) {
+    quickAdd.style.display = canEdit ? '' : 'none';
+  }
+  const dashInsp = document.getElementById('dash-btn-insp');
+  const dashHoney = document.getElementById('dash-btn-honey');
+  if (dashInsp) dashInsp.style.display = canEdit ? '' : 'none';
+  if (dashHoney) dashHoney.style.display = canEdit ? '' : 'none';
+
+  const newInsp = document.getElementById('btn-new-inspection');
+  if (newInsp) newInsp.style.display = canEdit ? '' : 'none';
+
+  const viewerBanner = document.getElementById('viewer-readonly-banner');
+  if (viewerBanner) {
+    viewerBanner.style.display = viewer ? 'block' : 'none';
+  }
+
+  // If editor/viewer landed on finances, bounce to dashboard
   if (!owner && currentView === 'finances') {
     navigate('dashboard');
   }
@@ -2042,7 +2087,7 @@ async function refreshOperationSettingsUI() {
   }
 
   const addr = [meta.addressLine, [meta.postalCode, meta.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  summary.innerHTML = `<strong>${escapeHtml(meta.name)}</strong><br>${escapeHtml(addr || 'Adresse noch nicht hinterlegt')}<br>Rolle: ${meta.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}`;
+  summary.innerHTML = `<strong>${escapeHtml(meta.name)}</strong><br>${escapeHtml(addr || 'Adresse noch nicht hinterlegt')}<br>Rolle: ${escapeHtml(roleLabel(meta.role))}`;
 
   if (ownerPanel) {
     if (meta.role === 'owner') {
@@ -2068,7 +2113,7 @@ async function renderOperationMembers(operationId) {
       ${members.map((m) => `
         <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.85rem; padding:6px 0; border-bottom:1px solid var(--border-color);">
           <span>${escapeHtml(m.displayName)}${m.email ? ` <span class="text-muted">(${escapeHtml(m.email)})</span>` : ''}</span>
-          <span class="text-muted">${m.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}</span>
+          <span class="text-muted">${escapeHtml(roleLabel(m.role))}</span>
         </div>
       `).join('')}
     `;
@@ -2108,7 +2153,7 @@ async function renderOperationsList() {
           <strong style="display:block;">${escapeHtml(op.name)}</strong>
           <span class="text-muted" style="font-size:0.75rem;">${escapeHtml([op.postalCode, op.city].filter(Boolean).join(' ') || 'Ohne Ort')}</span>
         </span>
-        <span class="op-role">${op.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}</span>
+        <span class="op-role">${escapeHtml(roleLabel(op.role))}</span>
       </button>
     `).join('');
 
@@ -2218,14 +2263,18 @@ function setupOperationsUI() {
     const btn = document.getElementById('btn-create-invite');
     const opId = getActiveOperationId();
     const result = document.getElementById('operation-invite-result');
+    const roleSelect = document.getElementById('op-invite-role');
     if (!opId) return;
+    const inviteRole = roleSelect?.value === 'viewer' ? 'viewer' : 'editor';
     await withButtonLoading(btn, async () => {
       try {
-        const invite = await createInvite(opId, { role: 'editor', daysValid: 30 });
+        const invite = await createInvite(opId, { role: inviteRole, daysValid: 30 });
         const link = buildInviteLink(invite.code);
+        const roleTxt = roleLabel(invite.role);
         if (result) {
           result.style.display = 'block';
           result.innerHTML = `
+            Rolle: <strong>${escapeHtml(roleTxt)}</strong><br>
             Code: <strong>${escapeHtml(invite.code)}</strong><br>
             Link: <span style="word-break:break-all;">${escapeHtml(link)}</span><br>
             <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">Kopieren</button>
@@ -2366,8 +2415,14 @@ function setupAuth() {
         } else {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) throw error;
-          successMsg.innerText = 'Registrierung erfolgreich! Bitte überprüfe deine E-Mails zur Bestätigung.';
+          successMsg.innerText = 'Registrierung erfolgreich! Du kannst dich jetzt anmelden.';
           successMsg.style.display = 'block';
+          // Kein Bestätigungsmail mehr – direkt zum Login-Tab wechseln
+          authMode = 'login';
+          tabLogin.className = 'btn btn-sm btn-primary';
+          tabRegister.className = 'btn btn-sm btn-secondary';
+          modalTitle.innerText = 'Bei Hively anmelden';
+          submitBtn.innerText = 'Anmelden';
         }
       } catch (err) {
         errorMsg.innerText = err.message || 'Ein Fehler ist aufgetreten.';

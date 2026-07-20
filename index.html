@@ -32,6 +32,11 @@
       <main id="main-viewport">
         <!-- View 1: Dashboard -->
         <section id="view-dashboard" class="view">
+          <div id="viewer-readonly-banner" class="card" style="display: none; margin-bottom: 16px; padding: 12px 16px; border: 1px solid rgba(255, 160, 0, 0.35); background: rgba(255, 160, 0, 0.08);">
+            <p style="margin: 0; font-size: 0.9rem;">
+              Du bist als <strong>Betrachter</strong> eingeladen (z.&nbsp;B. Patenschaft) und siehst den Stand der Völker nur lesend.
+            </p>
+          </div>
           <div class="stat-card-row">
             <div class="stat-card">
               <div class="stat-label">Völker</div>
@@ -251,6 +256,13 @@
                 </div>
               </div>
               <button id="btn-save-operation" class="btn btn-primary" type="button" style="margin-bottom: 12px;">Betrieb speichern</button>
+              <div class="form-group" style="margin-top: 8px;">
+                <label for="op-invite-role">Einladung als</label>
+                <select id="op-invite-role" class="form-control">
+                  <option value="editor">Mitarbeiter (bearbeiten)</option>
+                  <option value="viewer">Betrachter / Patenschaft (nur lesen)</option>
+                </select>
+              </div>
               <button id="btn-create-invite" class="btn btn-secondary" type="button">Einladungscode erzeugen</button>
               <div id="operation-invite-result" class="text-secondary" style="font-size: 0.8rem; margin-top: 10px; display: none;"></div>
               <div id="operation-members-list" style="margin-top: 14px;"></div>

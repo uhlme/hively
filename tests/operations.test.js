@@ -5,6 +5,9 @@ import {
   getActiveOperationId,
   getActiveOperationRole,
   isOperationOwner,
+  canEditOperation,
+  isOperationViewer,
+  roleLabel,
   buildInviteLink
 } from '../src/operations.js';
 
@@ -34,5 +37,22 @@ describe('operations local active state', () => {
   it('builds a join link with the invite code', () => {
     const link = buildInviteLink('ABCD2345');
     expect(link).toContain('join=ABCD2345');
+  });
+
+  it('treats owner and editor as editable, viewer as read-only', () => {
+    setActiveOperation({ id: 'op-1', name: 'Home' }, 'owner');
+    expect(canEditOperation()).toBe(true);
+    expect(isOperationViewer()).toBe(false);
+    expect(roleLabel('owner')).toBe('Inhaber');
+
+    setActiveOperation({ id: 'op-1', name: 'Home' }, 'editor');
+    expect(canEditOperation()).toBe(true);
+    expect(isOperationViewer()).toBe(false);
+    expect(roleLabel('editor')).toBe('Mitarbeiter');
+
+    setActiveOperation({ id: 'op-1', name: 'Home' }, 'viewer');
+    expect(canEditOperation()).toBe(false);
+    expect(isOperationViewer()).toBe(true);
+    expect(roleLabel('viewer')).toBe('Betrachter');
   });
 });
