@@ -2,7 +2,7 @@
 import { supabase } from './supabase.js';
 import { safeJsonParse } from './utils.js';
 import { getNetworkPrefs, shouldUseBackgroundNetwork } from './network.js';
-import { getActiveOperationId, isOperationOwner } from './operations.js';
+import { getActiveOperationId, isOperationOwner, canEditOperation } from './operations.js';
 
 const KEYS = {
   HIVES: 'bee_tracker_hives',
@@ -480,6 +480,9 @@ export async function getHiveById(id) {
 }
 
 export async function saveHive(hive) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Völker bearbeiten.');
+  }
   const ctx = await getRemoteContext();
   if (!hive.id) {
     hive.id = 'hive_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -568,6 +571,9 @@ export async function getInspections(hiveId = null) {
 }
 
 export async function saveInspection(inspection) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Durchsichten erfassen.');
+  }
   const ctx = await getRemoteContext();
   if (!inspection.id) {
     inspection.id = 'insp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -602,6 +608,9 @@ export async function saveInspection(inspection) {
 }
 
 export async function deleteInspection(id) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Durchsichten löschen.');
+  }
   let inspections = readLocalArray(KEYS.INSPECTIONS);
   inspections = inspections.filter(i => i.id !== id);
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
@@ -717,6 +726,9 @@ export async function getHoneyHarvests() {
 }
 
 export async function saveHoneyHarvest(harvest) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Honigernten erfassen.');
+  }
   const ctx = await getRemoteContext();
   if (!harvest.id) {
     harvest.id = 'honey_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -751,6 +763,9 @@ export async function saveHoneyHarvest(harvest) {
 }
 
 export async function deleteHoneyHarvest(id) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Honigernten löschen.');
+  }
   let honey = readLocalArray(KEYS.HONEY);
   honey = honey.filter(h => h.id !== id);
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));

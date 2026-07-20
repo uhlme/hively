@@ -41,6 +41,23 @@ export function isOperationOwner() {
   return getActiveOperationRole() === 'owner';
 }
 
+/** Owner or editor may create/edit operational data. */
+export function canEditOperation() {
+  const role = getActiveOperationRole();
+  return role === 'owner' || role === 'editor';
+}
+
+export function isOperationViewer() {
+  return getActiveOperationRole() === 'viewer';
+}
+
+export function roleLabel(role) {
+  if (role === 'owner') return 'Inhaber';
+  if (role === 'editor') return 'Mitarbeiter';
+  if (role === 'viewer') return 'Betrachter';
+  return role || 'Unbekannt';
+}
+
 export function setActiveOperation(operation, role) {
   if (!operation?.id) {
     clearActiveOperation();
@@ -213,6 +230,8 @@ function generateInviteCode(length = 8) {
 export async function createInvite(operationId, { role = 'editor', daysValid = 30 } = {}) {
   const session = await requireSession();
   const client = requireSupabase();
+  const allowed = ['editor', 'viewer'];
+  const inviteRole = allowed.includes(role) ? role : 'editor';
   const code = generateInviteCode();
   const expiresAt = daysValid
     ? new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000).toISOString()
@@ -223,7 +242,7 @@ export async function createInvite(operationId, { role = 'editor', daysValid = 3
     .insert({
       operation_id: operationId,
       code,
-      role,
+      role: inviteRole,
       created_by: session.user.id,
       expires_at: expiresAt,
       max_uses: null
