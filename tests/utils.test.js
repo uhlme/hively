@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { escapeHtml, statusToCssClass, safeJsonParse, parseGeminiJson } from '../src/utils.js';
+import {
+  escapeHtml,
+  statusToCssClass,
+  safeJsonParse,
+  parseGeminiJson,
+  setButtonLoading,
+  withButtonLoading
+} from '../src/utils.js';
 
 describe('escapeHtml', () => {
   it('escapes HTML special characters', () => {
@@ -64,3 +71,36 @@ describe('parseGeminiJson', () => {
     expect(() => parseGeminiJson('keine daten')).toThrow(/Kein JSON/);
   });
 });
+
+describe('setButtonLoading / withButtonLoading', () => {
+  it('shows a spinner and restores the original label', async () => {
+    const button = document.createElement('button');
+    button.innerHTML = 'Speichern';
+
+    setButtonLoading(button, true, 'Speichern…');
+    expect(button.disabled).toBe(true);
+    expect(button.classList.contains('is-loading')).toBe(true);
+    expect(button.querySelector('.btn-spinner')).toBeTruthy();
+    expect(button.textContent).toContain('Speichern…');
+
+    setButtonLoading(button, false);
+    expect(button.disabled).toBe(false);
+    expect(button.classList.contains('is-loading')).toBe(false);
+    expect(button.innerHTML).toBe('Speichern');
+  });
+
+  it('restores the button even when the async action fails', async () => {
+    const button = document.createElement('button');
+    button.textContent = 'Speichern';
+
+    await expect(
+      withButtonLoading(button, async () => {
+        throw new Error('fail');
+      })
+    ).rejects.toThrow('fail');
+
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toBe('Speichern');
+  });
+});
+

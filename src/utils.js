@@ -1,6 +1,48 @@
 /**
- * Shared helpers for escaping, safe storage reads, and Gemini JSON parsing.
+ * Shared helpers for escaping, safe storage reads, Gemini JSON parsing,
+ * and button loading states.
  */
+
+/**
+ * Show/hide a loading spinner on a button while an async action runs.
+ * Restores the original label when loading ends.
+ */
+export function setButtonLoading(button, isLoading, loadingLabel = 'Speichern…') {
+  if (!button) return;
+
+  if (isLoading) {
+    if (button.dataset.loading === '1') return;
+    button.dataset.loading = '1';
+    button.dataset.originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML =
+      `<span class="btn-spinner" aria-hidden="true"></span>` +
+      `<span class="btn-loading-label">${loadingLabel}</span>`;
+    return;
+  }
+
+  if (button.dataset.loading !== '1') return;
+  button.disabled = false;
+  button.classList.remove('is-loading');
+  button.removeAttribute('aria-busy');
+  if (button.dataset.originalHtml !== undefined) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+  delete button.dataset.originalHtml;
+  delete button.dataset.loading;
+}
+
+/** Run an async fn while the button shows a spinner; always restores afterwards. */
+export async function withButtonLoading(button, asyncFn, loadingLabel = 'Speichern…') {
+  setButtonLoading(button, true, loadingLabel);
+  try {
+    return await asyncFn();
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
 
 /** Escape text for safe interpolation into HTML. */
 export function escapeHtml(value) {

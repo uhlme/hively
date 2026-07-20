@@ -404,6 +404,39 @@ nav.bottom-nav {
   width: auto;
 }
 
+.btn.is-loading {
+  cursor: wait;
+  opacity: 0.85;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.btn-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+.btn-loading-label {
+  white-space: nowrap;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.6;
+  }
+}
+
 /* Form Styles */
 .form-group {
   margin-bottom: 16px;
