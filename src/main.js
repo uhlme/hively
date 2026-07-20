@@ -53,7 +53,8 @@ import {
   setActiveOperation,
   isOperationOwner,
   clearActiveOperation,
-  getProfileMap
+  getProfileMap,
+  previewInvite
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading } from './utils.js';
@@ -216,8 +217,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (session) {
         await bootstrapOperationsForSession(session, { joinCode });
       } else if (joinCode) {
-        // Remember invite until after login
+        // Remember invite until after login / registration
         sessionStorage.setItem('hively_pending_join', joinCode);
+        await promptLoginForInvite(joinCode);
       }
     } catch (err) {
       console.warn('Betrieb-Bootstrap fehlgeschlagen:', err);
@@ -1924,6 +1926,24 @@ function setupSettings() {
 
 // --- Bienenbetrieb (Operations) ---
 
+async function promptLoginForInvite(joinCode) {
+  let inviteLabel = 'einem Bienenbetrieb';
+  try {
+    const preview = await previewInvite(joinCode);
+    if (preview?.operation_name) {
+      inviteLabel = `„${preview.operation_name}“`;
+    }
+  } catch (err) {
+    console.warn('Invite-Vorschau nicht möglich:', err);
+  }
+
+  alert(
+    `Du wurdest zu ${inviteLabel} eingeladen.\n\n` +
+    `Bitte melde dich an oder registriere dich mit dem Login-Button — danach wirst du automatisch dem Betrieb hinzugefügt.`
+  );
+  openModal('modal-auth');
+}
+
 async function bootstrapOperationsForSession(session, { joinCode } = {}) {
   if (!session) {
     clearActiveOperation();
@@ -1935,12 +1955,13 @@ async function bootstrapOperationsForSession(session, { joinCode } = {}) {
   const pending = joinCode || sessionStorage.getItem('hively_pending_join');
   if (pending) {
     try {
-      await joinWithCode(pending);
+      const joined = await joinWithCode(pending);
       sessionStorage.removeItem('hively_pending_join');
       // Clean join param from URL without reload
       const url = new URL(window.location.href);
       url.searchParams.delete('join');
       window.history.replaceState({}, '', url.pathname + url.search);
+      alert(`Du bist dem Betrieb „${joined.name}“ beigetreten.`);
     } catch (err) {
       console.warn('Join via code failed:', err);
       alert('Beitritt fehlgeschlagen: ' + (err.message || err));

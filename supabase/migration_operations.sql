@@ -353,6 +353,7 @@ $$;
 
 revoke all on function public.get_invite_by_code(text) from public;
 revoke all on function public.join_operation_with_code(text) from public;
+grant execute on function public.get_invite_by_code(text) to anon;
 grant execute on function public.get_invite_by_code(text) to authenticated;
 grant execute on function public.join_operation_with_code(text) to authenticated;
 
