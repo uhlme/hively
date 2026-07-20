@@ -4,8 +4,7 @@
   Optimized for iOS PWA with notch & safe area support.
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-
+/* No CDN fonts — system stack loads instantly offline / on weak links */
 :root {
   /* Colors */
   --bg-primary: #0a0a0c;
@@ -28,7 +27,7 @@
   --info: #3b82f6;
   
   /* Fonts & Weights */
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   
   /* Offical Queen Colors */
   --queen-white: #ffffff;
