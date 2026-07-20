@@ -39,7 +39,7 @@ import {
   isConstrainedConnection
 } from './network.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
-import { escapeHtml, statusToCssClass } from './utils.js';
+import { escapeHtml, statusToCssClass, withButtonLoading } from './utils.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
@@ -1347,96 +1347,91 @@ async function openSponsorshipModal(sponsorship = null) {
   openModal('modal-sponsorship');
 }
 
+function getFormSubmitButton(form, event) {
+  if (event?.submitter && event.submitter.tagName === 'BUTTON') return event.submitter;
+  return form.querySelector('button[type="submit"]');
+}
+
 // --- Form Submissions & Database Write Ops ---
 function setupForms() {
   // Hive Form Submit
   document.getElementById('form-hive').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-      const id = document.getElementById('hive-form-id').value;
-      const hive = {
-        name: document.getElementById('hive-form-name').value,
-        queenName: document.getElementById('hive-form-queen-name').value,
-        breed: document.getElementById('hive-form-breed').value,
-        queenYear: parseInt(document.getElementById('hive-form-queen-year').value),
-        status: document.getElementById('hive-form-status').value,
-        broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
-        honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
-        honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
-        notes: document.getElementById('hive-form-notes').value
-      };
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const id = document.getElementById('hive-form-id').value;
+        const hive = {
+          name: document.getElementById('hive-form-name').value,
+          queenName: document.getElementById('hive-form-queen-name').value,
+          breed: document.getElementById('hive-form-breed').value,
+          queenYear: parseInt(document.getElementById('hive-form-queen-year').value),
+          status: document.getElementById('hive-form-status').value,
+          broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
+          honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
+          honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
+          notes: document.getElementById('hive-form-notes').value
+        };
 
-      if (id) hive.id = id;
+        if (id) hive.id = id;
 
-      await saveHive(hive);
-      closeModal('modal-hive');
-      
-      if (id) {
-        // In details view, reload detail info
-        await renderHiveDetailView();
-      } else {
-        // Navigate to list
-        await navigate('hives');
+        await saveHive(hive);
+        closeModal('modal-hive');
+
+        if (id) {
+          await renderHiveDetailView();
+        } else {
+          await navigate('hives');
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern des Volks:', err);
+        alert('Fehler beim Speichern des Volks: ' + (err.message || err));
       }
-      await renderDashboardView();
-    } catch (err) {
-      console.error('Fehler beim Speichern des Volks:', err);
-      alert('Fehler beim Speichern des Volks: ' + (err.message || err));
-    }
+    });
   });
 
   // Hive Delete Button
   document.getElementById('btn-delete-hive').addEventListener('click', async () => {
     const id = document.getElementById('hive-form-id').value;
     if (id && confirm('Möchtest du dieses Volk und alle dazugehörigen Durchsichten unwiderruflich löschen?')) {
-      await deleteHive(id);
-      closeModal('modal-hive');
-      await navigate('hives');
-      await renderDashboardView();
+      const btn = document.getElementById('btn-delete-hive');
+      await withButtonLoading(btn, async () => {
+        await deleteHive(id);
+        closeModal('modal-hive');
+        await navigate('hives');
+        await renderDashboardView();
+      }, 'Löschen…');
     }
   });
 
   // Inspection Form Submit
   document.getElementById('form-inspection').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-      const id = document.getElementById('insp-form-id').value;
-      
-      // Get checked checkboxes (either checkbox or hidden input)
-      const checkedCheckboxes = Array.from(document.querySelectorAll('.hive-checkbox')).filter(el => {
-        return el.type === 'hidden' || el.checked;
-      });
-      if (checkedCheckboxes.length === 0) {
-        alert('Bitte wähle mindestens ein Bienenvolk aus.');
-        return;
-      }
-      
-      const date = document.getElementById('insp-form-date').value;
-      const notes = document.getElementById('insp-form-notes').value;
-      const weatherTemp = document.getElementById('insp-weather-temp').value;
-      const weatherCondition = document.getElementById('insp-weather-condition').value;
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
 
-      if (id) {
-        // Edit mode: save single update
-        const inspection = {
-          id: id,
-          hiveId: checkedCheckboxes[0].value,
-          date: date,
-          broodStatus: '',
-          honeySuper: '',
-          temperament: 5,
-          weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
-          weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
-          feeding: '',
-          varroa: '',
-          notes: notes
-        };
-        await saveInspection(inspection);
-      } else {
-        // Creation mode: save separate inspections for each checked hive
-        for (const chk of checkedCheckboxes) {
+    const id = document.getElementById('insp-form-id').value;
+    const checkedCheckboxes = Array.from(document.querySelectorAll('.hive-checkbox')).filter(el => {
+      return el.type === 'hidden' || el.checked;
+    });
+    if (checkedCheckboxes.length === 0) {
+      alert('Bitte wähle mindestens ein Bienenvolk aus.');
+      return;
+    }
+
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const date = document.getElementById('insp-form-date').value;
+        const notes = document.getElementById('insp-form-notes').value;
+        const weatherTemp = document.getElementById('insp-weather-temp').value;
+        const weatherCondition = document.getElementById('insp-weather-condition').value;
+
+        if (id) {
           const inspection = {
-            hiveId: chk.value,
+            id: id,
+            hiveId: checkedCheckboxes[0].value,
             date: date,
             broodStatus: '',
             honeySuper: '',
@@ -1448,203 +1443,242 @@ function setupForms() {
             notes: notes
           };
           await saveInspection(inspection);
+        } else {
+          for (const chk of checkedCheckboxes) {
+            const inspection = {
+              hiveId: chk.value,
+              date: date,
+              broodStatus: '',
+              honeySuper: '',
+              temperament: 5,
+              weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
+              weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
+              feeding: '',
+              varroa: '',
+              notes: notes
+            };
+            await saveInspection(inspection);
+          }
         }
-      }
 
-      closeModal('modal-inspection');
+        closeModal('modal-inspection');
 
-      // Refresh view
-      if (currentView === 'hive-detail') {
-        await renderHiveDetailView();
-      } else {
-        await navigate('dashboard');
+        if (currentView === 'hive-detail') {
+          await renderHiveDetailView();
+        } else {
+          await navigate('dashboard');
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern der Durchsicht:', err);
+        alert('Fehler beim Speichern der Durchsicht: ' + (err.message || err));
       }
-      await renderDashboardView();
-    } catch (err) {
-      console.error('Fehler beim Speichern der Durchsicht:', err);
-      alert('Fehler beim Speichern der Durchsicht: ' + (err.message || err));
-    }
+    });
   });
 
   // Inspection Delete Button
   document.getElementById('btn-delete-inspection').addEventListener('click', async () => {
     const id = document.getElementById('insp-form-id').value;
     if (id && confirm('Diese Durchsicht wirklich löschen?')) {
-      await deleteInspection(id);
-      closeModal('modal-inspection');
-      if (currentView === 'hive-detail') {
-        await renderHiveDetailView();
-      }
-      await renderDashboardView();
+      const btn = document.getElementById('btn-delete-inspection');
+      await withButtonLoading(btn, async () => {
+        await deleteInspection(id);
+        closeModal('modal-inspection');
+        if (currentView === 'hive-detail') {
+          await renderHiveDetailView();
+        }
+        await renderDashboardView();
+      }, 'Löschen…');
     }
   });
 
   // Finance Form Submit (Expenses)
   document.getElementById('form-finance').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-      const id = document.getElementById('finance-form-id').value;
-      const item = {
-        date: document.getElementById('finance-form-date').value,
-        description: document.getElementById('finance-form-description').value,
-        category: document.getElementById('finance-form-category').value,
-        price: parseFloat(document.getElementById('finance-form-price').value),
-        type: 'expense'
-      };
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const id = document.getElementById('finance-form-id').value;
+        const item = {
+          date: document.getElementById('finance-form-date').value,
+          description: document.getElementById('finance-form-description').value,
+          category: document.getElementById('finance-form-category').value,
+          price: parseFloat(document.getElementById('finance-form-price').value),
+          type: 'expense'
+        };
 
-      if (id) item.id = id;
+        if (id) item.id = id;
 
-      await saveFinance(item);
-      closeModal('modal-finance');
-      
-      if (currentView === 'finances') {
-        await renderFinanceView();
-      } else {
-        await navigate('finances');
+        await saveFinance(item);
+        closeModal('modal-finance');
+
+        if (currentView === 'finances') {
+          await renderFinanceView();
+        } else {
+          await navigate('finances');
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern der Ausgabe:', err);
+        alert('Fehler beim Speichern der Ausgabe: ' + (err.message || err));
       }
-      await renderDashboardView();
-    } catch (err) {
-      console.error('Fehler beim Speichern der Ausgabe:', err);
-      alert('Fehler beim Speichern der Ausgabe: ' + (err.message || err));
-    }
+    });
   });
 
   // Finance Delete Button (modal)
   document.getElementById('btn-delete-finance').addEventListener('click', async () => {
     const id = document.getElementById('finance-form-id').value;
     if (id && confirm('Diesen Kauf wirklich löschen?')) {
-      try {
-        await deleteFinance(id);
-        closeModal('modal-finance');
-        if (currentView === 'finances') {
-          await renderFinanceView();
+      const btn = document.getElementById('btn-delete-finance');
+      await withButtonLoading(btn, async () => {
+        try {
+          await deleteFinance(id);
+          closeModal('modal-finance');
+          if (currentView === 'finances') {
+            await renderFinanceView();
+          }
+          await renderDashboardView();
+        } catch (err) {
+          console.error('Fehler beim Löschen der Ausgabe:', err);
+          alert('Fehler beim Löschen: ' + (err.message || err));
         }
-        await renderDashboardView();
-      } catch (err) {
-        console.error('Fehler beim Löschen der Ausgabe:', err);
-        alert('Fehler beim Löschen: ' + (err.message || err));
-      }
+      }, 'Löschen…');
     }
   });
 
   // Honey Form Submit (Honey Harvests)
   document.getElementById('form-honey').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-      const id = document.getElementById('honey-form-id').value;
-      const harvest = {
-        hiveId: document.getElementById('honey-form-hive-id').value,
-        date: document.getElementById('honey-form-date').value,
-        amount: parseFloat(document.getElementById('honey-form-amount').value),
-        type: document.getElementById('honey-form-type').value
-      };
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const id = document.getElementById('honey-form-id').value;
+        const harvest = {
+          hiveId: document.getElementById('honey-form-hive-id').value,
+          date: document.getElementById('honey-form-date').value,
+          amount: parseFloat(document.getElementById('honey-form-amount').value),
+          type: document.getElementById('honey-form-type').value
+        };
 
-      if (id) harvest.id = id;
+        if (id) harvest.id = id;
 
-      await saveHoneyHarvest(harvest);
-      closeModal('modal-honey');
+        await saveHoneyHarvest(harvest);
+        closeModal('modal-honey');
 
-      if (currentView === 'finances') {
-        currentFinanceTab = 'honey';
-        const tabExpenses = document.getElementById('tab-fin-expenses');
-        const tabHoney = document.getElementById('tab-fin-honey');
-        tabExpenses.classList.remove('active');
-        tabHoney.classList.add('active');
-        await renderFinanceView();
-      } else {
-        await navigate('finances');
-        currentFinanceTab = 'honey';
-        const tabExpenses = document.getElementById('tab-fin-expenses');
-        const tabHoney = document.getElementById('tab-fin-honey');
-        tabExpenses.classList.remove('active');
-        tabHoney.classList.add('active');
-        await renderFinanceView();
+        if (currentView === 'finances') {
+          currentFinanceTab = 'honey';
+          const tabExpenses = document.getElementById('tab-fin-expenses');
+          const tabHoney = document.getElementById('tab-fin-honey');
+          tabExpenses.classList.remove('active');
+          tabHoney.classList.add('active');
+          await renderFinanceView();
+        } else {
+          await navigate('finances');
+          currentFinanceTab = 'honey';
+          const tabExpenses = document.getElementById('tab-fin-expenses');
+          const tabHoney = document.getElementById('tab-fin-honey');
+          tabExpenses.classList.remove('active');
+          tabHoney.classList.add('active');
+          await renderFinanceView();
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern der Honigernte:', err);
+        alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
       }
-      await renderDashboardView();
-    } catch (err) {
-      console.error('Fehler beim Speichern der Honigernte:', err);
-      alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
-    }
+    });
   });
 
   // Honey Delete Button (modal)
   document.getElementById('btn-delete-honey').addEventListener('click', async () => {
     const id = document.getElementById('honey-form-id').value;
     if (id && confirm('Diese Honigernte wirklich löschen?')) {
-      try {
-        await deleteHoneyHarvest(id);
-        closeModal('modal-honey');
-        if (currentView === 'finances') {
-          currentFinanceTab = 'honey';
-          await renderFinanceView();
+      const btn = document.getElementById('btn-delete-honey');
+      await withButtonLoading(btn, async () => {
+        try {
+          await deleteHoneyHarvest(id);
+          closeModal('modal-honey');
+          if (currentView === 'finances') {
+            currentFinanceTab = 'honey';
+            await renderFinanceView();
+          }
+          await renderDashboardView();
+        } catch (err) {
+          console.error('Fehler beim Löschen der Honigernte:', err);
+          alert('Fehler beim Löschen: ' + (err.message || err));
         }
-        await renderDashboardView();
-      } catch (err) {
-        console.error('Fehler beim Löschen der Honigernte:', err);
-        alert('Fehler beim Löschen: ' + (err.message || err));
-      }
+      }, 'Löschen…');
     }
   });
 
   // Sponsorship Form Submit
   document.getElementById('form-sponsorship').addEventListener('submit', async (e) => {
     e.preventDefault();
-    try {
-      const id = document.getElementById('sponsorship-form-id').value;
-      const sponsorName = document.getElementById('sponsorship-form-sponsor').value;
-      const item = {
-        date: document.getElementById('sponsorship-form-date').value,
-        description: `Patenschaft: ${sponsorName}`,
-        sponsorName: sponsorName,
-        hiveId: document.getElementById('sponsorship-form-hive-id').value,
-        price: parseFloat(document.getElementById('sponsorship-form-price').value),
-        category: 'Patenschaft',
-        notes: document.getElementById('sponsorship-form-notes').value,
-        type: 'sponsorship'
-      };
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const id = document.getElementById('sponsorship-form-id').value;
+        const sponsorName = document.getElementById('sponsorship-form-sponsor').value;
+        const item = {
+          date: document.getElementById('sponsorship-form-date').value,
+          description: `Patenschaft: ${sponsorName}`,
+          sponsorName: sponsorName,
+          hiveId: document.getElementById('sponsorship-form-hive-id').value,
+          price: parseFloat(document.getElementById('sponsorship-form-price').value),
+          category: 'Patenschaft',
+          notes: document.getElementById('sponsorship-form-notes').value,
+          type: 'sponsorship'
+        };
 
-      if (id) item.id = id;
+        if (id) item.id = id;
 
-      await saveFinance(item);
-      closeModal('modal-sponsorship');
+        await saveFinance(item);
+        closeModal('modal-sponsorship');
 
-      if (currentView === 'finances') {
-        currentFinanceTab = 'sponsorships';
-        const tabExpenses = document.getElementById('tab-fin-expenses');
-        const tabHoney = document.getElementById('tab-fin-honey');
-        const tabSponsorships = document.getElementById('tab-fin-sponsorships');
-        tabExpenses.classList.remove('active');
-        tabHoney.classList.remove('active');
-        tabSponsorships.classList.add('active');
-        await renderFinanceView();
-      } else {
-        await navigate('finances');
-        currentFinanceTab = 'sponsorships';
-        const tabExpenses = document.getElementById('tab-fin-expenses');
-        const tabHoney = document.getElementById('tab-fin-honey');
-        const tabSponsorships = document.getElementById('tab-fin-sponsorships');
-        tabExpenses.classList.remove('active');
-        tabHoney.classList.remove('active');
-        tabSponsorships.classList.add('active');
-        await renderFinanceView();
+        if (currentView === 'finances') {
+          currentFinanceTab = 'sponsorships';
+          const tabExpenses = document.getElementById('tab-fin-expenses');
+          const tabHoney = document.getElementById('tab-fin-honey');
+          const tabSponsorships = document.getElementById('tab-fin-sponsorships');
+          tabExpenses.classList.remove('active');
+          tabHoney.classList.remove('active');
+          tabSponsorships.classList.add('active');
+          await renderFinanceView();
+        } else {
+          await navigate('finances');
+          currentFinanceTab = 'sponsorships';
+          const tabExpenses = document.getElementById('tab-fin-expenses');
+          const tabHoney = document.getElementById('tab-fin-honey');
+          const tabSponsorships = document.getElementById('tab-fin-sponsorships');
+          tabExpenses.classList.remove('active');
+          tabHoney.classList.remove('active');
+          tabSponsorships.classList.add('active');
+          await renderFinanceView();
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern der Patenschaft:', err);
+        alert('Fehler beim Speichern der Patenschaft: ' + (err.message || err));
       }
-      await renderDashboardView();
-    } catch (err) {
-      console.error('Fehler beim Speichern der Patenschaft:', err);
-      alert('Fehler beim Speichern der Patenschaft: ' + (err.message || err));
-    }
+    });
   });
 
   // Sponsorship Delete Button
   document.getElementById('btn-delete-sponsorship').addEventListener('click', async () => {
     const id = document.getElementById('sponsorship-form-id').value;
     if (id && confirm('Diese Patenschaft wirklich löschen?')) {
-      await deleteFinance(id);
-      closeModal('modal-sponsorship');
-      if (currentView === 'finances') {
-        await renderFinanceView();
-      }
-      await renderDashboardView();
+      const btn = document.getElementById('btn-delete-sponsorship');
+      await withButtonLoading(btn, async () => {
+        await deleteFinance(id);
+        closeModal('modal-sponsorship');
+        if (currentView === 'finances') {
+          await renderFinanceView();
+        }
+        await renderDashboardView();
+      }, 'Löschen…');
     }
   });
 
@@ -1722,28 +1756,25 @@ function setupSettings() {
         alert('Keine Verbindung – Sync ist offline nicht möglich.');
         return;
       }
-      syncBtn.disabled = true;
-      const prev = syncBtn.innerText;
-      syncBtn.innerText = 'Synchronisiere...';
-      try {
-        const result = await syncNow();
-        if (shouldAutoProcessMedia()) {
-          await processOfflineMemosQueue();
+      await withButtonLoading(syncBtn, async () => {
+        try {
+          const result = await syncNow();
+          if (shouldAutoProcessMedia()) {
+            await processOfflineMemosQueue();
+          }
+          alert(result.pending > 0
+            ? `Teilweise synchronisiert. Noch ${result.pending} ausstehend.`
+            : 'Synchronisation abgeschlossen.');
+          refreshNetworkSettingsUI();
+          updateConnectionStatusUI();
+          if (currentView === 'dashboard') await renderDashboardView();
+        } catch (err) {
+          console.error(err);
+          alert('Sync fehlgeschlagen: ' + (err.message || err));
+        } finally {
+          refreshNetworkSettingsUI();
         }
-        alert(result.pending > 0
-          ? `Teilweise synchronisiert. Noch ${result.pending} ausstehend.`
-          : 'Synchronisation abgeschlossen.');
-        refreshNetworkSettingsUI();
-        updateConnectionStatusUI();
-        if (currentView === 'dashboard') await renderDashboardView();
-      } catch (err) {
-        console.error(err);
-        alert('Sync fehlgeschlagen: ' + (err.message || err));
-      } finally {
-        syncBtn.disabled = false;
-        syncBtn.innerText = prev;
-        refreshNetworkSettingsUI();
-      }
+      }, 'Synchronisiere…');
     });
   }
 
@@ -1931,28 +1962,28 @@ function setupAuth() {
     e.preventDefault();
     errorMsg.style.display = 'none';
     successMsg.style.display = 'none';
-    submitBtn.disabled = true;
 
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
+    const loadingLabel = authMode === 'login' ? 'Anmelden…' : 'Registrieren…';
 
-    try {
-      if (authMode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        closeModal('modal-auth');
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        successMsg.innerText = 'Registrierung erfolgreich! Bitte überprüfe deine E-Mails zur Bestätigung.';
-        successMsg.style.display = 'block';
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        if (authMode === 'login') {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          closeModal('modal-auth');
+        } else {
+          const { error } = await supabase.auth.signUp({ email, password });
+          if (error) throw error;
+          successMsg.innerText = 'Registrierung erfolgreich! Bitte überprüfe deine E-Mails zur Bestätigung.';
+          successMsg.style.display = 'block';
+        }
+      } catch (err) {
+        errorMsg.innerText = err.message || 'Ein Fehler ist aufgetreten.';
+        errorMsg.style.display = 'block';
       }
-    } catch (err) {
-      errorMsg.innerText = err.message || 'Ein Fehler ist aufgetreten.';
-      errorMsg.style.display = 'block';
-    } finally {
-      submitBtn.disabled = false;
-    }
+    }, loadingLabel);
   });
 }
 
