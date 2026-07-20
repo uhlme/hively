@@ -190,6 +190,49 @@ header .header-actions {
   header h1 {
     font-size: 1.15rem;
   }
+
+  .header-op-btn {
+    max-width: 72px;
+  }
+}
+
+.header-op-btn {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+}
+
+.operation-list-item.is-active {
+  border-color: var(--primary);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.operation-list-item .op-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.created-by-chip {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 /* Main scrollable viewport */

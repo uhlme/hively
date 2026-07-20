@@ -2,6 +2,7 @@
 import { supabase } from './supabase.js';
 import { safeJsonParse } from './utils.js';
 import { getNetworkPrefs, shouldUseBackgroundNetwork } from './network.js';
+import { getActiveOperationId, isOperationOwner } from './operations.js';
 
 const KEYS = {
   HIVES: 'bee_tracker_hives',
@@ -21,6 +22,16 @@ function readLocalObject(key) {
   return safeJsonParse(localStorage.getItem(key), {}) || {};
 }
 
+/** Clear entity caches when switching Bienenbetrieb. */
+export function clearLocalEntityCache() {
+  localStorage.removeItem(KEYS.HIVES);
+  localStorage.removeItem(KEYS.INSPECTIONS);
+  localStorage.removeItem(KEYS.FINANCES);
+  localStorage.removeItem(KEYS.HONEY);
+  localStorage.removeItem(KEYS.LAST_PULL);
+  // Keep sync queue – items carry operationId and will sync when due
+}
+
 // Check if user is logged in
 export async function getSession() {
   if (!supabase) return null;
@@ -32,6 +43,22 @@ async function useRemote() {
   if (!supabase) return false;
   const { data: { session } } = await supabase.auth.getSession();
   return !!session;
+}
+
+async function getRemoteContext() {
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const operationId = getActiveOperationId();
+  if (!operationId) return null;
+  return { session, userId: session.user.id, operationId };
+}
+
+function stampOperationFields(entity, ctx) {
+  if (!ctx) return entity;
+  if (!entity.operationId) entity.operationId = ctx.operationId;
+  if (!entity.createdBy) entity.createdBy = ctx.userId;
+  return entity;
 }
 
 // Mappers between Local (camelCase) and DB (snake_case)
@@ -48,6 +75,8 @@ function mapHiveToDB(h) {
     brood_frames: h.broodFrames ? parseInt(h.broodFrames) : 0,
     honey_frames_1: h.honeyFrames1 ? parseInt(h.honeyFrames1) : 0,
     honey_frames_2: h.honeyFrames2 ? parseInt(h.honeyFrames2) : 0,
+    operation_id: h.operationId || null,
+    created_by: h.createdBy || null,
     created_at: h.createdAt || new Date().toISOString(),
     updated_at: h.updatedAt || new Date().toISOString()
   };
@@ -66,6 +95,8 @@ function mapHiveFromDB(h) {
     broodFrames: h.brood_frames || 0,
     honeyFrames1: h.honey_frames_1 || 0,
     honeyFrames2: h.honey_frames_2 || 0,
+    operationId: h.operation_id || null,
+    createdBy: h.created_by || h.user_id || null,
     createdAt: h.created_at,
     updatedAt: h.updated_at
   };
@@ -84,6 +115,8 @@ function mapInspectionToDB(i) {
     weather_temp: i.weatherTemp !== undefined && i.weatherTemp !== '' ? parseFloat(i.weatherTemp) : null,
     weather_condition: i.weatherCondition || null,
     notes: i.notes || null,
+    operation_id: i.operationId || null,
+    created_by: i.createdBy || null,
     created_at: i.createdAt || new Date().toISOString(),
     updated_at: i.updatedAt || new Date().toISOString()
   };
@@ -102,6 +135,8 @@ function mapInspectionFromDB(i) {
     weatherTemp: i.weather_temp,
     weatherCondition: i.weather_condition,
     notes: i.notes,
+    operationId: i.operation_id || null,
+    createdBy: i.created_by || i.user_id || null,
     createdAt: i.created_at,
     updatedAt: i.updated_at
   };
@@ -118,6 +153,8 @@ function mapFinanceToDB(f) {
     hive_id: f.hiveId || null,
     sponsor_name: f.sponsorName || null,
     notes: f.notes || null,
+    operation_id: f.operationId || null,
+    created_by: f.createdBy || null,
     created_at: f.createdAt || new Date().toISOString(),
     updated_at: f.updatedAt || new Date().toISOString()
   };
@@ -134,6 +171,8 @@ function mapFinanceFromDB(f) {
     hiveId: f.hive_id,
     sponsorName: f.sponsor_name,
     notes: f.notes,
+    operationId: f.operation_id || null,
+    createdBy: f.created_by || f.user_id || null,
     createdAt: f.created_at,
     updatedAt: f.updated_at
   };
@@ -146,6 +185,8 @@ function mapHoneyToDB(h) {
     date: h.date,
     amount: parseFloat(h.amount),
     type: h.type || null,
+    operation_id: h.operationId || null,
+    created_by: h.createdBy || null,
     created_at: h.createdAt || new Date().toISOString(),
     updated_at: h.updatedAt || new Date().toISOString()
   };
@@ -158,6 +199,8 @@ function mapHoneyFromDB(h) {
     date: h.date,
     amount: parseFloat(h.amount),
     type: h.type,
+    operationId: h.operation_id || null,
+    createdBy: h.created_by || h.user_id || null,
     createdAt: h.created_at,
     updatedAt: h.updated_at
   };
@@ -242,11 +285,21 @@ function addToSyncQueue(action, type, payload) {
   console.log(`[Sync Queue] Added ${action} on ${type} (${recordId}). Total pending: ${queue.length}`);
 }
 
-function mapPayloadToDB(type, payload, userId) {
-  if (type === 'hives') return { ...mapHiveToDB(payload), user_id: userId };
-  if (type === 'inspections') return { ...mapInspectionToDB(payload), user_id: userId };
-  if (type === 'finances') return { ...mapFinanceToDB(payload), user_id: userId };
-  if (type === 'honey_harvests') return { ...mapHoneyToDB(payload), user_id: userId };
+function mapPayloadToDB(type, payload, userId, operationId) {
+  const opId = operationId || payload.operationId || null;
+  const createdBy = payload.createdBy || userId;
+  if (type === 'hives') {
+    return { ...mapHiveToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
+  if (type === 'inspections') {
+    return { ...mapInspectionToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
+  if (type === 'finances') {
+    return { ...mapFinanceToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
+  if (type === 'honey_harvests') {
+    return { ...mapHoneyToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
   return null;
 }
 
@@ -261,6 +314,7 @@ export async function processSyncQueue() {
   if (!navigator.onLine) return { synced: 0, pending: getSyncQueueLength() };
 
   const userId = session.user.id;
+  const activeOp = getActiveOperationId();
   const now = Date.now();
   let queue = readLocalArray(KEYS.SYNC_QUEUE);
   if (queue.length === 0) return { synced: 0, pending: 0 };
@@ -300,7 +354,9 @@ export async function processSyncQueue() {
 
     if (upserts.length > 0) {
       try {
-        const rows = upserts.map(i => mapPayloadToDB(type, i.payload, userId)).filter(Boolean);
+        const rows = upserts
+          .map(i => mapPayloadToDB(type, i.payload, userId, i.payload.operationId || activeOp))
+          .filter(Boolean);
         const { error } = await supabase.from(type).upsert(rows);
         if (error) throw error;
         synced += upserts.length;
@@ -398,9 +454,14 @@ async function syncOrQueue(action, type, payload, remoteCall) {
 
 export async function getHives() {
   const isRemote = await useRemote();
-  if (isRemote && shouldPullRemote('hives')) {
+  const ctx = isRemote ? await getRemoteContext() : null;
+  if (ctx && shouldPullRemote('hives')) {
     try {
-      const { data, error } = await supabase.from('hives').select('*').order('name');
+      const { data, error } = await supabase
+        .from('hives')
+        .select('*')
+        .eq('operation_id', ctx.operationId)
+        .order('name');
       if (error) throw error;
       const hives = data.map(mapHiveFromDB);
       localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
@@ -419,11 +480,13 @@ export async function getHiveById(id) {
 }
 
 export async function saveHive(hive) {
+  const ctx = await getRemoteContext();
   if (!hive.id) {
     hive.id = 'hive_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     hive.createdAt = new Date().toISOString();
   }
   hive.updatedAt = new Date().toISOString();
+  stampOperationFields(hive, ctx);
 
   // 1. Save to local storage first (never block on network)
   const hives = readLocalArray(KEYS.HIVES);
@@ -437,8 +500,14 @@ export async function saveHive(hive) {
 
   // 2. Sync to Supabase or queue (skips weak connections)
   await syncOrQueue('upsert', 'hives', hive, async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapHiveToDB(hive), user_id: session.user.id };
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const dbData = {
+      ...mapHiveToDB(hive),
+      user_id: remote.userId,
+      operation_id: hive.operationId || remote.operationId,
+      created_by: hive.createdBy || remote.userId
+    };
     const { error } = await supabase.from('hives').upsert(dbData);
     if (error) throw error;
   });
@@ -446,6 +515,10 @@ export async function saveHive(hive) {
 }
 
 export async function deleteHive(id) {
+  if (await useRemote() && !isOperationOwner()) {
+    throw new Error('Nur Betriebsinhaber dürfen Völker löschen.');
+  }
+
   // 1. Delete locally first
   let hives = readLocalArray(KEYS.HIVES);
   hives = hives.filter(h => h.id !== id);
@@ -468,9 +541,14 @@ export async function deleteHive(id) {
 
 export async function getInspections(hiveId = null) {
   const isRemote = await useRemote();
-  if (isRemote && shouldPullRemote('inspections')) {
+  const ctx = isRemote ? await getRemoteContext() : null;
+  if (ctx && shouldPullRemote('inspections')) {
     try {
-      const { data, error } = await supabase.from('inspections').select('*').order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('inspections')
+        .select('*')
+        .eq('operation_id', ctx.operationId)
+        .order('date', { ascending: false });
       if (error) throw error;
       const inspections = data.map(mapInspectionFromDB);
       localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
@@ -490,11 +568,13 @@ export async function getInspections(hiveId = null) {
 }
 
 export async function saveInspection(inspection) {
+  const ctx = await getRemoteContext();
   if (!inspection.id) {
     inspection.id = 'insp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     inspection.createdAt = new Date().toISOString();
   }
   inspection.updatedAt = new Date().toISOString();
+  stampOperationFields(inspection, ctx);
 
   // 1. Save locally
   const inspections = readLocalArray(KEYS.INSPECTIONS);
@@ -507,8 +587,14 @@ export async function saveInspection(inspection) {
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
 
   await syncOrQueue('upsert', 'inspections', inspection, async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapInspectionToDB(inspection), user_id: session.user.id };
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const dbData = {
+      ...mapInspectionToDB(inspection),
+      user_id: remote.userId,
+      operation_id: inspection.operationId || remote.operationId,
+      created_by: inspection.createdBy || remote.userId
+    };
     const { error } = await supabase.from('inspections').upsert(dbData);
     if (error) throw error;
   });
@@ -530,9 +616,17 @@ export async function deleteInspection(id) {
 
 export async function getFinances() {
   const isRemote = await useRemote();
-  if (isRemote && shouldPullRemote('finances')) {
+  if (isRemote && !isOperationOwner()) {
+    return [];
+  }
+  const ctx = isRemote ? await getRemoteContext() : null;
+  if (ctx && shouldPullRemote('finances')) {
     try {
-      const { data, error } = await supabase.from('finances').select('*').order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('finances')
+        .select('*')
+        .eq('operation_id', ctx.operationId)
+        .order('date', { ascending: false });
       if (error) throw error;
       const finances = data.map(mapFinanceFromDB);
       localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
@@ -547,11 +641,16 @@ export async function getFinances() {
 }
 
 export async function saveFinance(item) {
+  if (await useRemote() && !isOperationOwner()) {
+    throw new Error('Nur Betriebsinhaber dürfen Finanzen bearbeiten.');
+  }
+  const ctx = await getRemoteContext();
   if (!item.id) {
     item.id = 'fin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     item.createdAt = new Date().toISOString();
   }
   item.updatedAt = new Date().toISOString();
+  stampOperationFields(item, ctx);
 
   // 1. Save locally
   const finances = readLocalArray(KEYS.FINANCES);
@@ -564,8 +663,14 @@ export async function saveFinance(item) {
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
 
   await syncOrQueue('upsert', 'finances', item, async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapFinanceToDB(item), user_id: session.user.id };
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const dbData = {
+      ...mapFinanceToDB(item),
+      user_id: remote.userId,
+      operation_id: item.operationId || remote.operationId,
+      created_by: item.createdBy || remote.userId
+    };
     const { error } = await supabase.from('finances').upsert(dbData);
     if (error) throw error;
   });
@@ -573,6 +678,9 @@ export async function saveFinance(item) {
 }
 
 export async function deleteFinance(id) {
+  if (await useRemote() && !isOperationOwner()) {
+    throw new Error('Nur Betriebsinhaber dürfen Finanzen löschen.');
+  }
   let finances = readLocalArray(KEYS.FINANCES);
   finances = finances.filter(f => f.id !== id);
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
@@ -587,9 +695,14 @@ export async function deleteFinance(id) {
 
 export async function getHoneyHarvests() {
   const isRemote = await useRemote();
-  if (isRemote && shouldPullRemote('honey')) {
+  const ctx = isRemote ? await getRemoteContext() : null;
+  if (ctx && shouldPullRemote('honey')) {
     try {
-      const { data, error } = await supabase.from('honey_harvests').select('*').order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('honey_harvests')
+        .select('*')
+        .eq('operation_id', ctx.operationId)
+        .order('date', { ascending: false });
       if (error) throw error;
       const honey = data.map(mapHoneyFromDB);
       localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
@@ -604,11 +717,13 @@ export async function getHoneyHarvests() {
 }
 
 export async function saveHoneyHarvest(harvest) {
+  const ctx = await getRemoteContext();
   if (!harvest.id) {
     harvest.id = 'honey_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     harvest.createdAt = new Date().toISOString();
   }
   harvest.updatedAt = new Date().toISOString();
+  stampOperationFields(harvest, ctx);
 
   // 1. Save locally
   const honey = readLocalArray(KEYS.HONEY);
@@ -621,8 +736,14 @@ export async function saveHoneyHarvest(harvest) {
   localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
 
   await syncOrQueue('upsert', 'honey_harvests', harvest, async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const dbData = { ...mapHoneyToDB(harvest), user_id: session.user.id };
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const dbData = {
+      ...mapHoneyToDB(harvest),
+      user_id: remote.userId,
+      operation_id: harvest.operationId || remote.operationId,
+      created_by: harvest.createdBy || remote.userId
+    };
     const { error } = await supabase.from('honey_harvests').upsert(dbData);
     if (error) throw error;
   });
@@ -657,16 +778,20 @@ export async function saveTaskState(month, taskId, isChecked) {
 // Sync Local Data to Supabase (manual migration trigger)
 export async function syncLocalToRemote() {
   if (!supabase) return false;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return false;
-  
-  const userId = session.user.id;
+  const ctx = await getRemoteContext();
+  if (!ctx) return false;
+
+  const userId = ctx.userId;
+  const operationId = ctx.operationId;
   const errors = [];
 
   // Sync hives
   const hives = readLocalArray(KEYS.HIVES);
   if (hives.length > 0) {
-    const dbHives = hives.map(h => ({ ...mapHiveToDB(h), user_id: userId }));
+    const dbHives = hives.map(h => ({
+      ...mapHiveToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
+      user_id: userId
+    }));
     const { error } = await supabase.from('hives').upsert(dbHives);
     if (error) {
       console.error('Error syncing hives:', error);
@@ -677,7 +802,10 @@ export async function syncLocalToRemote() {
   // Sync inspections
   const inspections = readLocalArray(KEYS.INSPECTIONS);
   if (inspections.length > 0) {
-    const dbInspections = inspections.map(i => ({ ...mapInspectionToDB(i), user_id: userId }));
+    const dbInspections = inspections.map(i => ({
+      ...mapInspectionToDB({ ...i, operationId: i.operationId || operationId, createdBy: i.createdBy || userId }),
+      user_id: userId
+    }));
     const { error } = await supabase.from('inspections').upsert(dbInspections);
     if (error) {
       console.error('Error syncing inspections:', error);
@@ -687,8 +815,11 @@ export async function syncLocalToRemote() {
 
   // Sync finances
   const finances = readLocalArray(KEYS.FINANCES);
-  if (finances.length > 0) {
-    const dbFinances = finances.map(f => ({ ...mapFinanceToDB(f), user_id: userId }));
+  if (finances.length > 0 && isOperationOwner()) {
+    const dbFinances = finances.map(f => ({
+      ...mapFinanceToDB({ ...f, operationId: f.operationId || operationId, createdBy: f.createdBy || userId }),
+      user_id: userId
+    }));
     const { error } = await supabase.from('finances').upsert(dbFinances);
     if (error) {
       console.error('Error syncing finances:', error);
@@ -699,7 +830,10 @@ export async function syncLocalToRemote() {
   // Sync honey
   const honey = readLocalArray(KEYS.HONEY);
   if (honey.length > 0) {
-    const dbHoney = honey.map(h => ({ ...mapHoneyToDB(h), user_id: userId }));
+    const dbHoney = honey.map(h => ({
+      ...mapHoneyToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
+      user_id: userId
+    }));
     const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
     if (error) {
       console.error('Error syncing honey:', error);
@@ -742,27 +876,43 @@ export async function importData(jsonString) {
     const isRemote = await useRemote();
 
     if (isRemote) {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session.user.id;
+      const ctx = await getRemoteContext();
+      if (!ctx) {
+        console.error('Import rejected: kein aktiver Betrieb');
+        return false;
+      }
+      const { userId, operationId } = ctx;
       const errors = [];
 
       if (data.hives && Array.isArray(data.hives)) {
-        const dbHives = data.hives.map(h => ({ ...mapHiveToDB(h), user_id: userId }));
+        const dbHives = data.hives.map(h => ({
+          ...mapHiveToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
+          user_id: userId
+        }));
         const { error } = await supabase.from('hives').upsert(dbHives);
         if (error) errors.push(error);
       }
       if (data.inspections && Array.isArray(data.inspections)) {
-        const dbInspections = data.inspections.map(i => ({ ...mapInspectionToDB(i), user_id: userId }));
+        const dbInspections = data.inspections.map(i => ({
+          ...mapInspectionToDB({ ...i, operationId: i.operationId || operationId, createdBy: i.createdBy || userId }),
+          user_id: userId
+        }));
         const { error } = await supabase.from('inspections').upsert(dbInspections);
         if (error) errors.push(error);
       }
-      if (data.finances && Array.isArray(data.finances)) {
-        const dbFinances = data.finances.map(f => ({ ...mapFinanceToDB(f), user_id: userId }));
+      if (data.finances && Array.isArray(data.finances) && isOperationOwner()) {
+        const dbFinances = data.finances.map(f => ({
+          ...mapFinanceToDB({ ...f, operationId: f.operationId || operationId, createdBy: f.createdBy || userId }),
+          user_id: userId
+        }));
         const { error } = await supabase.from('finances').upsert(dbFinances);
         if (error) errors.push(error);
       }
       if (data.honey && Array.isArray(data.honey)) {
-        const dbHoney = data.honey.map(h => ({ ...mapHoneyToDB(h), user_id: userId }));
+        const dbHoney = data.honey.map(h => ({
+          ...mapHoneyToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
+          user_id: userId
+        }));
         const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
         if (error) errors.push(error);
       }
@@ -771,6 +921,7 @@ export async function importData(jsonString) {
         console.error('Import had Supabase errors:', errors);
         return false;
       }
+      invalidatePullCache();
     } else {
       if (data.hives && Array.isArray(data.hives)) {
         localStorage.setItem(KEYS.HIVES, JSON.stringify(data.hives));

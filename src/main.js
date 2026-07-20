@@ -22,7 +22,8 @@ import {
   processSyncQueue,
   getSyncQueueLength,
   getLastSyncSummary,
-  syncNow
+  syncNow,
+  clearLocalEntityCache
 } from './storage.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
@@ -38,6 +39,22 @@ import {
   getConnectionType,
   isConstrainedConnection
 } from './network.js';
+import {
+  ensureActiveOperation,
+  listMyOperations,
+  createOperation,
+  updateOperation,
+  createInvite,
+  buildInviteLink,
+  joinWithCode,
+  listOperationMembers,
+  getActiveOperationMeta,
+  getActiveOperationId,
+  setActiveOperation,
+  isOperationOwner,
+  clearActiveOperation,
+  getProfileMap
+} from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading } from './utils.js';
 
@@ -173,6 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupModals();
   setupForms();
   setupSettings();
+  setupOperationsUI();
   setupAuth();
   setupVoiceAssistant();
   setupReceiptScanner();
@@ -186,10 +204,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial render
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
+  const joinCode = urlParams.get('join');
   if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings', 'calendar'].includes(viewParam)) {
     currentView = viewParam;
   }
+
+  // If already logged in, bootstrap active Betrieb before first render
+  if (supabase) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await bootstrapOperationsForSession(session, { joinCode });
+      } else if (joinCode) {
+        // Remember invite until after login
+        sessionStorage.setItem('hively_pending_join', joinCode);
+      }
+    } catch (err) {
+      console.warn('Betrieb-Bootstrap fehlgeschlagen:', err);
+    }
+  }
+
   await navigate(currentView);
+  updateOperationChrome();
+  applyRoleBasedUI();
 });
 
 // --- Routing / View Swapping ---
@@ -341,6 +378,7 @@ async function navigate(viewName) {
     await renderCalendarView();
   } else if (viewName === 'settings') {
     refreshNetworkSettingsUI();
+    refreshOperationSettingsUI();
   }
 }
 
@@ -877,13 +915,28 @@ async function renderHiveDetailView() {
     return;
   }
 
+  const creatorIds = inspections.map((i) => i.createdBy).filter(Boolean);
+  let creatorNames = {};
+  try {
+    if (supabase && creatorIds.length) {
+      creatorNames = await getProfileMap(creatorIds);
+    }
+  } catch (err) {
+    console.warn('Profilnamen nicht geladen:', err);
+  }
+
   timeline.innerHTML = inspections.map(insp => {
     const weatherString = (insp.weatherTemp !== undefined && insp.weatherTemp !== null) ? 
         `<span style="margin-left: 8px; font-size: 0.85rem;" class="text-secondary">| ${escapeHtml(insp.weatherCondition || '')} ${escapeHtml(insp.weatherTemp)}°C</span>` : '';
+    const byName = insp.createdBy ? (creatorNames[insp.createdBy] || null) : null;
+    const byChip = byName
+      ? `<span class="created-by-chip">von ${escapeHtml(byName)}</span>`
+      : '';
     return `
       <div class="log-item inspection-log-card" data-id="${escapeHtml(insp.id)}">
-        <div class="log-item-header">
+        <div class="log-item-header" style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
           <span>${escapeHtml(formatDateString(insp.date))}${weatherString}</span>
+          ${byChip}
         </div>
         ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${escapeHtml(insp.notes)}</p>` : ''}
         <div style="text-align: right; margin-top: 8px;">
@@ -1157,7 +1210,8 @@ function openHiveModal(hive = null) {
     document.getElementById('hive-form-honey-frames-1').value = hive.honeyFrames1 || 0;
     document.getElementById('hive-form-honey-frames-2').value = hive.honeyFrames2 || 0;
     document.getElementById('hive-form-notes').value = hive.notes || '';
-    deleteBtn.style.display = 'block';
+    const canDelete = !supabase || !getActiveOperationId() || isOperationOwner();
+    deleteBtn.style.display = canDelete ? 'block' : 'none';
   } else {
     title.innerText = 'Neues Volk erfassen';
     document.getElementById('hive-form-id').value = '';
@@ -1868,6 +1922,309 @@ function setupSettings() {
   });
 }
 
+// --- Bienenbetrieb (Operations) ---
+
+async function bootstrapOperationsForSession(session, { joinCode } = {}) {
+  if (!session) {
+    clearActiveOperation();
+    updateOperationChrome();
+    applyRoleBasedUI();
+    return;
+  }
+
+  const pending = joinCode || sessionStorage.getItem('hively_pending_join');
+  if (pending) {
+    try {
+      await joinWithCode(pending);
+      sessionStorage.removeItem('hively_pending_join');
+      // Clean join param from URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete('join');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    } catch (err) {
+      console.warn('Join via code failed:', err);
+      alert('Beitritt fehlgeschlagen: ' + (err.message || err));
+      await ensureActiveOperation();
+    }
+  } else {
+    await ensureActiveOperation();
+  }
+
+  clearLocalEntityCache();
+  updateOperationChrome();
+  applyRoleBasedUI();
+}
+
+async function switchToOperation(operation) {
+  setActiveOperation(operation, operation.role);
+  clearLocalEntityCache();
+  updateOperationChrome();
+  applyRoleBasedUI();
+  closeModal('modal-operations');
+  await navigate(currentView === 'hive-detail' ? 'hives' : currentView);
+}
+
+function updateOperationChrome() {
+  const btn = document.getElementById('btn-operation-switcher');
+  if (!btn) return;
+  const meta = getActiveOperationMeta();
+  if (!supabase || !meta) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  btn.textContent = meta.name || 'Betrieb';
+  btn.title = meta.role === 'owner'
+    ? `${meta.name} (Inhaber)`
+    : `${meta.name} (Mitarbeiter)`;
+}
+
+function applyRoleBasedUI() {
+  const owner = !supabase || !getActiveOperationId() || isOperationOwner();
+  const financeNav = document.querySelector('nav.bottom-nav .nav-item[data-view="finances"]');
+  if (financeNav) {
+    financeNav.style.display = owner ? '' : 'none';
+  }
+  const financeCard = document.getElementById('stat-card-finance');
+  if (financeCard) {
+    financeCard.style.display = owner ? '' : 'none';
+  }
+  // If editor landed on finances, bounce to dashboard
+  if (!owner && currentView === 'finances') {
+    navigate('dashboard');
+  }
+}
+
+async function refreshOperationSettingsUI() {
+  const summary = document.getElementById('operation-settings-summary');
+  const ownerPanel = document.getElementById('operation-owner-panel');
+  if (!summary) return;
+
+  if (!supabase) {
+    summary.textContent = 'Lokal-Modus – melde dich an, um Betriebe zu nutzen.';
+    if (ownerPanel) ownerPanel.style.display = 'none';
+    return;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    summary.textContent = 'Nicht angemeldet – Login erforderlich für Betriebe.';
+    if (ownerPanel) ownerPanel.style.display = 'none';
+    return;
+  }
+
+  const meta = getActiveOperationMeta();
+  if (!meta) {
+    summary.textContent = 'Kein aktiver Betrieb.';
+    if (ownerPanel) ownerPanel.style.display = 'none';
+    return;
+  }
+
+  const addr = [meta.addressLine, [meta.postalCode, meta.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  summary.innerHTML = `<strong>${escapeHtml(meta.name)}</strong><br>${escapeHtml(addr || 'Adresse noch nicht hinterlegt')}<br>Rolle: ${meta.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}`;
+
+  if (ownerPanel) {
+    if (meta.role === 'owner') {
+      ownerPanel.style.display = 'block';
+      document.getElementById('op-settings-name').value = meta.name || '';
+      document.getElementById('op-settings-address').value = meta.addressLine || '';
+      document.getElementById('op-settings-zip').value = meta.postalCode || '';
+      document.getElementById('op-settings-city').value = meta.city || '';
+      await renderOperationMembers(meta.id);
+    } else {
+      ownerPanel.style.display = 'none';
+    }
+  }
+}
+
+async function renderOperationMembers(operationId) {
+  const list = document.getElementById('operation-members-list');
+  if (!list) return;
+  try {
+    const members = await listOperationMembers(operationId);
+    list.innerHTML = `
+      <h4 style="font-size: 0.85rem; margin-bottom: 8px;">Mitglieder</h4>
+      ${members.map((m) => `
+        <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.85rem; padding:6px 0; border-bottom:1px solid var(--border-color);">
+          <span>${escapeHtml(m.displayName)}${m.email ? ` <span class="text-muted">(${escapeHtml(m.email)})</span>` : ''}</span>
+          <span class="text-muted">${m.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}</span>
+        </div>
+      `).join('')}
+    `;
+  } catch (err) {
+    list.innerHTML = `<p class="text-danger" style="font-size:0.85rem;">Mitglieder konnten nicht geladen werden.</p>`;
+  }
+}
+
+async function openOperationsModal() {
+  if (!supabase) {
+    alert('Betriebe benötigen eine Anmeldung.');
+    return;
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    openModal('modal-auth');
+    return;
+  }
+  await renderOperationsList();
+  openModal('modal-operations');
+}
+
+async function renderOperationsList() {
+  const list = document.getElementById('operations-list');
+  if (!list) return;
+  list.innerHTML = '<p class="text-secondary" style="font-size:0.85rem;">Lädt…</p>';
+  try {
+    const ops = await listMyOperations();
+    const activeId = getActiveOperationId();
+    if (ops.length === 0) {
+      list.innerHTML = '<p class="text-secondary" style="font-size:0.85rem;">Noch keine Betriebe.</p>';
+      return;
+    }
+    list.innerHTML = ops.map((op) => `
+      <button type="button" class="operation-list-item ${op.id === activeId ? 'is-active' : ''}" data-op-id="${escapeHtml(op.id)}">
+        <span>
+          <strong style="display:block;">${escapeHtml(op.name)}</strong>
+          <span class="text-muted" style="font-size:0.75rem;">${escapeHtml([op.postalCode, op.city].filter(Boolean).join(' ') || 'Ohne Ort')}</span>
+        </span>
+        <span class="op-role">${op.role === 'owner' ? 'Inhaber' : 'Mitarbeiter'}</span>
+      </button>
+    `).join('');
+
+    list.querySelectorAll('[data-op-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const op = ops.find((o) => o.id === btn.getAttribute('data-op-id'));
+        if (op) await switchToOperation(op);
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="text-danger" style="font-size:0.85rem;">${escapeHtml(err.message || err)}</p>`;
+  }
+}
+
+function setupOperationsUI() {
+  const switcher = document.getElementById('btn-operation-switcher');
+  if (switcher) {
+    switcher.addEventListener('click', () => openOperationsModal());
+  }
+
+  document.getElementById('btn-open-operations')?.addEventListener('click', () => openOperationsModal());
+  document.getElementById('btn-join-operation')?.addEventListener('click', () => {
+    openModal('modal-operation-join');
+  });
+  document.getElementById('btn-op-create-open')?.addEventListener('click', () => {
+    closeModal('modal-operations');
+    openModal('modal-operation-create');
+  });
+  document.getElementById('btn-op-join-open')?.addEventListener('click', () => {
+    closeModal('modal-operations');
+    openModal('modal-operation-join');
+  });
+
+  document.getElementById('form-operation-create')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.submitter || e.currentTarget.querySelector('button[type="submit"]');
+    await withButtonLoading(btn, async () => {
+      try {
+        const created = await createOperation({
+          name: document.getElementById('op-create-name').value,
+          addressLine: document.getElementById('op-create-address').value,
+          postalCode: document.getElementById('op-create-zip').value,
+          city: document.getElementById('op-create-city').value
+        });
+        clearLocalEntityCache();
+        closeModal('modal-operation-create');
+        e.currentTarget.reset();
+        updateOperationChrome();
+        applyRoleBasedUI();
+        await navigate('dashboard');
+        alert(`Betrieb „${created.name}“ angelegt.`);
+      } catch (err) {
+        alert('Anlegen fehlgeschlagen: ' + (err.message || err));
+      }
+    }, 'Anlegen…');
+  });
+
+  document.getElementById('form-operation-join')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.submitter || e.currentTarget.querySelector('button[type="submit"]');
+    const code = document.getElementById('op-join-code').value.trim();
+    await withButtonLoading(btn, async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          sessionStorage.setItem('hively_pending_join', code);
+          closeModal('modal-operation-join');
+          openModal('modal-auth');
+          return;
+        }
+        const joined = await joinWithCode(code);
+        clearLocalEntityCache();
+        closeModal('modal-operation-join');
+        e.currentTarget.reset();
+        updateOperationChrome();
+        applyRoleBasedUI();
+        await navigate('dashboard');
+        alert(`Beigetreten: ${joined.name}`);
+      } catch (err) {
+        alert('Beitritt fehlgeschlagen: ' + (err.message || err));
+      }
+    }, 'Beitreten…');
+  });
+
+  document.getElementById('btn-save-operation')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-save-operation');
+    const opId = getActiveOperationId();
+    if (!opId) return;
+    await withButtonLoading(btn, async () => {
+      try {
+        await updateOperation(opId, {
+          name: document.getElementById('op-settings-name').value,
+          addressLine: document.getElementById('op-settings-address').value,
+          postalCode: document.getElementById('op-settings-zip').value,
+          city: document.getElementById('op-settings-city').value
+        });
+        updateOperationChrome();
+        await refreshOperationSettingsUI();
+        alert('Betrieb gespeichert.');
+      } catch (err) {
+        alert('Speichern fehlgeschlagen: ' + (err.message || err));
+      }
+    });
+  });
+
+  document.getElementById('btn-create-invite')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-create-invite');
+    const opId = getActiveOperationId();
+    const result = document.getElementById('operation-invite-result');
+    if (!opId) return;
+    await withButtonLoading(btn, async () => {
+      try {
+        const invite = await createInvite(opId, { role: 'editor', daysValid: 30 });
+        const link = buildInviteLink(invite.code);
+        if (result) {
+          result.style.display = 'block';
+          result.innerHTML = `
+            Code: <strong>${escapeHtml(invite.code)}</strong><br>
+            Link: <span style="word-break:break-all;">${escapeHtml(link)}</span><br>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">Kopieren</button>
+          `;
+          document.getElementById('btn-copy-invite')?.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(`${invite.code}\n${link}`);
+              alert('Einladung kopiert.');
+            } catch {
+              prompt('Einladung kopieren:', `${invite.code}\n${link}`);
+            }
+          });
+        }
+      } catch (err) {
+        alert('Einladung fehlgeschlagen: ' + (err.message || err));
+      }
+    }, 'Erzeuge…');
+  });
+}
+
 // --- Supabase Authentication Setup ---
 function setupAuth() {
   if (!supabase) {
@@ -1891,8 +2248,15 @@ function setupAuth() {
     if (session) {
       userStatus.innerText = session.user.email;
       btnAuthAction.innerText = 'Logout';
-      
-      // Check if there is local data to sync
+
+      try {
+        const pendingJoin = sessionStorage.getItem('hively_pending_join');
+        await bootstrapOperationsForSession(session, { joinCode: pendingJoin });
+      } catch (err) {
+        console.warn('Betrieb nach Login nicht bereit:', err);
+      }
+
+      // Check if there is local data to sync (into active Betrieb)
       let localHives = [];
       try {
         localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
@@ -1900,8 +2264,8 @@ function setupAuth() {
         localHives = [];
       }
       const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
-      if (localHives.length > 0 && !hasDeclinedSync) {
-        if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in dein Online-Konto übertragen?')) {
+      if (localHives.length > 0 && !hasDeclinedSync && isOperationOwner()) {
+        if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
           try {
             await syncLocalToRemote();
             alert('Daten erfolgreich synchronisiert!');
@@ -1913,11 +2277,16 @@ function setupAuth() {
           localStorage.setItem('bee_tracker_sync_declined', 'true');
         }
       }
-      
+
       await navigate(currentView);
+      updateOperationChrome();
+      applyRoleBasedUI();
     } else {
       userStatus.innerText = 'Lokal';
       btnAuthAction.innerText = 'Login';
+      clearActiveOperation();
+      updateOperationChrome();
+      applyRoleBasedUI();
       await navigate(currentView);
     }
   });

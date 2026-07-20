@@ -1,3 +1,6 @@
+-- See also: migration_operations.sql for multi-user Bienenbetrieb support
+-- (operations, members, invites, operation_id RLS).
+
 -- Supabase Migration Schema for Bienen-Tracker with Multi-User support
 
 -- 1. Hives Table (Bienenvölker)
