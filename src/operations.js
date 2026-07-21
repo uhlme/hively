@@ -230,13 +230,10 @@ function generateInviteCode(length = 8) {
 export async function createInvite(operationId, { role = 'editor', daysValid = 30 } = {}) {
   const session = await requireSession();
   const client = requireSupabase();
-  // Owner must never be grantable via invite (DB constraint + join RPC enforce this too)
-  const allowed = ['editor', 'viewer'];
-  if (!allowed.includes(role)) {
+  if (role !== 'editor' && role !== 'viewer') {
     throw new Error('Einladungen sind nur für Mitarbeiter oder Betrachter erlaubt.');
   }
-  const inviteRole = role;
-  const code = generateInviteCode();
+
   const expiresAt = daysValid
     ? new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000).toISOString()
     : null;
@@ -245,8 +242,8 @@ export async function createInvite(operationId, { role = 'editor', daysValid = 3
     .from('operation_invites')
     .insert({
       operation_id: operationId,
-      code,
-      role: inviteRole,
+      code: generateInviteCode(),
+      role,
       created_by: session.user.id,
       expires_at: expiresAt,
       max_uses: null

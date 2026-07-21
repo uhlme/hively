@@ -21,12 +21,11 @@ export async function callGemini(action, payload = {}, timeoutMs = 60000) {
   try {
     data = await response.json();
   } catch {
-    data = null;
+    // Non-JSON error bodies are fine; message falls back below.
   }
 
   if (!response.ok) {
-    const message = data?.error || `KI-Proxy-Fehler (${response.status})`;
-    throw new Error(message);
+    throw new Error(data?.error || `KI-Proxy-Fehler (${response.status})`);
   }
 
   return data;
