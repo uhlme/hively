@@ -1,4 +1,5 @@
-import { defineConfig, loadEnv } from 'vitest/config';
+import { loadEnv } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { handleGeminiRequest, GEMINI_JSON_HEADERS } from './server/geminiProxy.js';
 
 function readRequestBody(req) {
