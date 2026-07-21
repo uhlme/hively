@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, loadEnv } from 'vitest/config';
 import { handleGeminiRequest, GEMINI_JSON_HEADERS } from './server/geminiProxy.js';
 
 function readRequestBody(req) {
@@ -53,13 +53,23 @@ function geminiApiPlugin() {
   };
 }
 
-export default defineConfig({
-  plugins: [geminiApiPlugin()],
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.js'],
-    include: ['tests/**/*.test.js'],
-    clearMocks: true,
-    restoreMocks: true
+export default defineConfig(({ mode }) => {
+  // Load all .env keys (including non-VITE_) into process.env for the Gemini proxy
+  const env = loadEnv(mode, process.cwd(), '');
+  if (env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = env.GEMINI_API_KEY;
+  // Legacy fallback while migrating local .env files
+  if (!process.env.GEMINI_API_KEY && env.VITE_GEMINI_API_KEY) {
+    process.env.GEMINI_API_KEY = env.VITE_GEMINI_API_KEY;
   }
+
+  return {
+    plugins: [geminiApiPlugin()],
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./tests/setup.js'],
+      include: ['tests/**/*.test.js'],
+      clearMocks: true,
+      restoreMocks: true
+    }
+  };
 });

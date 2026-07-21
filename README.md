@@ -43,7 +43,11 @@ The project is configured for Netlify (`netlify.toml`). Pushing to the main bran
 
 ## Environment Variables
 
-Create a `.env` file as needed:
+Copy `.env.example` to `.env` and fill in values:
+
+```bash
+cp .env.example .env
+```
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
