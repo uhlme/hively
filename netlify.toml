@@ -1,6 +1,13 @@
 [build]
   publish = "dist"
   command = "npm run build"
+  functions = "netlify/functions"
+
+# AI proxy — keep the Gemini key server-side only
+[[redirects]]
+  from = "/api/gemini"
+  to = "/.netlify/functions/gemini"
+  status = 200
 
 # Redirects are useful for PWAs / SPAs to ensure client-side routing fallback
 [[redirects]]

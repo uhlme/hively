@@ -48,11 +48,20 @@ Create a `.env` file as needed:
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_GEMINI_API_KEY=your-gemini-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 Without Supabase variables, the app runs fully local — no login, no sync.
-Without `VITE_GEMINI_API_KEY`, voice assistant, receipt scanner, and AI weather insights are unavailable.
+
+`GEMINI_API_KEY` is **server-only** (Vite dev middleware + Netlify Function `/api/gemini`).
+Do not use a `VITE_` prefix — that would embed the key in the client bundle.
+On Netlify, set `GEMINI_API_KEY` in Site settings → Environment variables.
+Without it, voice assistant, receipt scanner, and AI weather insights are unavailable.
+
+### Supabase migrations
+
+Apply SQL files in `supabase/` in order, including `migration_security_hardening.sql`
+(closes membership privilege escalation, tightens profile/invite exposure).
 
 ## Project Structure
 
@@ -61,13 +70,18 @@ src/
   main.js           # App entry point and UI logic
   storage.js        # Local data persistence + sync queue
   supabase.js       # Supabase client
+  geminiApi.js      # Client → /api/gemini proxy
   weather.js        # Open-Meteo weather & pollen
-  voiceAssistant.js # Gemini-powered voice assistant
-  receiptScanner.js # Gemini receipt OCR
+  voiceAssistant.js # Voice capture + proxy parse
+  receiptScanner.js # Receipt capture + proxy OCR
   offlineAI.js      # IndexedDB cache for offline AI media
-  aiHelper.js       # Gemini weather insight
+  aiHelper.js       # Weather insight via proxy
   utils.js          # Shared helpers (HTML escape, JSON parse)
   style.css         # Global styles
+server/
+  geminiProxy.js    # Shared Gemini handler (key stays server-side)
+netlify/functions/
+  gemini.mjs        # Production AI proxy
 public/
   sw.js             # Service worker
   manifest.json     # PWA manifest
