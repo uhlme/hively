@@ -1,40 +1,31 @@
 import { callGemini } from './geminiApi.js';
+import { blobToBase64 } from './utils.js';
 
 let mediaRecorder = null;
 let audioChunks = [];
 let audioStream = null;
-let isRecording = false;
+
+function pickRecordingMimeType() {
+  if (!MediaRecorder.isTypeSupported) return 'audio/webm';
+  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+  if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
+  if (MediaRecorder.isTypeSupported('audio/aac')) return 'audio/aac';
+  return '';
+}
 
 export async function startAudioRecording({ onError, onStatusChange }) {
   try {
     audioChunks = [];
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    // Choose supported MIME type
-    let mimeType = 'audio/webm';
-    if (MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported('audio/webm')) {
-      if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mimeType = 'audio/mp4';
-      } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-        mimeType = 'audio/aac';
-      } else {
-        mimeType = ''; // fallback to default browser format
-      }
-    }
-
-    const options = mimeType ? { mimeType } : {};
-    mediaRecorder = new MediaRecorder(audioStream, options);
+    const mimeType = pickRecordingMimeType();
+    mediaRecorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : {});
 
     mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
+      if (event.data?.size > 0) audioChunks.push(event.data);
     };
 
-    mediaRecorder.onstart = () => {
-      isRecording = true;
-      onStatusChange('listening');
-    };
+    mediaRecorder.onstart = () => onStatusChange('listening');
 
     mediaRecorder.onerror = (event) => {
       console.error('MediaRecorder error:', event.error);
@@ -74,7 +65,6 @@ export function stopAudioRecording() {
 }
 
 function cleanup() {
-  isRecording = false;
   if (audioStream) {
     audioStream.getTracks().forEach((track) => track.stop());
     audioStream = null;
@@ -82,30 +72,14 @@ function cleanup() {
   mediaRecorder = null;
 }
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result.split(',')[1];
-      resolve(base64String);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 export async function parseAudioWithGemini(audioBlob) {
-  if (!audioBlob) {
-    throw new Error('Keine Audiodatei vorhanden.');
-  }
-
-  const base64Audio = await blobToBase64(audioBlob);
+  if (!audioBlob) throw new Error('Keine Audiodatei vorhanden.');
 
   try {
     return await callGemini(
       'parse_audio',
       {
-        data: base64Audio,
+        data: await blobToBase64(audioBlob),
         mimeType: audioBlob.type || 'audio/webm'
       },
       90000
