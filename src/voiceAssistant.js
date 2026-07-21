@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { parseGeminiJson } from './utils.js';
+import { callGemini } from './geminiApi.js';
 
 let mediaRecorder = null;
 let audioChunks = [];
@@ -10,7 +9,7 @@ export async function startAudioRecording({ onError, onStatusChange }) {
   try {
     audioChunks = [];
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    
+
     // Choose supported MIME type
     let mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported('audio/webm')) {
@@ -77,13 +76,12 @@ export function stopAudioRecording() {
 function cleanup() {
   isRecording = false;
   if (audioStream) {
-    audioStream.getTracks().forEach(track => track.stop());
+    audioStream.getTracks().forEach((track) => track.stop());
     audioStream = null;
   }
   mediaRecorder = null;
 }
 
-// Convert Blob to Base64
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -96,57 +94,22 @@ function blobToBase64(blob) {
   });
 }
 
-// Send Audio to Gemini API
 export async function parseAudioWithGemini(audioBlob) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('Gemini API-Schlüssel fehlt. Bitte tragen Sie diesen in der .env Datei ein.');
+  if (!audioBlob) {
+    throw new Error('Keine Audiodatei vorhanden.');
   }
 
   const base64Audio = await blobToBase64(audioBlob);
-  const genAI = new GoogleGenerativeAI(apiKey);
-  
-  // Using gemini-2.5-flash which is multimodal and handles audio + dialect perfectly
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-  const systemPrompt = `Du bist eine KI zur Analyse von gesprochenen Imker-Protokollen bei einer Durchsicht von Bienenvölkern.
-Höre dir die beigefügte Audiodatei genau an. Sie ist auf Schweizerdeutsch (Mundart) gesprochen.
-Verstehe den Dialekt, übersetze ihn gedanklich ins Hochdeutsche und extrahiere die relevanten Daten.
-Liefere ein strukturiertes JSON-Objekt zurück.
-
-Formatvorgabe (JSON):
-{
-  "hiveNames": ["Array von erkannten Kasten-Namen, z.B. ['Kasten 1', 'Kasten 2']. Falls der Benutzer explizit 'alle' oder 'bei allen' sagt, liefere ['alle'] zurück. Leeres Array [], wenn keine genannt wurden."],
-  "notes": "Eine übersichtliche, strukturierte Zusammenfassung der gesamten Durchsicht auf Hochdeutsch. Fasse alle beobachteten Details wie Brutstatus, Honigraum, Sanftmut, Fütterung, Varroabehandlung und sonstige Arbeiten in lesbaren, strukturierten Notizen zusammen."
-}
-
-Wichtig:
-- Antworte AUSSCHLIESSLICH mit dem validen JSON-Objekt.
-- Füge keine Markdown-Formatierung wie \`\`\`json oder sonstigen Text hinzu.
-- Setze nicht erwähnte Felder auf ein leeres Array oder null.`;
 
   try {
-    const result = await model.generateContent([
+    return await callGemini(
+      'parse_audio',
       {
-        inlineData: {
-          data: base64Audio,
-          mimeType: audioBlob.type
-        }
+        data: base64Audio,
+        mimeType: audioBlob.type || 'audio/webm'
       },
-      { text: systemPrompt }
-    ]);
-
-    const responseText = result.response.text();
-    const parsedData = parseGeminiJson(responseText);
-
-    if (!parsedData || typeof parsedData !== 'object') {
-      throw new Error('Ungültiges Antwortformat der KI');
-    }
-
-    return {
-      hiveNames: Array.isArray(parsedData.hiveNames) ? parsedData.hiveNames.map(String) : [],
-      notes: typeof parsedData.notes === 'string' ? parsedData.notes : ''
-    };
+      90000
+    );
   } catch (error) {
     console.error('Error parsing audio with Gemini:', error);
     throw new Error(`Fehler bei der KI-Analyse: ${error.message}`);
