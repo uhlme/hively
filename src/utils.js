@@ -1,12 +1,9 @@
 /**
  * Shared helpers for escaping, safe storage reads, Gemini JSON parsing,
- * and button loading states.
+ * media encoding, and button loading states.
  */
 
-/**
- * Show/hide a loading spinner on a button while an async action runs.
- * Restores the original label when loading ends.
- */
+/** Show/hide a loading spinner on a button while an async action runs. */
 export function setButtonLoading(button, isLoading, loadingLabel = 'Speichern…') {
   if (!button) return;
 
@@ -73,9 +70,7 @@ export function safeJsonParse(raw, fallback = null) {
   }
 }
 
-/**
- * Parse Gemini responses that may include markdown fences or surrounding text.
- */
+/** Parse Gemini responses that may include markdown fences or surrounding text. */
 export function parseGeminiJson(responseText) {
   if (!responseText || typeof responseText !== 'string') {
     throw new Error('Leere KI-Antwort');
@@ -110,4 +105,14 @@ export function blobToBase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+/** Local entity / queue id: `prefix` + timestamp + random suffix. */
+export function makeId(prefix, randomLen = 9) {
+  return (
+    prefix +
+    Date.now() +
+    '_' +
+    Math.random().toString(36).substr(2, randomLen)
+  );
 }

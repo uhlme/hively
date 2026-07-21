@@ -2,6 +2,7 @@
  * Bienenbetrieb (operations) – multi-user workspace helpers.
  */
 import { supabase } from './supabase.js';
+import { safeJsonParse } from './utils.js';
 
 const ACTIVE_OP_KEY = 'hively_active_operation_id';
 const ACTIVE_ROLE_KEY = 'hively_active_operation_role';
@@ -29,12 +30,7 @@ export function getActiveOperationRole() {
 }
 
 export function getActiveOperationMeta() {
-  try {
-    const raw = localStorage.getItem(ACTIVE_OP_META_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return safeJsonParse(localStorage.getItem(ACTIVE_OP_META_KEY), null);
 }
 
 export function isOperationOwner() {
@@ -203,22 +199,18 @@ export async function listOperationMembers(operationId) {
   if (error) throw error;
 
   const ids = (data || []).map((m) => m.user_id);
-  const names = await getProfileMap(ids);
+  const profiles = await getProfileDetailsMap(ids);
 
-  const { data: profiles } = await client
-    .from('profiles')
-    .select('id, email')
-    .in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
-  const emailMap = {};
-  for (const p of profiles || []) emailMap[p.id] = p.email || '';
-
-  return (data || []).map((m) => ({
-    userId: m.user_id,
-    role: m.role,
-    joinedAt: m.joined_at,
-    displayName: names[m.user_id] || 'Unbekannt',
-    email: emailMap[m.user_id] || ''
-  }));
+  return (data || []).map((m) => {
+    const profile = profiles[m.user_id] || {};
+    return {
+      userId: m.user_id,
+      role: m.role,
+      joinedAt: m.joined_at,
+      displayName: profile.displayName || 'Unbekannt',
+      email: profile.email || ''
+    };
+  });
 }
 
 function generateInviteCode(length = 8) {
@@ -310,6 +302,15 @@ export async function ensureActiveOperation() {
 }
 
 export async function getProfileMap(userIds = []) {
+  const details = await getProfileDetailsMap(userIds);
+  const map = {};
+  for (const [id, profile] of Object.entries(details)) {
+    map[id] = profile.displayName;
+  }
+  return map;
+}
+
+async function getProfileDetailsMap(userIds = []) {
   const unique = [...new Set(userIds.filter(Boolean))];
   if (unique.length === 0) return {};
   const client = requireSupabase();
@@ -323,7 +324,10 @@ export async function getProfileMap(userIds = []) {
   }
   const map = {};
   for (const p of data || []) {
-    map[p.id] = p.display_name || p.email || 'Unbekannt';
+    map[p.id] = {
+      displayName: p.display_name || p.email || 'Unbekannt',
+      email: p.email || ''
+    };
   }
   return map;
 }

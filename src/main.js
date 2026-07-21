@@ -60,20 +60,15 @@ import {
   roleLabel
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
-import { escapeHtml, statusToCssClass, withButtonLoading } from './utils.js';
+import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
 const RADAR_STALE_OK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function readRadarCache() {
-  try {
-    const raw = localStorage.getItem(RADAR_CACHE_KEY) || sessionStorage.getItem('bienen_radar_cache');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  const raw = localStorage.getItem(RADAR_CACHE_KEY) || sessionStorage.getItem('bienen_radar_cache');
+  return safeJsonParse(raw, null);
 }
 
 function writeRadarCache(data) {
@@ -114,23 +109,61 @@ const QUEEN_COLORS = {
   5: 'blue', 0: 'blue'
 };
 
-function getQueenColorClass(year) {
+const QUEEN_COLOR_NAMES = {
+  white: 'Weiß',
+  yellow: 'Gelb',
+  red: 'Rot',
+  green: 'Grün',
+  blue: 'Blau'
+};
+
+function getQueenColorInfo(year) {
   const lastDigit = year ? year.toString().slice(-1) : '';
   const color = QUEEN_COLORS[lastDigit] || 'white';
-  return `queen-${color}`;
+  return {
+    color,
+    className: `queen-${color}`,
+    name: QUEEN_COLOR_NAMES[color] || 'Weiß'
+  };
 }
 
-function getQueenColorName(year) {
-  const lastDigit = year ? year.toString().slice(-1) : '';
-  const color = QUEEN_COLORS[lastDigit] || 'white';
-  const names = {
-    white: 'Weiß',
-    yellow: 'Gelb',
-    red: 'Rot',
-    green: 'Grün',
-    blue: 'Blau'
+function canEditActiveOp() {
+  return !supabase || !getActiveOperationId() || canEditOperation();
+}
+
+function isOwnerActiveOp() {
+  return !supabase || !getActiveOperationId() || isOperationOwner();
+}
+
+/** Match spoken/OCR hive names to hive records (`alle` = all). */
+function matchHivesByNames(hives, hiveNames) {
+  if (!Array.isArray(hiveNames) || hiveNames.length === 0) return [];
+  if (hiveNames.includes('alle')) return [...hives];
+
+  const matched = [];
+  for (const rawName of hiveNames) {
+    const needle = String(rawName).toLowerCase();
+    const hive = hives.find(
+      (h) =>
+        h.name.toLowerCase().includes(needle) || needle.includes(h.name.toLowerCase())
+    );
+    if (hive) matched.push(hive);
+  }
+  return matched;
+}
+
+function setFinanceTab(tab) {
+  currentFinanceTab = tab;
+  const tabs = {
+    expenses: document.getElementById('tab-fin-expenses'),
+    honey: document.getElementById('tab-fin-honey'),
+    sponsorships: document.getElementById('tab-fin-sponsorships')
   };
-  return names[color] || 'Weiß';
+  for (const [key, el] of Object.entries(tabs)) {
+    if (!el) continue;
+    if (key === tab) el.classList.add('active');
+    else el.classList.remove('active');
+  }
 }
 
 function formatDateString(isoString) {
@@ -294,28 +327,19 @@ function setupRouting() {
   const tabExpenses = document.getElementById('tab-fin-expenses');
   const tabHoney = document.getElementById('tab-fin-honey');
   const tabSponsorships = document.getElementById('tab-fin-sponsorships');
-  
+
   tabExpenses.addEventListener('click', async () => {
-    tabExpenses.classList.add('active');
-    tabHoney.classList.remove('active');
-    tabSponsorships.classList.remove('active');
-    currentFinanceTab = 'expenses';
+    setFinanceTab('expenses');
     await renderFinanceView();
   });
 
   tabHoney.addEventListener('click', async () => {
-    tabHoney.classList.add('active');
-    tabExpenses.classList.remove('active');
-    tabSponsorships.classList.remove('active');
-    currentFinanceTab = 'honey';
+    setFinanceTab('honey');
     await renderFinanceView();
   });
 
   tabSponsorships.addEventListener('click', async () => {
-    tabSponsorships.classList.add('active');
-    tabExpenses.classList.remove('active');
-    tabHoney.classList.remove('active');
-    currentFinanceTab = 'sponsorships';
+    setFinanceTab('sponsorships');
     await renderFinanceView();
   });
 
@@ -474,7 +498,7 @@ async function renderDashboardView() {
       const openActivity = async () => {
         const idx = parseInt(card.getAttribute('data-index'));
         const act = activities[idx];
-        const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+        const canEdit = canEditActiveOp();
         if (!canEdit) {
           if (act.raw?.hiveId) {
             activeHiveIdForDetail = act.raw.hiveId;
@@ -696,7 +720,7 @@ async function renderCalendarView() {
   const tasksForMonth = CALENDAR_TASKS[selectedMonth] || [];
   const state = await getTasksState();
   const monthState = state[selectedMonth] || {};
-  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+  const canEdit = canEditActiveOp();
 
   if (tasksForMonth.length === 0) {
     container.innerHTML = `<p class="text-muted text-center">Keine Aufgaben für diesen Monat hinterlegt.</p>`;
@@ -795,7 +819,7 @@ async function renderCalendarView() {
 async function renderHivesView() {
   const hives = await getHives();
   const container = document.getElementById('hives-list-container');
-  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+  const canEdit = canEditActiveOp();
   
   if (hives.length === 0) {
     container.innerHTML = `
@@ -809,8 +833,9 @@ async function renderHivesView() {
   }
 
   container.innerHTML = hives.map(hive => {
-    const qColorClass = getQueenColorClass(hive.queenYear);
-    const qColorName = getQueenColorName(hive.queenYear);
+    const qColor = getQueenColorInfo(hive.queenYear);
+    const qColorClass = qColor.className;
+    const qColorName = qColor.name;
     const statusClass = statusToCssClass(hive.status);
     const queenLabel = hive.queenName
       ? `"${escapeHtml(hive.queenName)}"`
@@ -861,12 +886,13 @@ async function renderHiveDetailView() {
   // Set Title
   document.getElementById('detail-hive-title').innerText = hive.name;
 
-  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+  const canEdit = canEditActiveOp();
 
   // Render Hive Details Info Block
   const infoBlock = document.getElementById('detail-hive-info');
-  const qColorClass = getQueenColorClass(hive.queenYear);
-  const qColorName = getQueenColorName(hive.queenYear);
+  const qColor = getQueenColorInfo(hive.queenYear);
+  const qColorClass = qColor.className;
+  const qColorName = qColor.name;
   
   infoBlock.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -1213,7 +1239,7 @@ function closeModal(id) {
 // --- Form Population & Display ---
 
 function openHiveModal(hive = null) {
-  if (supabase && getActiveOperationId() && !canEditOperation()) {
+  if (!canEditActiveOp()) {
     alert('Als Betrachter kannst du Völker nur ansehen.');
     return;
   }
@@ -1234,7 +1260,7 @@ function openHiveModal(hive = null) {
     document.getElementById('hive-form-honey-frames-1').value = hive.honeyFrames1 || 0;
     document.getElementById('hive-form-honey-frames-2').value = hive.honeyFrames2 || 0;
     document.getElementById('hive-form-notes').value = hive.notes || '';
-    const canDelete = !supabase || !getActiveOperationId() || isOperationOwner();
+    const canDelete = isOwnerActiveOp();
     deleteBtn.style.display = canDelete ? 'block' : 'none';
   } else {
     title.innerText = 'Neues Volk erfassen';
@@ -1251,7 +1277,7 @@ function openHiveModal(hive = null) {
 }
 
 async function openInspectionModal(inspection = null, preselectedHiveId = null) {
-  if (supabase && getActiveOperationId() && !canEditOperation()) {
+  if (!canEditActiveOp()) {
     alert('Als Betrachter kannst du Durchsichten nur ansehen.');
     return;
   }
@@ -1650,19 +1676,11 @@ function setupForms() {
         closeModal('modal-honey');
 
         if (currentView === 'finances') {
-          currentFinanceTab = 'honey';
-          const tabExpenses = document.getElementById('tab-fin-expenses');
-          const tabHoney = document.getElementById('tab-fin-honey');
-          tabExpenses.classList.remove('active');
-          tabHoney.classList.add('active');
+          setFinanceTab('honey');
           await renderFinanceView();
         } else {
           await navigate('finances');
-          currentFinanceTab = 'honey';
-          const tabExpenses = document.getElementById('tab-fin-expenses');
-          const tabHoney = document.getElementById('tab-fin-honey');
-          tabExpenses.classList.remove('active');
-          tabHoney.classList.add('active');
+          setFinanceTab('honey');
           await renderFinanceView();
         }
         await renderDashboardView();
@@ -1721,23 +1739,11 @@ function setupForms() {
         closeModal('modal-sponsorship');
 
         if (currentView === 'finances') {
-          currentFinanceTab = 'sponsorships';
-          const tabExpenses = document.getElementById('tab-fin-expenses');
-          const tabHoney = document.getElementById('tab-fin-honey');
-          const tabSponsorships = document.getElementById('tab-fin-sponsorships');
-          tabExpenses.classList.remove('active');
-          tabHoney.classList.remove('active');
-          tabSponsorships.classList.add('active');
+          setFinanceTab('sponsorships');
           await renderFinanceView();
         } else {
           await navigate('finances');
-          currentFinanceTab = 'sponsorships';
-          const tabExpenses = document.getElementById('tab-fin-expenses');
-          const tabHoney = document.getElementById('tab-fin-honey');
-          const tabSponsorships = document.getElementById('tab-fin-sponsorships');
-          tabExpenses.classList.remove('active');
-          tabHoney.classList.remove('active');
-          tabSponsorships.classList.add('active');
+          setFinanceTab('sponsorships');
           await renderFinanceView();
         }
         await renderDashboardView();
@@ -2025,8 +2031,8 @@ function updateOperationChrome() {
 }
 
 function applyRoleBasedUI() {
-  const owner = !supabase || !getActiveOperationId() || isOperationOwner();
-  const canEdit = !supabase || !getActiveOperationId() || canEditOperation();
+  const owner = isOwnerActiveOp();
+  const canEdit = canEditActiveOp();
   const viewer = supabase && getActiveOperationId() && isOperationViewer();
 
   const financeNav = document.querySelector('nav.bottom-nav .nav-item[data-view="finances"]');
@@ -2542,33 +2548,16 @@ function setupVoiceAssistant() {
       if (data.hiveNames && Array.isArray(data.hiveNames)) {
         const hives = await getHives();
         const chkContainer = document.getElementById('insp-form-hives-container');
-        
-        // Reset all checkboxes first
         const checkboxes = chkContainer.querySelectorAll('.hive-checkbox');
-        checkboxes.forEach(chk => {
+        checkboxes.forEach((chk) => {
           chk.checked = false;
         });
 
-        const isAlle = data.hiveNames.includes('alle');
-        
-        if (isAlle) {
-          checkboxes.forEach(chk => {
+        for (const matchedHive of matchHivesByNames(hives, data.hiveNames)) {
+          const chk = document.getElementById(`hive-chk-${matchedHive.id}`);
+          if (chk) {
             chk.checked = true;
             highlightLabel(chk.parentElement);
-          });
-        } else {
-          for (const rawName of data.hiveNames) {
-            const matchedHive = hives.find(h => 
-              h.name.toLowerCase().includes(rawName.toLowerCase()) || 
-              rawName.toLowerCase().includes(h.name.toLowerCase())
-            );
-            if (matchedHive) {
-              const chk = document.getElementById(`hive-chk-${matchedHive.id}`);
-              if (chk) {
-                chk.checked = true;
-                highlightLabel(chk.parentElement);
-              }
-            }
           }
         }
       }
@@ -2860,19 +2849,23 @@ async function renderOfflineMemos() {
   container.style.display = 'block';
   list.innerHTML = memos.map(memo => {
     const dateStr = new Date(memo.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const stamped = `${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`;
     const typeLabel = memo.type === 'voice' ? '🎙️ Diktat' : '📷 Beleg-Scan';
-    const detailText = memo.type === 'voice' 
-      ? `Sprachmemo vom ${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`
-      : `Beleg hochgeladen am ${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`;
-      
+    const detailText =
+      memo.type === 'voice' ? `Sprachmemo vom ${stamped}` : `Beleg hochgeladen am ${stamped}`;
+
+    let actionLabel = 'Wartet auf Netz';
+    if (shouldAutoProcessMedia()) actionLabel = 'Verarbeiten';
+    else if (navigator.onLine) actionLabel = 'Wartet auf WLAN';
+
     return `
       <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15);">
         <div>
           <div style="font-weight: 600; font-size: 0.9rem;">${typeLabel}</div>
           <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
         </div>
-        <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${memo.id}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
-          ${shouldAutoProcessMedia() ? 'Verarbeiten' : (navigator.onLine ? 'Wartet auf WLAN' : 'Wartet auf Netz')}
+        <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${escapeHtml(memo.id)}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+          ${actionLabel}
         </button>
       </div>
     `;
@@ -2912,24 +2905,7 @@ async function processSingleOfflineMemo(id) {
 
     // 2. Determine target hive IDs
     const hives = await getHives();
-    const targetHiveIds = [];
-    
-    if (data.hiveNames && Array.isArray(data.hiveNames)) {
-      const isAlle = data.hiveNames.includes('alle');
-      if (isAlle) {
-        hives.forEach(h => targetHiveIds.push(h.id));
-      } else {
-        for (const rawName of data.hiveNames) {
-          const matchedHive = hives.find(h => 
-            h.name.toLowerCase().includes(rawName.toLowerCase()) || 
-            rawName.toLowerCase().includes(h.name.toLowerCase())
-          );
-          if (matchedHive) {
-            targetHiveIds.push(matchedHive.id);
-          }
-        }
-      }
-    }
+    const targetHiveIds = matchHivesByNames(hives, data.hiveNames).map((h) => h.id);
 
     if (targetHiveIds.length === 0) {
       throw new Error('Es konnte kein passendes Volk für das Diktat gefunden werden.');

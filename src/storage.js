@@ -1,6 +1,6 @@
 // Data storage utility for Bee-Tracker using localStorage or Supabase DB
 import { supabase } from './supabase.js';
-import { safeJsonParse } from './utils.js';
+import { safeJsonParse, makeId } from './utils.js';
 import { getNetworkPrefs, shouldUseBackgroundNetwork } from './network.js';
 import { getActiveOperationId, isOperationOwner, canEditOperation } from './operations.js';
 
@@ -30,13 +30,6 @@ export function clearLocalEntityCache() {
   localStorage.removeItem(KEYS.HONEY);
   localStorage.removeItem(KEYS.LAST_PULL);
   // Keep sync queue – items carry operationId and will sync when due
-}
-
-// Check if user is logged in
-export async function getSession() {
-  if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
 }
 
 async function useRemote() {
@@ -257,18 +250,10 @@ function addToSyncQueue(action, type, payload) {
       return !(itemRecordId === recordId && item.type === type && item.action === 'upsert');
     });
   } else if (action === 'delete') {
-    const hadOnlyLocalUpserts = queue.some(item => {
-      const itemRecordId = item.payload.id || item.payload;
-      return itemRecordId === recordId && item.type === type && item.action === 'upsert';
-    });
     queue = queue.filter(item => {
       const itemRecordId = item.payload.id || item.payload;
       return !(itemRecordId === recordId && item.type === type);
     });
-    // If the record never reached remote (only local upserts), skip delete too
-    if (hadOnlyLocalUpserts && String(recordId).includes('_')) {
-      // Keep delete for safety if id looks persisted; still push delete below
-    }
   }
 
   queue.push({
@@ -301,6 +286,79 @@ function mapPayloadToDB(type, payload, userId, operationId) {
     return { ...mapHoneyToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
   }
   return null;
+}
+
+function makeLocalId(prefix) {
+  return makeId(prefix);
+}
+
+function nextRetryAt(now, attemptCount) {
+  return now + Math.min(30 * 60 * 1000, 5000 * 2 ** Math.min(attemptCount, 5));
+}
+
+function upsertLocal(storageKey, entity) {
+  const items = readLocalArray(storageKey);
+  const idx = items.findIndex(item => item.id === entity.id);
+  if (idx !== -1) {
+    items[idx] = { ...items[idx], ...entity };
+  } else {
+    items.push(entity);
+  }
+  localStorage.setItem(storageKey, JSON.stringify(items));
+}
+
+function removeLocalById(storageKey, id) {
+  const items = readLocalArray(storageKey).filter(item => item.id !== id);
+  localStorage.setItem(storageKey, JSON.stringify(items));
+}
+
+async function pullEntity({ pullKey, storageKey, table, mapFrom, order, warnMsg }) {
+  const isRemote = await useRemote();
+  const ctx = isRemote ? await getRemoteContext() : null;
+  if (!ctx || !shouldPullRemote(pullKey)) return null;
+  try {
+    let query = supabase
+      .from(table)
+      .select('*')
+      .eq('operation_id', ctx.operationId);
+    if (typeof order === 'string') {
+      query = query.order(order);
+    } else {
+      query = query.order(order.column, { ascending: order.ascending });
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    const entities = data.map(mapFrom);
+    localStorage.setItem(storageKey, JSON.stringify(entities));
+    setLastPull(pullKey);
+    return entities;
+  } catch (err) {
+    console.warn(warnMsg, err);
+    return null;
+  }
+}
+
+async function remoteUpsert(table, entity) {
+  const remote = await getRemoteContext();
+  if (!remote) throw new Error('Kein aktiver Betrieb');
+  const dbData = mapPayloadToDB(
+    table,
+    entity,
+    remote.userId,
+    entity.operationId || remote.operationId
+  );
+  const { error } = await supabase.from(table).upsert(dbData);
+  if (error) throw error;
+}
+
+function prepareEntity(entity, idPrefix, ctx) {
+  if (!entity.id) {
+    entity.id = makeLocalId(idPrefix);
+    entity.createdAt = new Date().toISOString();
+  }
+  entity.updatedAt = new Date().toISOString();
+  stampOperationFields(entity, ctx);
+  return entity;
 }
 
 /**
@@ -343,7 +401,7 @@ export async function processSyncQueue() {
         failedItems.push({
           ...item,
           attemptCount: (item.attemptCount || 0) + 1,
-          nextRetryAt: now + Math.min(30 * 60 * 1000, 5000 * 2 ** Math.min(item.attemptCount || 0, 5))
+          nextRetryAt: nextRetryAt(now, item.attemptCount || 0)
         });
       }
       continue;
@@ -369,7 +427,7 @@ export async function processSyncQueue() {
             ...item,
             attemptCount: attempts,
             lastError: String(err.message || err),
-            nextRetryAt: now + Math.min(30 * 60 * 1000, 5000 * 2 ** Math.min(attempts, 5))
+            nextRetryAt: nextRetryAt(now, attempts)
           });
         }
       }
@@ -390,7 +448,7 @@ export async function processSyncQueue() {
             ...item,
             attemptCount: attempts,
             lastError: String(err.message || err),
-            nextRetryAt: now + Math.min(30 * 60 * 1000, 5000 * 2 ** Math.min(attempts, 5))
+            nextRetryAt: nextRetryAt(now, attempts)
           });
         }
       }
@@ -450,27 +508,22 @@ async function syncOrQueue(action, type, payload, remoteCall) {
   }
 }
 
+function sortByDateDesc(items) {
+  return items.sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
 // --- Hives CRUD ---
 
 export async function getHives() {
-  const isRemote = await useRemote();
-  const ctx = isRemote ? await getRemoteContext() : null;
-  if (ctx && shouldPullRemote('hives')) {
-    try {
-      const { data, error } = await supabase
-        .from('hives')
-        .select('*')
-        .eq('operation_id', ctx.operationId)
-        .order('name');
-      if (error) throw error;
-      const hives = data.map(mapHiveFromDB);
-      localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
-      setLastPull('hives');
-      return hives;
-    } catch (err) {
-      console.warn('Failed to fetch hives from Supabase, loading from local cache:', err);
-    }
-  }
+  const pulled = await pullEntity({
+    pullKey: 'hives',
+    storageKey: KEYS.HIVES,
+    table: 'hives',
+    mapFrom: mapHiveFromDB,
+    order: 'name',
+    warnMsg: 'Failed to fetch hives from Supabase, loading from local cache:'
+  });
+  if (pulled) return pulled;
   return readLocalArray(KEYS.HIVES);
 }
 
@@ -484,36 +537,9 @@ export async function saveHive(hive) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Völker bearbeiten.');
   }
   const ctx = await getRemoteContext();
-  if (!hive.id) {
-    hive.id = 'hive_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    hive.createdAt = new Date().toISOString();
-  }
-  hive.updatedAt = new Date().toISOString();
-  stampOperationFields(hive, ctx);
-
-  // 1. Save to local storage first (never block on network)
-  const hives = readLocalArray(KEYS.HIVES);
-  const idx = hives.findIndex(h => h.id === hive.id);
-  if (idx !== -1) {
-    hives[idx] = { ...hives[idx], ...hive };
-  } else {
-    hives.push(hive);
-  }
-  localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
-
-  // 2. Sync to Supabase or queue (skips weak connections)
-  await syncOrQueue('upsert', 'hives', hive, async () => {
-    const remote = await getRemoteContext();
-    if (!remote) throw new Error('Kein aktiver Betrieb');
-    const dbData = {
-      ...mapHiveToDB(hive),
-      user_id: remote.userId,
-      operation_id: hive.operationId || remote.operationId,
-      created_by: hive.createdBy || remote.userId
-    };
-    const { error } = await supabase.from('hives').upsert(dbData);
-    if (error) throw error;
-  });
+  prepareEntity(hive, 'hive_', ctx);
+  upsertLocal(KEYS.HIVES, hive);
+  await syncOrQueue('upsert', 'hives', hive, () => remoteUpsert('hives', hive));
   return hive;
 }
 
@@ -522,17 +548,17 @@ export async function deleteHive(id) {
     throw new Error('Nur Betriebsinhaber dürfen Völker löschen.');
   }
 
-  // 1. Delete locally first
-  let hives = readLocalArray(KEYS.HIVES);
-  hives = hives.filter(h => h.id !== id);
-  localStorage.setItem(KEYS.HIVES, JSON.stringify(hives));
+  removeLocalById(KEYS.HIVES, id);
 
   // Cascade delete inspections and honey harvests locally
-  let inspections = readLocalArray(KEYS.INSPECTIONS).filter(i => i.hiveId !== id);
-  localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
-
-  let honey = readLocalArray(KEYS.HONEY).filter(h => h.hiveId !== id);
-  localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+  localStorage.setItem(
+    KEYS.INSPECTIONS,
+    JSON.stringify(readLocalArray(KEYS.INSPECTIONS).filter(i => i.hiveId !== id))
+  );
+  localStorage.setItem(
+    KEYS.HONEY,
+    JSON.stringify(readLocalArray(KEYS.HONEY).filter(h => h.hiveId !== id))
+  );
 
   await syncOrQueue('delete', 'hives', id, async () => {
     const { error } = await supabase.from('hives').delete().eq('id', id);
@@ -543,31 +569,20 @@ export async function deleteHive(id) {
 // --- Inspections CRUD ---
 
 export async function getInspections(hiveId = null) {
-  const isRemote = await useRemote();
-  const ctx = isRemote ? await getRemoteContext() : null;
-  if (ctx && shouldPullRemote('inspections')) {
-    try {
-      const { data, error } = await supabase
-        .from('inspections')
-        .select('*')
-        .eq('operation_id', ctx.operationId)
-        .order('date', { ascending: false });
-      if (error) throw error;
-      const inspections = data.map(mapInspectionFromDB);
-      localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
-      setLastPull('inspections');
-    } catch (err) {
-      console.warn('Failed to fetch inspections from remote, using local cache:', err);
-    }
-  }
+  await pullEntity({
+    pullKey: 'inspections',
+    storageKey: KEYS.INSPECTIONS,
+    table: 'inspections',
+    mapFrom: mapInspectionFromDB,
+    order: { column: 'date', ascending: false },
+    warnMsg: 'Failed to fetch inspections from remote, using local cache:'
+  });
 
   const inspections = readLocalArray(KEYS.INSPECTIONS);
   if (hiveId) {
-    return inspections
-      .filter(i => i.hiveId === hiveId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    return sortByDateDesc(inspections.filter(i => i.hiveId === hiveId));
   }
-  return inspections.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return sortByDateDesc(inspections);
 }
 
 export async function saveInspection(inspection) {
@@ -575,35 +590,9 @@ export async function saveInspection(inspection) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Durchsichten erfassen.');
   }
   const ctx = await getRemoteContext();
-  if (!inspection.id) {
-    inspection.id = 'insp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    inspection.createdAt = new Date().toISOString();
-  }
-  inspection.updatedAt = new Date().toISOString();
-  stampOperationFields(inspection, ctx);
-
-  // 1. Save locally
-  const inspections = readLocalArray(KEYS.INSPECTIONS);
-  const idx = inspections.findIndex(i => i.id === inspection.id);
-  if (idx !== -1) {
-    inspections[idx] = { ...inspections[idx], ...inspection };
-  } else {
-    inspections.push(inspection);
-  }
-  localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
-
-  await syncOrQueue('upsert', 'inspections', inspection, async () => {
-    const remote = await getRemoteContext();
-    if (!remote) throw new Error('Kein aktiver Betrieb');
-    const dbData = {
-      ...mapInspectionToDB(inspection),
-      user_id: remote.userId,
-      operation_id: inspection.operationId || remote.operationId,
-      created_by: inspection.createdBy || remote.userId
-    };
-    const { error } = await supabase.from('inspections').upsert(dbData);
-    if (error) throw error;
-  });
+  prepareEntity(inspection, 'insp_', ctx);
+  upsertLocal(KEYS.INSPECTIONS, inspection);
+  await syncOrQueue('upsert', 'inspections', inspection, () => remoteUpsert('inspections', inspection));
   return inspection;
 }
 
@@ -611,9 +600,7 @@ export async function deleteInspection(id) {
   if (await useRemote() && !canEditOperation()) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Durchsichten löschen.');
   }
-  let inspections = readLocalArray(KEYS.INSPECTIONS);
-  inspections = inspections.filter(i => i.id !== id);
-  localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(inspections));
+  removeLocalById(KEYS.INSPECTIONS, id);
 
   await syncOrQueue('delete', 'inspections', id, async () => {
     const { error } = await supabase.from('inspections').delete().eq('id', id);
@@ -624,29 +611,19 @@ export async function deleteInspection(id) {
 // --- Finances CRUD ---
 
 export async function getFinances() {
-  const isRemote = await useRemote();
-  if (isRemote && !isOperationOwner()) {
+  if (await useRemote() && !isOperationOwner()) {
     return [];
   }
-  const ctx = isRemote ? await getRemoteContext() : null;
-  if (ctx && shouldPullRemote('finances')) {
-    try {
-      const { data, error } = await supabase
-        .from('finances')
-        .select('*')
-        .eq('operation_id', ctx.operationId)
-        .order('date', { ascending: false });
-      if (error) throw error;
-      const finances = data.map(mapFinanceFromDB);
-      localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
-      setLastPull('finances');
-    } catch (err) {
-      console.warn('Failed to fetch finances from remote, using local cache:', err);
-    }
-  }
+  await pullEntity({
+    pullKey: 'finances',
+    storageKey: KEYS.FINANCES,
+    table: 'finances',
+    mapFrom: mapFinanceFromDB,
+    order: { column: 'date', ascending: false },
+    warnMsg: 'Failed to fetch finances from remote, using local cache:'
+  });
 
-  const finances = readLocalArray(KEYS.FINANCES);
-  return finances.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return sortByDateDesc(readLocalArray(KEYS.FINANCES));
 }
 
 export async function saveFinance(item) {
@@ -654,35 +631,9 @@ export async function saveFinance(item) {
     throw new Error('Nur Betriebsinhaber dürfen Finanzen bearbeiten.');
   }
   const ctx = await getRemoteContext();
-  if (!item.id) {
-    item.id = 'fin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    item.createdAt = new Date().toISOString();
-  }
-  item.updatedAt = new Date().toISOString();
-  stampOperationFields(item, ctx);
-
-  // 1. Save locally
-  const finances = readLocalArray(KEYS.FINANCES);
-  const idx = finances.findIndex(f => f.id === item.id);
-  if (idx !== -1) {
-    finances[idx] = { ...finances[idx], ...item };
-  } else {
-    finances.push(item);
-  }
-  localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
-
-  await syncOrQueue('upsert', 'finances', item, async () => {
-    const remote = await getRemoteContext();
-    if (!remote) throw new Error('Kein aktiver Betrieb');
-    const dbData = {
-      ...mapFinanceToDB(item),
-      user_id: remote.userId,
-      operation_id: item.operationId || remote.operationId,
-      created_by: item.createdBy || remote.userId
-    };
-    const { error } = await supabase.from('finances').upsert(dbData);
-    if (error) throw error;
-  });
+  prepareEntity(item, 'fin_', ctx);
+  upsertLocal(KEYS.FINANCES, item);
+  await syncOrQueue('upsert', 'finances', item, () => remoteUpsert('finances', item));
   return item;
 }
 
@@ -690,9 +641,7 @@ export async function deleteFinance(id) {
   if (await useRemote() && !isOperationOwner()) {
     throw new Error('Nur Betriebsinhaber dürfen Finanzen löschen.');
   }
-  let finances = readLocalArray(KEYS.FINANCES);
-  finances = finances.filter(f => f.id !== id);
-  localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
+  removeLocalById(KEYS.FINANCES, id);
 
   await syncOrQueue('delete', 'finances', id, async () => {
     const { error } = await supabase.from('finances').delete().eq('id', id);
@@ -703,26 +652,16 @@ export async function deleteFinance(id) {
 // --- Honey Harvests CRUD ---
 
 export async function getHoneyHarvests() {
-  const isRemote = await useRemote();
-  const ctx = isRemote ? await getRemoteContext() : null;
-  if (ctx && shouldPullRemote('honey')) {
-    try {
-      const { data, error } = await supabase
-        .from('honey_harvests')
-        .select('*')
-        .eq('operation_id', ctx.operationId)
-        .order('date', { ascending: false });
-      if (error) throw error;
-      const honey = data.map(mapHoneyFromDB);
-      localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
-      setLastPull('honey');
-    } catch (err) {
-      console.warn('Failed to fetch honey harvests from remote, using local cache:', err);
-    }
-  }
+  await pullEntity({
+    pullKey: 'honey',
+    storageKey: KEYS.HONEY,
+    table: 'honey_harvests',
+    mapFrom: mapHoneyFromDB,
+    order: { column: 'date', ascending: false },
+    warnMsg: 'Failed to fetch honey harvests from remote, using local cache:'
+  });
 
-  const honey = readLocalArray(KEYS.HONEY);
-  return honey.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return sortByDateDesc(readLocalArray(KEYS.HONEY));
 }
 
 export async function saveHoneyHarvest(harvest) {
@@ -730,35 +669,9 @@ export async function saveHoneyHarvest(harvest) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Honigernten erfassen.');
   }
   const ctx = await getRemoteContext();
-  if (!harvest.id) {
-    harvest.id = 'honey_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    harvest.createdAt = new Date().toISOString();
-  }
-  harvest.updatedAt = new Date().toISOString();
-  stampOperationFields(harvest, ctx);
-
-  // 1. Save locally
-  const honey = readLocalArray(KEYS.HONEY);
-  const idx = honey.findIndex(h => h.id === harvest.id);
-  if (idx !== -1) {
-    honey[idx] = { ...honey[idx], ...harvest };
-  } else {
-    honey.push(harvest);
-  }
-  localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
-
-  await syncOrQueue('upsert', 'honey_harvests', harvest, async () => {
-    const remote = await getRemoteContext();
-    if (!remote) throw new Error('Kein aktiver Betrieb');
-    const dbData = {
-      ...mapHoneyToDB(harvest),
-      user_id: remote.userId,
-      operation_id: harvest.operationId || remote.operationId,
-      created_by: harvest.createdBy || remote.userId
-    };
-    const { error } = await supabase.from('honey_harvests').upsert(dbData);
-    if (error) throw error;
-  });
+  prepareEntity(harvest, 'honey_', ctx);
+  upsertLocal(KEYS.HONEY, harvest);
+  await syncOrQueue('upsert', 'honey_harvests', harvest, () => remoteUpsert('honey_harvests', harvest));
   return harvest;
 }
 
@@ -766,9 +679,7 @@ export async function deleteHoneyHarvest(id) {
   if (await useRemote() && !canEditOperation()) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Honigernten löschen.');
   }
-  let honey = readLocalArray(KEYS.HONEY);
-  honey = honey.filter(h => h.id !== id);
-  localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
+  removeLocalById(KEYS.HONEY, id);
 
   await syncOrQueue('delete', 'honey_harvests', id, async () => {
     const { error } = await supabase.from('honey_harvests').delete().eq('id', id);
@@ -790,71 +701,71 @@ export async function saveTaskState(month, taskId, isChecked) {
   return true;
 }
 
+function buildRemoteEntityConfigs(sources, { skipEmpty }) {
+  const configs = [
+    { label: 'Völker', table: 'hives', mapTo: mapHiveToDB, data: sources.hives, logName: 'hives' },
+    { label: 'Durchsichten', table: 'inspections', mapTo: mapInspectionToDB, data: sources.inspections, logName: 'inspections' }
+  ];
+  if (isOperationOwner()) {
+    configs.push({
+      label: 'Finanzen',
+      table: 'finances',
+      mapTo: mapFinanceToDB,
+      data: sources.finances,
+      logName: 'finances'
+    });
+  }
+  configs.push({
+    label: 'Honig',
+    table: 'honey_harvests',
+    mapTo: mapHoneyToDB,
+    data: sources.honey,
+    logName: 'honey'
+  });
+
+  return configs.filter(cfg => {
+    if (!cfg.data || !Array.isArray(cfg.data)) return false;
+    if (skipEmpty) return cfg.data.length > 0;
+    return true;
+  });
+}
+
+async function upsertRemoteEntityConfigs(configs, { userId, operationId }, onError) {
+  for (const { label, table, mapTo, data, logName } of configs) {
+    const rows = data.map(item => ({
+      ...mapTo({
+        ...item,
+        operationId: item.operationId || operationId,
+        createdBy: item.createdBy || userId
+      }),
+      user_id: userId
+    }));
+    const { error } = await supabase.from(table).upsert(rows);
+    if (error) onError(error, { label, logName });
+  }
+}
+
 // Sync Local Data to Supabase (manual migration trigger)
 export async function syncLocalToRemote() {
   if (!supabase) return false;
   const ctx = await getRemoteContext();
   if (!ctx) return false;
 
-  const userId = ctx.userId;
-  const operationId = ctx.operationId;
   const errors = [];
+  const configs = buildRemoteEntityConfigs(
+    {
+      hives: readLocalArray(KEYS.HIVES),
+      inspections: readLocalArray(KEYS.INSPECTIONS),
+      finances: readLocalArray(KEYS.FINANCES),
+      honey: readLocalArray(KEYS.HONEY)
+    },
+    { skipEmpty: true }
+  );
 
-  // Sync hives
-  const hives = readLocalArray(KEYS.HIVES);
-  if (hives.length > 0) {
-    const dbHives = hives.map(h => ({
-      ...mapHiveToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
-      user_id: userId
-    }));
-    const { error } = await supabase.from('hives').upsert(dbHives);
-    if (error) {
-      console.error('Error syncing hives:', error);
-      errors.push('Völker');
-    }
-  }
-
-  // Sync inspections
-  const inspections = readLocalArray(KEYS.INSPECTIONS);
-  if (inspections.length > 0) {
-    const dbInspections = inspections.map(i => ({
-      ...mapInspectionToDB({ ...i, operationId: i.operationId || operationId, createdBy: i.createdBy || userId }),
-      user_id: userId
-    }));
-    const { error } = await supabase.from('inspections').upsert(dbInspections);
-    if (error) {
-      console.error('Error syncing inspections:', error);
-      errors.push('Durchsichten');
-    }
-  }
-
-  // Sync finances
-  const finances = readLocalArray(KEYS.FINANCES);
-  if (finances.length > 0 && isOperationOwner()) {
-    const dbFinances = finances.map(f => ({
-      ...mapFinanceToDB({ ...f, operationId: f.operationId || operationId, createdBy: f.createdBy || userId }),
-      user_id: userId
-    }));
-    const { error } = await supabase.from('finances').upsert(dbFinances);
-    if (error) {
-      console.error('Error syncing finances:', error);
-      errors.push('Finanzen');
-    }
-  }
-
-  // Sync honey
-  const honey = readLocalArray(KEYS.HONEY);
-  if (honey.length > 0) {
-    const dbHoney = honey.map(h => ({
-      ...mapHoneyToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
-      user_id: userId
-    }));
-    const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
-    if (error) {
-      console.error('Error syncing honey:', error);
-      errors.push('Honig');
-    }
-  }
+  await upsertRemoteEntityConfigs(configs, ctx, (error, { label, logName }) => {
+    console.error(`Error syncing ${logName}:`, error);
+    errors.push(label);
+  });
 
   if (errors.length > 0) {
     throw new Error('Sync fehlgeschlagen für: ' + errors.join(', '));
@@ -896,41 +807,20 @@ export async function importData(jsonString) {
         console.error('Import rejected: kein aktiver Betrieb');
         return false;
       }
-      const { userId, operationId } = ctx;
       const errors = [];
+      const configs = buildRemoteEntityConfigs(
+        {
+          hives: data.hives,
+          inspections: data.inspections,
+          finances: data.finances,
+          honey: data.honey
+        },
+        { skipEmpty: false }
+      );
 
-      if (data.hives && Array.isArray(data.hives)) {
-        const dbHives = data.hives.map(h => ({
-          ...mapHiveToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
-          user_id: userId
-        }));
-        const { error } = await supabase.from('hives').upsert(dbHives);
-        if (error) errors.push(error);
-      }
-      if (data.inspections && Array.isArray(data.inspections)) {
-        const dbInspections = data.inspections.map(i => ({
-          ...mapInspectionToDB({ ...i, operationId: i.operationId || operationId, createdBy: i.createdBy || userId }),
-          user_id: userId
-        }));
-        const { error } = await supabase.from('inspections').upsert(dbInspections);
-        if (error) errors.push(error);
-      }
-      if (data.finances && Array.isArray(data.finances) && isOperationOwner()) {
-        const dbFinances = data.finances.map(f => ({
-          ...mapFinanceToDB({ ...f, operationId: f.operationId || operationId, createdBy: f.createdBy || userId }),
-          user_id: userId
-        }));
-        const { error } = await supabase.from('finances').upsert(dbFinances);
-        if (error) errors.push(error);
-      }
-      if (data.honey && Array.isArray(data.honey)) {
-        const dbHoney = data.honey.map(h => ({
-          ...mapHoneyToDB({ ...h, operationId: h.operationId || operationId, createdBy: h.createdBy || userId }),
-          user_id: userId
-        }));
-        const { error } = await supabase.from('honey_harvests').upsert(dbHoney);
-        if (error) errors.push(error);
-      }
+      await upsertRemoteEntityConfigs(configs, ctx, (error) => {
+        errors.push(error);
+      });
 
       if (errors.length > 0) {
         console.error('Import had Supabase errors:', errors);
