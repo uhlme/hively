@@ -1,12 +1,9 @@
 /**
  * Shared helpers for escaping, safe storage reads, Gemini JSON parsing,
- * and button loading states.
+ * media encoding, and button loading states.
  */
 
-/**
- * Show/hide a loading spinner on a button while an async action runs.
- * Restores the original label when loading ends.
- */
+/** Show/hide a loading spinner on a button while an async action runs. */
 export function setButtonLoading(button, isLoading, loadingLabel = 'Speichern…') {
   if (!button) return;
 
@@ -73,40 +70,49 @@ export function safeJsonParse(raw, fallback = null) {
   }
 }
 
-/**
- * Parse Gemini responses that may include markdown fences or surrounding text.
- */
+/** Parse Gemini responses that may include markdown fences or surrounding text. */
 export function parseGeminiJson(responseText) {
   if (!responseText || typeof responseText !== 'string') {
     throw new Error('Leere KI-Antwort');
   }
 
   let text = responseText.trim();
-
-  // Strip ```json ... ``` or ``` ... ``` fences
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced) {
-    text = fenced[1].trim();
-  }
+  if (fenced) text = fenced[1].trim();
 
   try {
     return JSON.parse(text);
   } catch {
-    // Fall back to first JSON object/array substring
-    const startObj = text.indexOf('{');
-    const startArr = text.indexOf('[');
-    let start = -1;
-    if (startObj === -1) start = startArr;
-    else if (startArr === -1) start = startObj;
-    else start = Math.min(startObj, startArr);
+    const starts = [text.indexOf('{'), text.indexOf('[')].filter((i) => i >= 0);
+    if (starts.length === 0) throw new Error('Kein JSON in der KI-Antwort gefunden');
 
-    if (start === -1) throw new Error('Kein JSON in der KI-Antwort gefunden');
-
-    const endObj = text.lastIndexOf('}');
-    const endArr = text.lastIndexOf(']');
-    const end = Math.max(endObj, endArr);
+    const start = Math.min(...starts);
+    const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
     if (end <= start) throw new Error('Unvollständiges JSON in der KI-Antwort');
 
     return JSON.parse(text.slice(start, end + 1));
   }
+}
+
+/** Convert a Blob/File to a raw base64 string (without data-URL prefix). */
+export function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',')[1] : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Local entity / queue id: `prefix` + timestamp + random suffix. */
+export function makeId(prefix, randomLen = 9) {
+  return (
+    prefix +
+    Date.now() +
+    '_' +
+    Math.random().toString(36).substr(2, randomLen)
+  );
 }
