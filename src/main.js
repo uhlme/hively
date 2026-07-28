@@ -944,7 +944,12 @@ async function renderHiveDetailView() {
     openHiveModal(hive);
   });
 
-  // Render AI Recommendation Section
+  // Render AI Recommendation Section (remove existing if present)
+  const existingRecommendationBlock = document.getElementById('hive-recommendation-block');
+  if (existingRecommendationBlock) {
+    existingRecommendationBlock.remove();
+  }
+
   const inspections = await getInspections(activeHiveIdForDetail);
   const recommendationBlock = document.createElement('div');
   recommendationBlock.id = 'hive-recommendation-block';
@@ -966,16 +971,17 @@ async function renderHiveDetailView() {
   // Load recommendation
   async function loadRecommendation() {
     const recommendationContent = document.getElementById('recommendation-content');
+    if (!recommendationContent) return;
+    
     try {
       recommendationContent.innerHTML = '<span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>';
       const recommendation = await getHiveRecommendation(hive, inspections);
       
-      // Format recommendation with markdown-style bold text
-      const formattedRecommendation = recommendation
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Simple text formatting
+      const formattedRecommendation = escapeHtml(recommendation)
         .replace(/\n/g, '<br>');
       
-      recommendationContent.innerHTML = `<div style="font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">${formattedRecommendation}</div>`;
+      recommendationContent.innerHTML = `<div style="font-size: 0.9rem; line-height: 1.6;">${formattedRecommendation}</div>`;
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
       recommendationContent.innerHTML = '<span style="font-size: 0.9rem; color: var(--danger);">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
@@ -988,6 +994,7 @@ async function renderHiveDetailView() {
   // Refresh button
   document.getElementById('btn-refresh-recommendation')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-refresh-recommendation');
+    if (!btn) return;
     btn.disabled = true;
     btn.innerText = 'Lädt...';
     await loadRecommendation();
