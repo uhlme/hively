@@ -182,10 +182,90 @@ async function parseReceipt(ai, payload = {}) {
   };
 }
 
+async function hiveRecommendation(ai, payload = {}) {
+  const { hive, inspections } = payload;
+  
+  if (!hive || typeof hive !== 'object') {
+    throw new Error('Ungültige Volksdaten.');
+  }
+  
+  if (!Array.isArray(inspections) || inspections.length === 0) {
+    return { recommendation: 'Noch keine Durchsichten vorhanden. Erstelle eine erste Durchsicht, um Empfehlungen zu erhalten.' };
+  }
+
+  // Sortiere Durchsichten nach Datum (neueste zuerst)
+  const sortedInspections = [...inspections].sort((a, b) => 
+    new Date(b.date) - new Date(a.date)
+  );
+
+  // Begrenze auf die letzten 10 Durchsichten für Performance
+  const recentInspections = sortedInspections.slice(0, 10);
+
+  // Bereite Volksinformationen auf
+  const hiveInfo = `
+Volk: ${hive.name}
+Königin: ${hive.queenName || 'Unbekannt'} (${hive.queenYear || 'Jahr unbekannt'}, ${hive.queenColor || 'Farbe unbekannt'})
+Rasse: ${hive.breed || 'Unbekannt'}
+Status: ${hive.status || 'Unbekannt'}
+Brutwaben: ${hive.broodFrames || 0}
+Honigwaben HR1: ${hive.honeyFrames1 || 0}
+Honigwaben HR2: ${hive.honeyFrames2 || 0}
+Notizen: ${hive.notes || 'Keine'}
+  `.trim();
+
+  // Bereite Durchsichten auf
+  const inspectionsSummary = recentInspections.map((insp, idx) => {
+    return `
+Durchsicht ${idx + 1} (${insp.date}):
+- Fütterung: ${insp.feeding || 'Keine Angabe'}
+- Varroa-Behandlung: ${insp.varroa || 'Keine Angabe'}
+- Brutstatus: ${insp.broodStatus || 'Keine Angabe'}
+- Honigraum: ${insp.honeySuper || 'Keine Angabe'}
+- Sanftmut: ${insp.temperament || 'Keine Angabe'}/5
+- Wetter: ${insp.weatherCondition || 'Unbekannt'}, ${insp.weatherTemp !== undefined && insp.weatherTemp !== null && insp.weatherTemp !== '' ? insp.weatherTemp + '°C' : 'Temp. unbekannt'}
+- Notizen: ${insp.notes || 'Keine'}
+    `.trim();
+  }).join('\n\n');
+
+  const prompt = `
+Du bist ein erfahrener Schweizer Imker-Experte mit langjähriger Praxiserfahrung.
+
+Hier sind die Informationen über ein Bienenvolk und seine letzten Durchsichten:
+
+${hiveInfo}
+
+LETZTE DURCHSICHTEN (neueste zuerst):
+${inspectionsSummary}
+
+Aufgabe:
+Analysiere die Entwicklung des Volkes anhand der Durchsichten und gib eine konkrete, praxisnahe Empfehlung für die nächsten Schritte ab.
+
+Berücksichtige dabei:
+1. Die aktuelle Jahreszeit (heute ist ${new Date().toLocaleDateString('de-CH')})
+2. Die Entwicklung des Brutstatus über die Durchsichten hinweg
+3. Anzeichen von Problemen (Varroa, Futtermangel, Schwarmstimmung, etc.)
+4. Die Sanftmut und das Verhalten des Volkes
+5. Den Status der Honigräume
+6. Die Königin und ihr Alter
+
+Gib eine strukturierte Empfehlung in 3-5 kurzen Abschnitten:
+- **Allgemeine Einschätzung**: Wie entwickelt sich das Volk?
+- **Aktionsbedarf**: Was sollte in den nächsten Tagen/Wochen getan werden?
+- **Besondere Beobachtungen**: Gibt es Auffälligkeiten, die beachtet werden sollten?
+- **Langfristig**: Was sollte mittelfristig geplant werden?
+
+Formuliere praxisnah, motivierend und konkret. Verwende Schweizer Imker-Terminologie.
+  `;
+
+  const result = await getModel(ai).generateContent(prompt);
+  return { recommendation: result.response.text().trim() };
+}
+
 const ACTIONS = {
   weather_insight: (ai, body) => weatherInsight(ai, body.weatherData),
   parse_audio: (ai, body) => parseAudio(ai, body),
-  parse_receipt: (ai, body) => parseReceipt(ai, body)
+  parse_receipt: (ai, body) => parseReceipt(ai, body),
+  hive_recommendation: (ai, body) => hiveRecommendation(ai, body)
 };
 
 /**

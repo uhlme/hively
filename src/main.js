@@ -61,6 +61,7 @@ import {
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
+import { getHiveRecommendation } from './hiveRecommendations.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
@@ -943,8 +944,58 @@ async function renderHiveDetailView() {
     openHiveModal(hive);
   });
 
-  // Render Inspections Timeline
+  // Render AI Recommendation Section
   const inspections = await getInspections(activeHiveIdForDetail);
+  const recommendationBlock = document.createElement('div');
+  recommendationBlock.id = 'hive-recommendation-block';
+  recommendationBlock.className = 'card';
+  recommendationBlock.style.cssText = 'margin: 20px 0; padding: 16px; background: linear-gradient(135deg, rgba(255, 160, 0, 0.1), rgba(255, 143, 0, 0.05)); border: 1px solid rgba(255, 160, 0, 0.2);';
+  recommendationBlock.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">🤖 KI-Empfehlung</h3>
+      <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
+    </div>
+    <div id="recommendation-content" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary);">
+      <span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>
+    </div>
+  `;
+  
+  // Insert recommendation block after info block
+  infoBlock.parentNode.insertBefore(recommendationBlock, infoBlock.nextSibling);
+
+  // Load recommendation
+  async function loadRecommendation() {
+    const recommendationContent = document.getElementById('recommendation-content');
+    try {
+      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>';
+      const recommendation = await getHiveRecommendation(hive, inspections);
+      
+      // Format recommendation with markdown-style bold text
+      const formattedRecommendation = recommendation
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+      
+      recommendationContent.innerHTML = `<div style="font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">${formattedRecommendation}</div>`;
+    } catch (err) {
+      console.error('Fehler beim Laden der Empfehlung:', err);
+      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; color: var(--danger);">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
+    }
+  }
+
+  // Initial load
+  loadRecommendation();
+
+  // Refresh button
+  document.getElementById('btn-refresh-recommendation')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-refresh-recommendation');
+    btn.disabled = true;
+    btn.innerText = 'Lädt...';
+    await loadRecommendation();
+    btn.disabled = false;
+    btn.innerText = 'Neu laden';
+  });
+
+  // Render Inspections Timeline
   const timeline = document.getElementById('hive-inspections-list');
   
   if (inspections.length === 0) {
