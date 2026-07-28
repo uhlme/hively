@@ -228,33 +228,25 @@ Durchsicht ${idx + 1} (${insp.date}):
   }).join('\n\n');
 
   const prompt = `
-Du bist ein erfahrener Schweizer Imker-Experte mit langjähriger Praxiserfahrung.
-
-Hier sind die Informationen über ein Bienenvolk und seine letzten Durchsichten:
+Du bist ein erfahrener Schweizer Imker-Experte. Analysiere dieses Bienenvolk:
 
 ${hiveInfo}
 
-LETZTE DURCHSICHTEN (neueste zuerst):
+LETZTE DURCHSICHTEN:
 ${inspectionsSummary}
 
 Aufgabe:
-Analysiere die Entwicklung des Volkes anhand der Durchsichten und gib eine konkrete, praxisnahe Empfehlung für die nächsten Schritte ab.
+Gib eine KURZE, PRÄGNANTE Empfehlung auf DEUTSCH (max. 4-5 Sätze) mit den wichtigsten nächsten Schritten.
 
-Berücksichtige dabei:
-1. Die aktuelle Jahreszeit (heute ist ${new Date().toLocaleDateString('de-CH')})
-2. Die Entwicklung des Brutstatus über die Durchsichten hinweg
-3. Anzeichen von Problemen (Varroa, Futtermangel, Schwarmstimmung, etc.)
-4. Die Sanftmut und das Verhalten des Volkes
-5. Den Status der Honigräume
-6. Die Königin und ihr Alter
+WICHTIG:
+- Antworte AUSSCHLIESSLICH auf Deutsch (Hochdeutsch mit Schweizer Imker-Begriffen)
+- Maximal 4-5 Sätze insgesamt
+- Fokus auf die 2-3 wichtigsten Aktionen
+- Konkret und handlungsorientiert
+- Berücksichtige die aktuelle Jahreszeit (heute: ${new Date().toLocaleDateString('de-CH')})
 
-Gib eine strukturierte Empfehlung in 3-5 kurzen Abschnitten:
-- **Allgemeine Einschätzung**: Wie entwickelt sich das Volk?
-- **Aktionsbedarf**: Was sollte in den nächsten Tagen/Wochen getan werden?
-- **Besondere Beobachtungen**: Gibt es Auffälligkeiten, die beachtet werden sollten?
-- **Langfristig**: Was sollte mittelfristig geplant werden?
-
-Formuliere praxisnah, motivierend und konkret. Verwende Schweizer Imker-Terminologie.
+Beispiel-Format:
+"Das Volk entwickelt sich stark/schwach. [Hauptbeobachtung in 1 Satz]. Nächste Schritte: [Konkrete Aktion 1], [Konkrete Aktion 2]. [Optional: Wichtiger Hinweis]."
   `;
 
   const result = await getModel(ai).generateContent(prompt);
