@@ -50,7 +50,7 @@ function geminiApiPlugin() {
             throw parseErr;
           }
 
-          const result = await handleGeminiRequest(body, req.headers.authorization);
+          const result = await handleGeminiRequest(body, { headers: req.headers || {} });
           sendJson(res, result.status, result.body);
         } catch (err) {
           console.error('[vite gemini middleware]', err);

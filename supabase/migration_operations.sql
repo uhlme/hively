@@ -116,7 +116,7 @@ create table if not exists public.operation_invites (
   id uuid primary key default gen_random_uuid(),
   operation_id uuid not null references public.operations(id) on delete cascade,
   code text not null unique,
-  role text not null default 'editor' check (role in ('owner', 'editor')),
+  role text not null default 'editor' check (role in ('editor', 'viewer')),
   created_by uuid references auth.users(id) on delete set null,
   expires_at timestamp with time zone,
   max_uses integer,
@@ -217,7 +217,21 @@ create policy "Owners can insert members"
   to authenticated
   with check (
     public.is_operation_owner(operation_id)
-    or (user_id = auth.uid() and role = 'owner') -- bootstrap: creator adds self as owner
+    or (
+      user_id = auth.uid()
+      and role = 'owner'
+      and exists (
+        select 1
+        from public.operations o
+        where o.id = operation_id
+          and o.created_by = auth.uid()
+      )
+      and not exists (
+        select 1
+        from public.operation_members m
+        where m.operation_id = operation_id
+      )
+    ) -- bootstrap: creator adds self as first owner only
   );
 
 drop policy if exists "Owners can update members" on public.operation_members;
@@ -264,13 +278,9 @@ create policy "Owners can delete invites"
 -- Public invite lookup by code (needed before joining)
 create or replace function public.get_invite_by_code(invite_code text)
 returns table (
-  id uuid,
-  operation_id uuid,
   operation_name text,
   role text,
-  expires_at timestamp with time zone,
-  max_uses integer,
-  used_count integer
+  expires_at timestamp with time zone
 )
 language sql
 stable
@@ -278,16 +288,15 @@ security definer
 set search_path = public
 as $$
   select
-    i.id,
-    i.operation_id,
     o.name as operation_name,
     i.role,
-    i.expires_at,
-    i.max_uses,
-    i.used_count
+    i.expires_at
   from public.operation_invites i
   join public.operations o on o.id = i.operation_id
-  where upper(i.code) = upper(invite_code)
+  where upper(i.code) = upper(trim(invite_code))
+    and i.role in ('editor', 'viewer')
+    and (i.expires_at is null or i.expires_at >= timezone('utc'::text, now()))
+    and (i.max_uses is null or i.used_count < i.max_uses)
   limit 1;
 $$;
 
@@ -320,6 +329,10 @@ begin
   for update;
 
   if invite_id is null then
+    raise exception 'Einladungscode ungültig';
+  end if;
+
+  if invite_role is null or invite_role not in ('editor', 'viewer') then
     raise exception 'Einladungscode ungültig';
   end if;
 

@@ -23,7 +23,6 @@ export async function handler(event) {
     return geminiLambdaResponse(400, { error: 'Ungültiges JSON.' });
   }
 
-  const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
-  const result = await handleGeminiRequest(body, authHeader);
+  const result = await handleGeminiRequest(body, { headers: event.headers || {} });
   return geminiLambdaResponse(result.status, result.body);
 }

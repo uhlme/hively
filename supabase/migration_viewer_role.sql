@@ -12,7 +12,7 @@ alter table public.operation_invites
   drop constraint if exists operation_invites_role_check;
 alter table public.operation_invites
   add constraint operation_invites_role_check
-  check (role in ('owner', 'editor', 'viewer'));
+  check (role in ('editor', 'viewer'));
 
 -- Helper: can write operational data (owner + editor, not viewer)
 create or replace function public.can_edit_operation(op_id uuid)

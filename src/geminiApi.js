@@ -8,11 +8,11 @@ const GEMINI_ENDPOINT = '/api/gemini';
  * The API key never ships in the client bundle.
  */
 export async function callGemini(action, payload = {}, timeoutMs = 60000) {
-  const headers = { 'Content-Type': 'application/json' };
+  let authorization = '';
   if (supabase) {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+      authorization = `Bearer ${session.access_token}`;
     }
   }
 
@@ -20,7 +20,10 @@ export async function callGemini(action, payload = {}, timeoutMs = 60000) {
     GEMINI_ENDPOINT,
     {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authorization ? { Authorization: authorization } : {})
+      },
       body: JSON.stringify({ action, ...payload })
     },
     timeoutMs
