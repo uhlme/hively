@@ -21,6 +21,27 @@ async function requireSession() {
   return session;
 }
 
+async function getMembershipRole(operationId) {
+  const session = await requireSession();
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('operation_members')
+    .select('role')
+    .eq('operation_id', operationId)
+    .eq('user_id', session.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.role || null;
+}
+
+async function requireOperationOwner(operationId) {
+  const role = await getMembershipRole(operationId);
+  if (role !== 'owner') {
+    throw new Error('Nur Betriebsinhaber dürfen diese Aktion ausführen.');
+  }
+  return role;
+}
+
 export function getActiveOperationId() {
   return localStorage.getItem(ACTIVE_OP_KEY) || null;
 }
@@ -159,6 +180,7 @@ export async function createOperation({ name, addressLine, postalCode, city }) {
 }
 
 export async function updateOperation(operationId, { name, addressLine, postalCode, city }) {
+  await requireOperationOwner(operationId);
   const client = requireSupabase();
   const payload = {};
   if (name !== undefined) payload.name = String(name).trim();
@@ -190,6 +212,7 @@ export async function updateOperation(operationId, { name, addressLine, postalCo
 }
 
 export async function listOperationMembers(operationId) {
+  await getMembershipRole(operationId);
   const client = requireSupabase();
   const { data, error } = await client
     .from('operation_members')
@@ -222,6 +245,7 @@ function generateInviteCode(length = 8) {
 export async function createInvite(operationId, { role = 'editor', daysValid = 30 } = {}) {
   const session = await requireSession();
   const client = requireSupabase();
+  await requireOperationOwner(operationId);
   if (role !== 'editor' && role !== 'viewer') {
     throw new Error('Einladungen sind nur für Mitarbeiter oder Betrachter erlaubt.');
   }

@@ -7,6 +7,14 @@ import { parseGeminiJson } from '../src/utils.js';
 
 const MODEL = 'gemini-2.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMITS = {
+  weather_insight: 60,
+  hive_recommendation: 60,
+  parse_receipt: 20,
+  parse_audio: 10
+};
+const requestBuckets = new Map();
 const ALLOWED_RECEIPT_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -70,12 +78,79 @@ function getApiKey() {
   return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 }
 
+function getSupabaseUrl() {
+  return process.env.VITE_SUPABASE_URL || '';
+}
+
+function getSupabaseAnonKey() {
+  return process.env.VITE_SUPABASE_ANON_KEY || '';
+}
+
 function ok(body) {
   return { status: 200, body };
 }
 
 function fail(status, error) {
   return { status, body: { error } };
+}
+
+function normalizeHeaders(headers = {}) {
+  const normalized = {};
+  for (const [key, value] of Object.entries(headers || {})) {
+    normalized[String(key).toLowerCase()] = Array.isArray(value) ? value.join(', ') : value;
+  }
+  return normalized;
+}
+
+async function authenticateRequest(headers = {}) {
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { error: fail(503, 'Authentifizierung für den KI-Proxy ist nicht konfiguriert.') };
+  }
+
+  const authHeader = headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return { error: fail(401, 'Login erforderlich für KI-Anfragen.') };
+  }
+
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: 'GET',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: authHeader
+      }
+    });
+  } catch (err) {
+    console.error('[geminiProxy] auth validation failed', err);
+    return { error: fail(502, 'Token-Prüfung fehlgeschlagen.') };
+  }
+
+  if (!response.ok) {
+    return { error: fail(401, 'Ungültiger oder abgelaufener Login.') };
+  }
+
+  const user = await response.json();
+  if (!user?.id) {
+    return { error: fail(401, 'Ungültiger oder abgelaufener Login.') };
+  }
+  return { user };
+}
+
+function enforceRateLimit(action, subjectKey) {
+  const limit = RATE_LIMITS[action];
+  if (!limit || !subjectKey) return null;
+  const now = Date.now();
+  const bucketKey = `${action}:${subjectKey}`;
+  const recent = (requestBuckets.get(bucketKey) || []).filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= limit) {
+    return fail(429, 'Zu viele KI-Anfragen. Bitte warte kurz und versuche es erneut.');
+  }
+  recent.push(now);
+  requestBuckets.set(bucketKey, recent);
+  return null;
 }
 
 function estimateBase64Bytes(b64) {
@@ -262,9 +337,10 @@ const ACTIONS = {
 
 /**
  * @param {{ action?: string } & Record<string, unknown>} body
+ * @param {{ headers?: Record<string, string | string[] | undefined> }} context
  * @returns {Promise<{ status: number, body: object }>}
  */
-export async function handleGeminiRequest(body) {
+export async function handleGeminiRequest(body, context = {}) {
   const apiKey = getApiKey();
   if (!apiKey) {
     return fail(503, 'Gemini API ist serverseitig nicht konfiguriert (GEMINI_API_KEY).');
@@ -277,6 +353,13 @@ export async function handleGeminiRequest(body) {
 
   const run = ACTIONS[action];
   if (!run) return fail(400, 'Unbekannte Aktion.');
+
+  const headers = normalizeHeaders(context.headers);
+  const auth = await authenticateRequest(headers);
+  if (auth.error) return auth.error;
+
+  const rateLimitError = enforceRateLimit(action, auth.user.id);
+  if (rateLimitError) return rateLimitError;
 
   try {
     return ok(await run(new GoogleGenerativeAI(apiKey), body));

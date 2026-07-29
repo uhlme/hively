@@ -165,3 +165,25 @@ $$;
 revoke all on function public.get_invite_by_code(text) from public;
 grant execute on function public.get_invite_by_code(text) to anon;
 grant execute on function public.get_invite_by_code(text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Medium: Prevent negative amounts / invalid finance types in business data
+-- ---------------------------------------------------------------------------
+
+alter table public.finances
+  drop constraint if exists finances_price_non_negative;
+alter table public.finances
+  add constraint finances_price_non_negative
+  check (price >= 0);
+
+alter table public.finances
+  drop constraint if exists finances_type_check;
+alter table public.finances
+  add constraint finances_type_check
+  check (type in ('expense', 'income', 'sponsorship'));
+
+alter table public.honey_harvests
+  drop constraint if exists honey_harvests_amount_non_negative;
+alter table public.honey_harvests
+  add constraint honey_harvests_amount_non_negative
+  check (amount >= 0);

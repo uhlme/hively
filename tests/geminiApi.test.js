@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { supabaseMock } = vi.hoisted(() => ({
+  supabaseMock: {
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null } }))
+    }
+  }
+}));
+
+vi.mock('../src/supabase.js', () => ({
+  supabase: supabaseMock
+}));
+
 describe('callGemini', () => {
   beforeEach(() => {
+    supabaseMock.auth.getSession.mockResolvedValue({ data: { session: null } });
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -30,6 +43,19 @@ describe('callGemini', () => {
       action: 'weather_insight',
       weatherData: { temperature: 20 }
     });
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
+  it('forwards the Supabase access token when logged in', async () => {
+    supabaseMock.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'access-token-123' } }
+    });
+
+    const { callGemini } = await import('../src/geminiApi.js');
+    await callGemini('weather_insight', { weatherData: { temperature: 22 } });
+
+    const [, options] = fetch.mock.calls[0];
+    expect(options.headers.Authorization).toBe('Bearer access-token-123');
   });
 
   it('throws proxy error message on failure', async () => {

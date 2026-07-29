@@ -215,6 +215,24 @@ describe('storage local-first + sync queue', () => {
     expect((await storage.getHives())[0].name).toBe('Backup Volk');
   });
 
+  it('rejects negative finance amounts', async () => {
+    await expect(storage.saveFinance({
+      date: '2026-07-01',
+      description: 'Manipulierte Ausgabe',
+      price: -10,
+      type: 'expense'
+    })).rejects.toThrow(/nicht-negative Zahl/);
+  });
+
+  it('rejects negative honey harvest amounts', async () => {
+    await expect(storage.saveHoneyHarvest({
+      hiveId: 'hive-1',
+      date: '2026-07-01',
+      amount: -2,
+      type: 'Sommer'
+    })).rejects.toThrow(/nicht-negative Zahl/);
+  });
+
   it('syncNow processes the outbox and reports summary', async () => {
     mockNavigatorNetwork({ onLine: false });
     await storage.saveHive({ name: 'SyncNow', status: 'Gesund' });

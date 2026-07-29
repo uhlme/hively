@@ -42,7 +42,7 @@ function geminiApiPlugin() {
             return;
           }
 
-          const result = await handleGeminiRequest(body);
+          const result = await handleGeminiRequest(body, { headers: req.headers || {} });
           sendJson(res, result.status, result.body);
         } catch (err) {
           console.error('[vite gemini middleware]', err);

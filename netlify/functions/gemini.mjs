@@ -19,6 +19,6 @@ export async function handler(event) {
     return geminiLambdaResponse(400, { error: 'Ungültiges JSON.' });
   }
 
-  const result = await handleGeminiRequest(body);
+  const result = await handleGeminiRequest(body, { headers: event.headers || {} });
   return geminiLambdaResponse(result.status, result.body);
 }
