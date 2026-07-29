@@ -107,12 +107,12 @@ export function blobToBase64(blob) {
   });
 }
 
-/** Local entity / queue id: `prefix` + timestamp + random suffix. */
-export function makeId(prefix, randomLen = 9) {
-  return (
-    prefix +
-    Date.now() +
-    '_' +
-    Math.random().toString(36).substr(2, randomLen)
-  );
+/** Local entity / queue id: `prefix` + cryptographically random UUID. */
+export function makeId(prefix) {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return prefix + crypto.randomUUID();
+  }
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return prefix + hex;
 }

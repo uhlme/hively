@@ -139,8 +139,13 @@ async function parseAudio(ai, payload = {}) {
     'Audiodatei ist zu gross (max. 8 MB).'
   );
 
+  const ALLOWED_AUDIO_TYPES = new Set([
+    'audio/webm', 'audio/ogg', 'audio/mp4', 'audio/wav', 'audio/mpeg', 'audio/mp3'
+  ]);
+  const audioMime = ALLOWED_AUDIO_TYPES.has(payload.mimeType) ? payload.mimeType : 'audio/webm';
+
   const parsed = await generateJson(ai, [
-    { inlineData: { data: payload.data, mimeType: payload.mimeType || 'audio/webm' } },
+    { inlineData: { data: payload.data, mimeType: audioMime } },
     { text: AUDIO_PROMPT }
   ]);
 
@@ -262,9 +267,13 @@ const ACTIONS = {
 
 /**
  * @param {{ action?: string } & Record<string, unknown>} body
+ * @param {string} [authHeader] – Authorization header for authentication check
  * @returns {Promise<{ status: number, body: object }>}
  */
-export async function handleGeminiRequest(body) {
+export async function handleGeminiRequest(body, authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.length < 20) {
+    return fail(401, 'Authentifizierung erforderlich.');
+  }
   const apiKey = getApiKey();
   if (!apiKey) {
     return fail(503, 'Gemini API ist serverseitig nicht konfiguriert (GEMINI_API_KEY).');
@@ -282,7 +291,18 @@ export async function handleGeminiRequest(body) {
     return ok(await run(new GoogleGenerativeAI(apiKey), body));
   } catch (err) {
     console.error('[geminiProxy]', err);
-    return fail(502, err.message || 'KI-Anfrage fehlgeschlagen.');
+    const safeMessages = [
+      'Keine Audiodaten übermittelt.',
+      'Audiodatei ist zu gross (max. 8 MB).',
+      'Keine Bilddatei übermittelt.',
+      'Beleg-Bild ist zu gross (max. 8 MB).',
+      'Bitte ein Bild als Beleg hochladen.',
+      'Ungültige Wetterdaten.',
+      'Ungültige Volksdaten.',
+      'Ungültiges Antwortformat der KI'
+    ];
+    const msg = safeMessages.includes(err.message) ? err.message : 'KI-Anfrage fehlgeschlagen.';
+    return fail(502, msg);
   }
 }
 

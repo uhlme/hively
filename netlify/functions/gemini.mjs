@@ -12,6 +12,10 @@ export async function handler(event) {
     return geminiLambdaResponse(405, { error: 'Method Not Allowed' });
   }
 
+  if (event.body && event.body.length > 10 * 1024 * 1024) {
+    return geminiLambdaResponse(413, { error: 'Payload zu gross (max. 10 MB).' });
+  }
+
   let body;
   try {
     body = JSON.parse(event.body || '{}');
@@ -19,6 +23,7 @@ export async function handler(event) {
     return geminiLambdaResponse(400, { error: 'Ungültiges JSON.' });
   }
 
-  const result = await handleGeminiRequest(body);
+  const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
+  const result = await handleGeminiRequest(body, authHeader);
   return geminiLambdaResponse(result.status, result.body);
 }

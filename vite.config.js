@@ -36,13 +36,21 @@ function geminiApiPlugin() {
         try {
           let body;
           try {
-            body = JSON.parse((await readRequestBody(req)) || '{}');
-          } catch {
-            sendJson(res, 400, { error: 'Ungültiges JSON.' });
-            return;
+            const raw = await readRequestBody(req);
+            if (raw.length > 10 * 1024 * 1024) {
+              sendJson(res, 413, { error: 'Payload zu gross (max. 10 MB).' });
+              return;
+            }
+            body = JSON.parse(raw || '{}');
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) {
+              sendJson(res, 400, { error: 'Ungültiges JSON.' });
+              return;
+            }
+            throw parseErr;
           }
 
-          const result = await handleGeminiRequest(body);
+          const result = await handleGeminiRequest(body, req.headers.authorization);
           sendJson(res, result.status, result.body);
         } catch (err) {
           console.error('[vite gemini middleware]', err);

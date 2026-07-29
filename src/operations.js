@@ -213,7 +213,7 @@ export async function listOperationMembers(operationId) {
   });
 }
 
-function generateInviteCode(length = 8) {
+function generateInviteCode(length = 12) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = crypto.getRandomValues(new Uint8Array(length));
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
