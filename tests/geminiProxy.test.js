@@ -21,6 +21,9 @@ describe('handleGeminiRequest', () => {
   });
 
   it('returns 401 when no auth header is provided', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    process.env.VITE_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.VITE_SUPABASE_ANON_KEY = 'anon-key';
     const { handleGeminiRequest } = await import('../server/geminiProxy.js');
     const result = await handleGeminiRequest({ action: 'weather_insight' });
     expect(result.status).toBe(401);
