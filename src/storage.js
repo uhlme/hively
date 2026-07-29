@@ -292,6 +292,14 @@ function makeLocalId(prefix) {
   return makeId(prefix);
 }
 
+function requireNonNegativeNumber(value, fieldLabel) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) {
+    throw new Error(`${fieldLabel} muss eine nicht-negative Zahl sein.`);
+  }
+  return number;
+}
+
 function nextRetryAt(now, attemptCount) {
   return now + Math.min(30 * 60 * 1000, 5000 * 2 ** Math.min(attemptCount, 5));
 }
@@ -630,6 +638,7 @@ export async function saveFinance(item) {
   if (await useRemote() && !isOperationOwner()) {
     throw new Error('Nur Betriebsinhaber dürfen Finanzen bearbeiten.');
   }
+  item.price = requireNonNegativeNumber(item.price, 'Betrag');
   const ctx = await getRemoteContext();
   prepareEntity(item, 'fin_', ctx);
   upsertLocal(KEYS.FINANCES, item);
@@ -668,6 +677,7 @@ export async function saveHoneyHarvest(harvest) {
   if (await useRemote() && !canEditOperation()) {
     throw new Error('Nur Inhaber und Mitarbeiter dürfen Honigernten erfassen.');
   }
+  harvest.amount = requireNonNegativeNumber(harvest.amount, 'Erntemenge');
   const ctx = await getRemoteContext();
   prepareEntity(harvest, 'honey_', ctx);
   upsertLocal(KEYS.HONEY, harvest);
