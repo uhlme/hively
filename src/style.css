@@ -57,6 +57,13 @@ html, body {
   background-color: var(--bg-secondary);
 }
 
+/* Doppeltipp-/Pinch-Zoom nur in der installierten App (iOS/Android/PWA) unterbinden,
+   nicht im normalen Desktop-/Mobile-Browser-Tab. */
+html.is-app-shell,
+html.is-app-shell body {
+  touch-action: manipulation;
+}
+
 body {
   font-family: var(--font-family);
   color: var(--text-primary);
