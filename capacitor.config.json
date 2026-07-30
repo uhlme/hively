@@ -1,0 +1,8 @@
+{
+  "appId": "ch.hively.app",
+  "appName": "Hively",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
