@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ios:sync": "npm run build && npx cap copy ios",
+    "ios:sync": "npm run build && PATH=\"/opt/homebrew/bin:$PATH\" npx cap sync ios",
     "ios:pods": "cd ios/App && pod install",
     "ios:open": "npm run ios:sync && npx cap open ios"
   },

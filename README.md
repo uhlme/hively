@@ -41,6 +41,35 @@ npm run preview
 
 The project is configured for Netlify (`netlify.toml`). Pushing to the main branch triggers an automatic deploy.
 
+## iOS (Capacitor / TestFlight)
+
+The app ships as a native iOS wrapper via [Capacitor](https://capacitorjs.com/), reusing the same
+Vite build (`ios/App/App/public` is the synced `dist/` output — do not edit it directly).
+
+Requirements: Node ≥22 (see `.nvmrc`), Xcode, CocoaPods, an Apple Developer account.
+
+```bash
+# Install JS dependencies (includes Capacitor)
+npm install
+
+# Native pods (only needed after adding/updating Capacitor plugins)
+npm run ios:pods
+
+# Build the web app, sync it into the iOS project, and open Xcode
+npm run ios:open
+```
+
+In Xcode:
+
+1. Select the `App` target → **Signing & Capabilities** → choose your Apple Developer team
+   (not committed to the repo — set once per checkout).
+2. Bump the build number under **General** if you're re-uploading the same marketing version
+   (`package.json` `version` / `MARKETING_VERSION` in the Xcode project).
+3. **Product → Archive**, then in the Organizer **Distribute App → App Store Connect**.
+4. In App Store Connect, assign the uploaded build to a TestFlight group.
+
+Run `npm run ios:sync` after every change to the web app before rebuilding in Xcode.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in values:
