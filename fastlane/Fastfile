@@ -39,7 +39,7 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "ch.hively.app" => "match AppStore ch.hively.app"
+          "ch.hively.app" => ENV["sigh_ch.hively.app_appstore_profile-name"]
         }
       }
     )
