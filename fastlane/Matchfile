@@ -1,5 +1,10 @@
-git_url(ENV["MATCH_GIT_URL"] || "https://github.com/uhlme/hively.git")
-git_branch(ENV["MATCH_GIT_BRANCH"] || "certificates")
+match_git_url = ENV["MATCH_GIT_URL"]
+match_git_url = nil if match_git_url&.empty?
+git_url(match_git_url || "https://github.com/uhlme/hively.git")
+
+match_git_branch = ENV["MATCH_GIT_BRANCH"]
+match_git_branch = nil if match_git_branch&.empty?
+git_branch(match_git_branch || "certificates")
 storage_mode("git")
 type("appstore")
 app_identifier(["ch.hively.app"])
