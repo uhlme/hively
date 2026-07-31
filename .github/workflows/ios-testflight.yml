@@ -9,11 +9,14 @@ on:
 jobs:
   beta:
     runs-on: macos-15
+    timeout-minutes: 30
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_KEYCHAIN_NAME: ${{ github.run_id }}.keychain
+      MATCH_KEYCHAIN_PASSWORD: ${{ github.run_id }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
@@ -26,6 +29,13 @@ jobs:
           echo "Using $latest"
           sudo xcode-select -s "$latest"
           xcodebuild -version
+
+      - name: Create temporary CI keychain
+        run: |
+          security create-keychain -p "$MATCH_KEYCHAIN_PASSWORD" "$MATCH_KEYCHAIN_NAME"
+          security set-keychain-settings -lut 21600 "$MATCH_KEYCHAIN_NAME"
+          security unlock-keychain -p "$MATCH_KEYCHAIN_PASSWORD" "$MATCH_KEYCHAIN_NAME"
+          security list-keychains -d user -s "$MATCH_KEYCHAIN_NAME" $(security list-keychains -d user | sed 's/"//g')
 
       - uses: actions/setup-node@v4
         with:
@@ -51,3 +61,7 @@ jobs:
 
       - name: Build and upload to TestFlight
         run: bundle exec fastlane beta
+
+      - name: Delete temporary CI keychain
+        if: always()
+        run: security delete-keychain "$MATCH_KEYCHAIN_NAME" || true
