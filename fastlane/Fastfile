@@ -22,6 +22,13 @@ platform :ios do
       build_number: ENV["GITHUB_RUN_NUMBER"] || latest_testflight_build_number(api_key: api_key) + 1
     )
 
+    if ENV["VERSION_NUMBER"]
+      increment_version_number(
+        xcodeproj: "ios/App/App.xcodeproj",
+        version_number: ENV["VERSION_NUMBER"]
+      )
+    end
+
     update_code_signing_settings(
       use_automatic_signing: false,
       path: "ios/App/App.xcodeproj",
