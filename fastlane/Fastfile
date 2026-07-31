@@ -25,6 +25,7 @@ platform :ios do
     build_app(
       workspace: "ios/App/App.xcworkspace",
       scheme: "App",
+      configuration: "Release",
       export_method: "app-store",
       xcargs: "DEVELOPMENT_TEAM=#{ENV['APPLE_TEAM_ID']} CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER=\"#{ENV['sigh_ch.hively.app_appstore_profile-name']}\"",
       export_options: {
