@@ -48,3 +48,5 @@ vendor/bundle
 *.dSYM.zip
 *.mobileprovision
 *.p12
+*.p8
+apple/
