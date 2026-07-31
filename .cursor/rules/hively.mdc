@@ -1,0 +1,38 @@
+---
+description: "Projektregeln für Hively (Bee-Tracker): Vanilla JS, Vite, Supabase, Netlify, PWA"
+alwaysApply: true
+---
+# Hively Projektregeln
+
+## Stack
+- Vanilla JavaScript (ES Modules), Vite, Vitest
+- Supabase Auth + Postgres + RLS (kein ORM)
+- Netlify Functions für `/api/gemini`
+- PWA mit Service Worker unter `public/sw.js`
+- Local-first Sync über `localStorage` + Outbox in `src/storage.js`
+
+## Architektur
+- Kein React/Next.js/Express – bestehende Struktur beibehalten
+- Browser spricht direkt mit Supabase; Serverlogik nur im Gemini-Proxy und in SQL/RPC
+- Domain-Daten: `hives`, `inspections`, `finances`, `honey_harvests` über Operationen (`operations`, `operation_members`, `operation_invites`)
+- Rollen: `owner`, `editor`, `viewer` – Schreibrechte serverseitig über RLS/`can_edit_operation` durchsetzen, nicht nur im UI/localStorage
+
+## Sicherheit
+- Niemals Secrets in Client-Code: `GEMINI_API_KEY` nur serverseitig
+- Nur `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` im Frontend
+- KI-Proxy (`/api/gemini`) erfordert authentifizierte Requests
+- User-Input vor `innerHTML` immer mit `escapeHtml()` escapen
+- Keine raw SQL-Strings im JS – Supabase Query Builder / RPC nutzen
+- Finanz-/Mengenfelder und AuthZ nicht dem Client allein überlassen
+
+## Code-Stil
+- Bestehende Module und Namenskonventionen (camelCase lokal, snake_case in DB) beibehalten
+- UI-Texte auf Deutsch (Schweiz)
+- Keine unnötigen Dependencies hinzufügen
+- Bestehende Tests in `tests/` erweitern, wenn Logik geändert wird
+
+## Dateien
+- Frontend: `src/`
+- Gemini-Proxy: `server/geminiProxy.js`, `netlify/functions/gemini.mjs`
+- Schema/RLS: `supabase/*.sql`
+- PWA: `public/`, `index.html`
