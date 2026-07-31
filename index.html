@@ -12,6 +12,23 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Hively – Bienen-Tracker</title>
     <link rel="stylesheet" href="/src/style.css" />
+    <script>
+      (function () {
+        var isNativeApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        var isInstalledPwa =
+          window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isNativeApp || isInstalledPwa) {
+          document.documentElement.classList.add('is-app-shell');
+          var viewport = document.querySelector('meta[name="viewport"]');
+          if (viewport) {
+            viewport.setAttribute(
+              'content',
+              'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+            );
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app">

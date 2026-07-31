@@ -1,6 +1,8 @@
 /**
  * weather.js - Handles fetching weather data based on geolocation.
  */
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 import { fetchWithTimeout } from './network.js';
 import { safeJsonParse } from './utils.js';
 
@@ -57,6 +59,21 @@ async function resolveUserCoords(forceRefresh) {
   if (!forceRefresh) {
     const cached = getCachedLocation();
     if (cached?.lat != null && cached?.lon != null) return cached;
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const position = await Geolocation.getCurrentPosition(GEO_OPTIONS);
+      const coords = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude
+      };
+      saveCachedLocation(coords.lat, coords.lon);
+      return coords;
+    } catch (error) {
+      console.warn('Standortabfrage fehlgeschlagen oder abgelehnt:', error.message);
+      throw error;
+    }
   }
 
   if (!navigator.geolocation) {

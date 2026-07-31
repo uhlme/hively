@@ -1,6 +1,6 @@
 {
   "name": "bee-tracker",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,15 +8,22 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ios:sync": "npm run build && PATH=\"/opt/homebrew/bin:$PATH\" npx cap sync ios",
+    "ios:pods": "cd ios/App && pod install",
+    "ios:open": "npm run ios:sync && npx cap open ios"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "vite": "^8.0.12",
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/ios": "^8.4.2",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.108.2"
   }
