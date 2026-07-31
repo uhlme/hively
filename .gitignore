@@ -37,3 +37,14 @@ ios/App/Pods/
 ios/App/build/
 ios/App/App/public/
 ios/.gradle/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+vendor/bundle
+*.ipa
+*.dSYM.zip
+*.mobileprovision
+*.p12
