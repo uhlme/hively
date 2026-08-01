@@ -71,7 +71,13 @@ Wichtig:
 
 export const GEMINI_JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
-  'Cache-Control': 'no-store'
+  'Cache-Control': 'no-store',
+  // Erlaubt Cross-Origin-Zugriff von der nativen App (capacitor://localhost),
+  // die den Proxy über die absolute Produktions-URL statt relativ aufruft.
+  // Unbedenklich, da jede Aktion einen gültigen Supabase-Bearer-Token verlangt.
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
 function getApiKey() {
