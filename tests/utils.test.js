@@ -5,7 +5,9 @@ import {
   safeJsonParse,
   parseGeminiJson,
   setButtonLoading,
-  withButtonLoading
+  withButtonLoading,
+  blobToBase64,
+  makeId
 } from '../src/utils.js';
 
 describe('escapeHtml', () => {
@@ -101,6 +103,27 @@ describe('setButtonLoading / withButtonLoading', () => {
 
     expect(button.disabled).toBe(false);
     expect(button.textContent).toBe('Speichern');
+  });
+});
+
+describe('blobToBase64', () => {
+  it('returns raw base64 without the data-URL prefix', async () => {
+    const blob = new Blob(['hello'], { type: 'text/plain' });
+    const base64 = await blobToBase64(blob);
+    expect(base64).toBe(btoa('hello'));
+    expect(base64).not.toContain('data:');
+  });
+});
+
+describe('makeId', () => {
+  it('prefixes a UUID-like id', () => {
+    const id = makeId('hive_');
+    expect(id.startsWith('hive_')).toBe(true);
+    expect(id.length).toBeGreaterThan('hive_'.length + 8);
+  });
+
+  it('produces unique ids', () => {
+    expect(makeId('x_')).not.toBe(makeId('x_'));
   });
 });
 
