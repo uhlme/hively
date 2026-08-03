@@ -10,7 +10,10 @@ full overview and the standard commands in `package.json`.
 There is a single service: the Vite dev server.
 
 - Dev server: `npm run dev` → http://localhost:5173/ (serves the PWA)
-- Tests: `npm test` (Vitest, jsdom) — currently 8 files / 51 tests
+- Unit tests: `npm test` (Vitest, jsdom) — files under `tests/`
+- E2E tests: `npm run test:e2e` (Playwright, Chromium) — specs under `e2e/`; config in
+  `playwright.config.js`. Starts/reuses Vite on port 5173 via `webServer`.
+  One-time on a fresh VM: `npx playwright install chromium` (CI uses `--with-deps`).
 - Production build: `npm run build` (outputs to `dist/`); preview with `npm run preview`
 - There is **no lint script** in `package.json`; linting is not part of this project.
 
@@ -19,14 +22,17 @@ There is a single service: the Vite dev server.
 - The app is **local-first and runs fully without any secrets or login**. Domain data
   (hives, inspections, finances, harvests) is stored in the browser's `localStorage`, so it
   persists across page reloads but is per-browser-profile. No backend is required to develop
-  or test core flows (e.g. creating a "Volk"/hive).
+  or test core flows (e.g. creating a "Volk"/hive). Without a session the app seeds demo
+  hives on first load (`bee_tracker_demo_seeded`).
 - Optional integrations are gated behind env vars and are **not needed** for local dev:
   - `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` enable cloud auth/sync. Absent → the app
     silently stays local-only (no login UI, no sync).
   - `GEMINI_API_KEY` is **server-only** (Vite dev middleware at `/api/gemini` + the Netlify
     function). Absent → the AI features (voice assistant, receipt scanner, weather insight)
     are unavailable, but the rest of the app works. Never prefix it with `VITE_`.
+- Modals open with the CSS class `active` on `.modal-overlay` (not `open`). The header
+  `#btn-quick-add` label changes by view (`+ Volk` on Kästen, `+ Kauf` on Finanzen).
 - The iOS/Capacitor path (`npm run ios:*`), `fastlane/`, and `Gemfile` require macOS + Xcode
   and **cannot be built or run in the Linux cloud environment**. Ignore them for web dev/testing.
-- UI text is German (Swiss). Hive management lives under the "Bienen"/"Kästen" navigation;
+- UI text is German (Swiss). Hive management lives under the "Kästen" navigation;
   add a hive via the "+ Volk" button → "Neues Volk erfassen" form → "Speichern".

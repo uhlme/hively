@@ -26,6 +26,12 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 
 # Firebase (local deploy config only)
 firebase.json
