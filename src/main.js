@@ -28,9 +28,9 @@ import {
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
-import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation } from './weather.js';
+import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation, writeWeatherCache } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
-import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
+import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob, clearOfflineAiDatabase } from './offlineAI.js';
 import {
   getNetworkPrefs,
   saveNetworkPrefs,
@@ -78,6 +78,17 @@ function writeRadarCache(data) {
     sessionStorage.setItem('bienen_radar_cache', JSON.stringify(data));
   } catch (e) {
     console.warn('Radar-Cache konnte nicht gespeichert werden:', e);
+  }
+  // Keep inspection-weather cache in sync so Durchsicht works offline too
+  if (data?.temperature != null) {
+    writeWeatherCache({
+      temperature: data.temperature,
+      conditionText: data.conditionText,
+      conditionEmoji: data.conditionEmoji,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timestamp: data.timestamp || Date.now()
+    });
   }
 }
 
@@ -1391,11 +1402,15 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
       btnWeatherRetry.style.display = 'none';
       try {
         const w = await fetchCurrentWeather();
-        weatherDisplay.innerHTML = `${escapeHtml(w.conditionEmoji)} ${escapeHtml(w.temperature)}°C`;
+        const cacheHint = w.fromCache ? ' <span class="text-muted" style="font-weight:400;">(Cache)</span>' : '';
+        weatherDisplay.innerHTML = `${escapeHtml(w.conditionEmoji)} ${escapeHtml(w.temperature)}°C${cacheHint}`;
         inpWeatherTemp.value = w.temperature;
         inpWeatherCond.value = w.conditionText;
+        if (w.fromCache) {
+          btnWeatherRetry.style.display = 'block';
+        }
       } catch (err) {
-        weatherDisplay.innerHTML = `<span class="text-danger">Wetter-Fehler</span>`;
+        weatherDisplay.innerHTML = `<span class="text-danger">Offline – Wetter manuell möglich</span>`;
         btnWeatherRetry.style.display = 'block';
       }
     };
@@ -1975,9 +1990,17 @@ function setupSettings() {
   });
 
   // Clear database
-  document.getElementById('btn-clear-data').addEventListener('click', () => {
+  document.getElementById('btn-clear-data').addEventListener('click', async () => {
     if (confirm('ACHTUNG: Möchtest du wirklich alle Daten unwiderruflich löschen?')) {
+      try {
+        await clearOfflineAiDatabase();
+      } catch (e) {
+        console.warn('Offline-AI IndexedDB konnte nicht vollständig gelöscht werden:', e);
+      }
       localStorage.clear();
+      try {
+        sessionStorage.clear();
+      } catch (_) { /* ignore */ }
       alert('Alle Daten wurden gelöscht.');
       location.reload();
     }

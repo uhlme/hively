@@ -38,6 +38,9 @@ const WMO_CODES = {
 };
 
 const GEO_OPTIONS = { timeout: 10000, maximumAge: 60000 };
+const WEATHER_CACHE_KEY = 'hively_weather_cache';
+/** Allow stale inspection weather for up to 7 days when offline. */
+const WEATHER_STALE_OK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function getCachedLocation() {
   return safeJsonParse(localStorage.getItem('hively_user_location'), null);
@@ -48,6 +51,21 @@ export function saveCachedLocation(lat, lon) {
     localStorage.setItem('hively_user_location', JSON.stringify({ lat, lon }));
   } catch (e) {
     console.error('Fehler beim Speichern des Standorts:', e);
+  }
+}
+
+export function readWeatherCache() {
+  return safeJsonParse(localStorage.getItem(WEATHER_CACHE_KEY), null);
+}
+
+export function writeWeatherCache(data) {
+  try {
+    localStorage.setItem(
+      WEATHER_CACHE_KEY,
+      JSON.stringify({ ...data, timestamp: data.timestamp ?? Date.now() })
+    );
+  } catch (e) {
+    console.warn('Wetter-Cache konnte nicht gespeichert werden:', e);
   }
 }
 
@@ -179,7 +197,28 @@ async function fetchCurrentWeatherByCoords(lat, lon) {
 }
 
 export async function fetchCurrentWeather(forceRefresh = false) {
-  return withUserLocation(forceRefresh, fetchCurrentWeatherByCoords);
+  try {
+    const data = await withUserLocation(forceRefresh, fetchCurrentWeatherByCoords);
+    writeWeatherCache({ ...data, timestamp: Date.now() });
+    return { ...data, fromCache: false };
+  } catch (err) {
+    const cached = readWeatherCache();
+    const age = cached?.timestamp != null ? Date.now() - cached.timestamp : Infinity;
+    if (cached && age <= WEATHER_STALE_OK_MS && cached.temperature != null) {
+      console.warn('Live-Wetter nicht erreichbar – verwende Cache:', err?.message || err);
+      return {
+        temperature: cached.temperature,
+        conditionText: cached.conditionText,
+        conditionEmoji: cached.conditionEmoji,
+        code: cached.code,
+        latitude: cached.latitude,
+        longitude: cached.longitude,
+        fromCache: true,
+        cacheAgeMs: age
+      };
+    }
+    throw err;
+  }
 }
 
 export async function fetchDashboardWeatherAndPollen(forceRefresh = false) {

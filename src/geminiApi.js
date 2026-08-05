@@ -3,11 +3,17 @@ import { fetchWithTimeout } from './network.js';
 import { supabase } from './supabase.js';
 
 // In der nativen App lädt die WebView lokale Dateien (capacitor://localhost),
-// ein relativer Pfad trifft dort keinen Server — deshalb dort absolut auf die
-// Produktions-Domain zeigen, wo die Netlify Function tatsächlich läuft.
+// ein relativer Pfad trifft dort keinen Server — deshalb absolut auf die
+// Proxy-URL zeigen (env oder Produktions-Default).
+const DEFAULT_NATIVE_GEMINI_PROXY = 'https://hivelyy.netlify.app/api/gemini';
 const GEMINI_ENDPOINT = Capacitor.isNativePlatform()
-  ? 'https://hivelyy.netlify.app/api/gemini'
+  ? (import.meta.env.VITE_GEMINI_PROXY_URL || DEFAULT_NATIVE_GEMINI_PROXY)
   : '/api/gemini';
+
+/** Exposed for tests / diagnostics. */
+export function getGeminiEndpoint() {
+  return GEMINI_ENDPOINT;
+}
 
 /**
  * Call the server-side Gemini proxy (Netlify function / Vite middleware).

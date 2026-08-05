@@ -714,8 +714,20 @@
 
     </div>
     <script>
+      // PWA Service Worker only — Capacitor ships assets in the IPA; SW under
+      // capacitor:// is unreliable and unnecessary for native offline shell.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+          const isNative = window.Capacitor?.isNativePlatform?.() === true;
+          if (isNative) {
+            try {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map((r) => r.unregister()));
+            } catch (e) {
+              console.warn('Native: Service Worker cleanup skipped', e);
+            }
+            return;
+          }
           navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('Service Worker registered:', reg.scope))
             .catch(err => console.error('Service Worker registration failed:', err));
