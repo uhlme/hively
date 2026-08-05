@@ -13,6 +13,14 @@ import {
   getHoneyHarvests,
   saveHoneyHarvest,
   deleteHoneyHarvest,
+  getApiaries,
+  getApiaryById,
+  saveApiary,
+  deleteApiary,
+  getTreatments,
+  getActiveTreatmentsForHive,
+  saveTreatment,
+  deleteTreatment,
   exportData,
   importData,
   seedDemoData,
@@ -25,6 +33,14 @@ import {
   syncNow,
   clearLocalEntityCache
 } from './storage.js';
+import {
+  TREATMENT_PRODUCTS,
+  getTreatmentProduct,
+  computeHarvestBlockedUntil,
+  VARROA_LEVEL_LABELS,
+  summarizeChecklist,
+  formatChecklistChips
+} from './healthCatalog.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
@@ -145,6 +161,94 @@ function canEditActiveOp() {
 
 function isOwnerActiveOp() {
   return !supabase || !getActiveOperationId() || isOperationOwner();
+}
+
+function readInspectionChecklistFromForm() {
+  const queenSeen = document.getElementById('insp-queen-seen')?.value || '';
+  const strength = document.getElementById('insp-strength')?.value || '';
+  const varroaLevel = document.getElementById('insp-varroa-level')?.value || '';
+  return {
+    queenSeen: queenSeen || null,
+    eggs: !!document.getElementById('insp-eggs')?.checked,
+    openBrood: !!document.getElementById('insp-open-brood')?.checked,
+    cappedBrood: !!document.getElementById('insp-capped-brood')?.checked,
+    playCups: !!document.getElementById('insp-play-cups')?.checked,
+    queenCells: !!document.getElementById('insp-queen-cells')?.checked,
+    strength: strength || null,
+    varroaLevel: varroaLevel || null
+  };
+}
+
+function fillInspectionChecklistForm(insp) {
+  const c = insp?.checklist || {};
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val ?? '';
+  };
+  const setChk = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!val;
+  };
+  setVal('insp-queen-seen', c.queenSeen || '');
+  setChk('insp-eggs', c.eggs);
+  setChk('insp-open-brood', c.openBrood);
+  setChk('insp-capped-brood', c.cappedBrood);
+  setChk('insp-play-cups', c.playCups);
+  setChk('insp-queen-cells', c.queenCells);
+  setVal('insp-strength', c.strength || '');
+  setVal('insp-varroa-level', c.varroaLevel || '');
+
+  // Legacy fields (temperament / feeding / honeySuper) live outside checklist
+  setVal('insp-temperament', insp?.temperament != null ? String(insp.temperament) : '5');
+  setVal('insp-feeding', insp?.feeding || '');
+  setVal('insp-honey-super', insp?.honeySuper || '');
+}
+
+async function populateApiarySelect(selectEl, selectedId = null) {
+  if (!selectEl) return;
+  const apiaries = await getApiaries();
+  const opts = [
+    `<option value="">— Kein Stand —</option>`,
+    ...apiaries.map(
+      (a) =>
+        `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+    )
+  ];
+  selectEl.innerHTML = opts.join('');
+  if (selectedId) {
+    selectEl.value = selectedId;
+  }
+}
+
+function addDaysToDateStr(dateStr, days) {
+  if (!dateStr || days == null || days === '') return '';
+  const n = Number(days);
+  if (!Number.isFinite(n)) return '';
+  const d = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function updateTreatmentPhiHint() {
+  const hint = document.getElementById('treatment-form-phi-hint');
+  if (!hint) return;
+  const productId = document.getElementById('treatment-form-product')?.value;
+  const product = getTreatmentProduct(productId);
+  const dateStart = document.getElementById('treatment-form-date-start')?.value;
+  const dateEnd = document.getElementById('treatment-form-date-end')?.value;
+  if (!product) {
+    hint.textContent = '';
+    return;
+  }
+  const blocked = computeHarvestBlockedUntil(dateStart, dateEnd, product.phiDays);
+  if (blocked != null) {
+    hint.textContent = `Wartezeit / Honig: freigegeben ab ${formatDateString(blocked)} (PHI ${product.phiDays} Tage).`;
+  } else if (product.phiDays == null) {
+    hint.textContent = 'Kein PHI hinterlegt – Wartezeit manuell prüfen.';
+  } else {
+    hint.textContent = `Produkt: ${product.label} (PHI ${product.phiDays} Tage).`;
+  }
 }
 
 /** Match spoken/OCR hive names to hive records (`alle` = all). */
@@ -320,11 +424,18 @@ function setupRouting() {
   document.getElementById('dash-btn-insp').addEventListener('click', () => {
     openInspectionModal();
   });
+  document.getElementById('dash-btn-treatment')?.addEventListener('click', () => {
+    openTreatmentModal();
+  });
   document.getElementById('dash-btn-honey').addEventListener('click', () => {
     openHoneyModal();
   });
   document.getElementById('btn-new-inspection').addEventListener('click', () => {
     openInspectionModal(null, activeHiveIdForDetail);
+  });
+
+  document.getElementById('apiary-filter')?.addEventListener('change', async () => {
+    if (currentView === 'hives') await renderHivesView();
   });
 
   // Dashboard Finance Stat Card Navigation Click
@@ -420,6 +531,7 @@ async function navigate(viewName) {
   } else if (viewName === 'settings') {
     refreshNetworkSettingsUI();
     refreshOperationSettingsUI();
+    await renderApiariesSettings();
   }
 }
 
@@ -537,6 +649,63 @@ async function renderDashboardView() {
   // Always load radar + offline memos (even with zero activities)
   loadDashboardRadar();
   await renderOfflineMemos();
+  await renderDashboardTreatments(hives);
+}
+
+async function renderDashboardTreatments(hives) {
+  const card = document.getElementById('dashboard-treatments');
+  const list = document.getElementById('dashboard-treatments-list');
+  if (!card || !list) return;
+
+  const treatments = await getTreatments({ status: 'active' });
+  if (!treatments.length) {
+    card.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+
+  card.style.display = '';
+  const canEdit = canEditActiveOp();
+  list.innerHTML = treatments.map((t) => {
+    const hiveNames = (t.hiveIds || [])
+      .map((id) => hives.find((h) => h.id === id)?.name)
+      .filter(Boolean)
+      .join(', ') || 'Keine Völker';
+    const product = t.productLabel || getTreatmentProduct(t.productId)?.label || 'Behandlung';
+    const blocked = t.harvestBlockedUntil
+      ? ` · Honig frei ab ${formatDateString(t.harvestBlockedUntil)}`
+      : '';
+    return `
+      <div class="dashboard-treatment-item" data-id="${escapeHtml(t.id)}" style="padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; cursor: ${canEdit ? 'pointer' : 'default'};" ${canEdit ? 'role="button" tabindex="0"' : ''}>
+        <div style="display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;">
+          <div>
+            <div style="font-weight: 600; font-size: 0.95rem;">${escapeHtml(product)}</div>
+            <div class="text-secondary" style="font-size: 0.8rem; margin-top: 4px;">${escapeHtml(hiveNames)}</div>
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">
+              Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}
+            </div>
+          </div>
+          <span class="treatment-badge">Aktiv</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (!canEdit) return;
+  list.querySelectorAll('.dashboard-treatment-item').forEach((el) => {
+    const open = () => {
+      const id = el.getAttribute('data-id');
+      const t = treatments.find((x) => x.id === id);
+      if (t) openTreatmentModal(t);
+    };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
 }
 
 async function loadDashboardRadar() {
@@ -830,9 +999,26 @@ async function renderCalendarView() {
 
 async function renderHivesView() {
   const hives = await getHives();
+  const apiaries = await getApiaries();
+  const activeTreatments = await getTreatments({ status: 'active' });
   const container = document.getElementById('hives-list-container');
   const canEdit = canEditActiveOp();
-  
+  const filterEl = document.getElementById('apiary-filter');
+  const selectedFilter = filterEl ? filterEl.value : '';
+
+  // Keep filter options in sync (preserve selection)
+  if (filterEl) {
+    const prev = selectedFilter;
+    filterEl.innerHTML = [
+      `<option value="">Alle Stände</option>`,
+      ...apiaries.map(
+        (a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
+      ),
+      `<option value="__none__">Ohne Stand</option>`
+    ].join('');
+    filterEl.value = prev;
+  }
+
   if (hives.length === 0) {
     container.innerHTML = `
       <div class="card text-center" style="padding: 40px 20px;">
@@ -844,7 +1030,29 @@ async function renderHivesView() {
     return;
   }
 
-  container.innerHTML = hives.map(hive => {
+  const apiaryById = Object.fromEntries(apiaries.map((a) => [a.id, a]));
+  const treatmentsByHive = {};
+  for (const t of activeTreatments) {
+    for (const hid of t.hiveIds || []) {
+      if (!treatmentsByHive[hid]) treatmentsByHive[hid] = [];
+      treatmentsByHive[hid].push(t);
+    }
+  }
+
+  let filtered = hives;
+  const filterVal = filterEl?.value || '';
+  if (filterVal === '__none__') {
+    filtered = hives.filter((h) => !h.apiaryId);
+  } else if (filterVal) {
+    filtered = hives.filter((h) => h.apiaryId === filterVal);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Völker in diesem Stand.</p>`;
+    return;
+  }
+
+  function renderHiveCard(hive) {
     const qColor = getQueenColorInfo(hive.queenYear);
     const qColorClass = qColor.className;
     const qColorName = qColor.name;
@@ -852,14 +1060,22 @@ async function renderHivesView() {
     const queenLabel = hive.queenName
       ? `"${escapeHtml(hive.queenName)}"`
       : 'Ohne Namen';
+    const apiaryName = hive.apiaryId
+      ? (apiaryById[hive.apiaryId]?.name || 'Unbekannter Stand')
+      : null;
+    const hasTreatment = (treatmentsByHive[hive.id] || []).length > 0;
     return `
       <div class="card hive-card" data-id="${escapeHtml(hive.id)}" role="button" tabindex="0">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
           <div>
             <h3 style="font-size: 1.15rem; font-weight: 600;">${escapeHtml(hive.name)}</h3>
+            ${apiaryName ? `<div class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">📍 ${escapeHtml(apiaryName)}</div>` : ''}
             <span class="text-muted" style="font-size: 0.85rem;">Rasse: ${escapeHtml(hive.breed || 'Nicht definiert')}</span>
           </div>
-          <span class="status-badge status-${statusClass}">${escapeHtml(hive.status)}</span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+            <span class="status-badge status-${statusClass}">${escapeHtml(hive.status)}</span>
+            ${hasTreatment ? '<span class="treatment-badge">Behandlung</span>' : ''}
+          </div>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -870,9 +1086,34 @@ async function renderHivesView() {
         </div>
       </div>
     `;
-  }).join('');
+  }
 
-  // Add click handlers for hive cards
+  // When "Alle Stände": group by apiary; when filtered: flat list
+  let html = '';
+  if (!filterVal) {
+    const groups = new Map();
+    for (const a of apiaries) groups.set(a.id, []);
+    const orphans = [];
+    for (const h of filtered) {
+      if (h.apiaryId && groups.has(h.apiaryId)) groups.get(h.apiaryId).push(h);
+      else orphans.push(h);
+    }
+    for (const a of apiaries) {
+      const list = groups.get(a.id) || [];
+      if (!list.length) continue;
+      html += `<h3 class="apiary-group-title">${escapeHtml(a.name)}</h3>`;
+      html += list.map(renderHiveCard).join('');
+    }
+    if (orphans.length) {
+      html += `<h3 class="apiary-group-title">Ohne Stand</h3>`;
+      html += orphans.map(renderHiveCard).join('');
+    }
+  } else {
+    html = filtered.map(renderHiveCard).join('');
+  }
+
+  container.innerHTML = html;
+
   document.querySelectorAll('.hive-card').forEach(card => {
     const openHive = async () => {
       activeHiveIdForDetail = card.getAttribute('data-id');
@@ -899,17 +1140,47 @@ async function renderHiveDetailView() {
   document.getElementById('detail-hive-title').innerText = hive.name;
 
   const canEdit = canEditActiveOp();
+  const apiary = hive.apiaryId ? await getApiaryById(hive.apiaryId) : null;
+  const activeTreatments = await getActiveTreatmentsForHive(hive.id);
 
   // Render Hive Details Info Block
   const infoBlock = document.getElementById('detail-hive-info');
   const qColor = getQueenColorInfo(hive.queenYear);
   const qColorClass = qColor.className;
   const qColorName = qColor.name;
+
+  const treatmentsBanner = activeTreatments.length
+    ? `<div style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+        ${activeTreatments.map((t) => {
+          const label = t.productLabel || getTreatmentProduct(t.productId)?.label || 'Behandlung';
+          const blocked = t.harvestBlockedUntil
+            ? ` · Honig frei ab ${formatDateString(t.harvestBlockedUntil)}`
+            : '';
+          return `
+            <div class="treatment-banner" data-treatment-id="${escapeHtml(t.id)}" style="padding: 10px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: ${canEdit ? 'pointer' : 'default'};">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <div>
+                  <span class="treatment-badge" style="margin-right: 6px;">Aktiv</span>
+                  <strong style="font-size: 0.9rem;">${escapeHtml(label)}</strong>
+                  <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}</div>
+                </div>
+                ${canEdit ? '<span class="text-secondary" style="font-size: 0.8rem;">Bearbeiten →</span>' : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>`
+    : '';
   
   infoBlock.innerHTML = `
+    ${treatmentsBanner}
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <span class="status-badge status-${statusToCssClass(hive.status)}">${escapeHtml(hive.status)}</span>
       ${canEdit ? '<button id="btn-edit-hive-details" class="btn btn-secondary btn-sm">Stammdaten bearbeiten</button>' : ''}
+    </div>
+    <div class="detail-row">
+      <span class="text-secondary">Bienenstand</span>
+      <span style="font-weight: 500;">${escapeHtml(apiary?.name || 'Kein Stand')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Name der Königin</span>
@@ -954,6 +1225,16 @@ async function renderHiveDetailView() {
   document.getElementById('btn-edit-hive-details')?.addEventListener('click', () => {
     openHiveModal(hive);
   });
+
+  if (canEdit) {
+    infoBlock.querySelectorAll('.treatment-banner').forEach((el) => {
+      el.addEventListener('click', async () => {
+        const id = el.getAttribute('data-treatment-id');
+        const t = activeTreatments.find((x) => x.id === id);
+        if (t) openTreatmentModal(t);
+      });
+    });
+  }
 
   // Render AI Recommendation Section (remove existing if present)
   const existingRecommendationBlock = document.getElementById('hive-recommendation-block');
@@ -1046,12 +1327,17 @@ async function renderHiveDetailView() {
     const byChip = byName
       ? `<span class="created-by-chip">von ${escapeHtml(byName)}</span>`
       : '';
+    const chips = formatChecklistChips(insp);
+    const chipsHtml = chips.length
+      ? `<div class="checklist-chips">${chips.map((c) => `<span class="checklist-chip">${escapeHtml(c)}</span>`).join('')}</div>`
+      : '';
     return `
       <div class="log-item inspection-log-card" data-id="${escapeHtml(insp.id)}">
         <div class="log-item-header" style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
           <span>${escapeHtml(formatDateString(insp.date))}${weatherString}</span>
           ${byChip}
         </div>
+        ${chipsHtml}
         ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${escapeHtml(insp.notes)}</p>` : ''}
         ${canEdit ? `
         <div style="text-align: right; margin-top: 8px;">
@@ -1307,7 +1593,7 @@ function closeModal(id) {
 
 // --- Form Population & Display ---
 
-function openHiveModal(hive = null) {
+async function openHiveModal(hive = null) {
   if (!canEditActiveOp()) {
     alert('Als Betrachter kannst du Völker nur ansehen.');
     return;
@@ -1316,6 +1602,11 @@ function openHiveModal(hive = null) {
   const deleteBtn = document.getElementById('btn-delete-hive');
   const title = document.getElementById('modal-hive-title');
   form.reset();
+
+  await populateApiarySelect(
+    document.getElementById('hive-form-apiary'),
+    hive?.apiaryId || null
+  );
 
   if (hive) {
     title.innerText = 'Stammdaten bearbeiten';
@@ -1329,6 +1620,9 @@ function openHiveModal(hive = null) {
     document.getElementById('hive-form-honey-frames-1').value = hive.honeyFrames1 || 0;
     document.getElementById('hive-form-honey-frames-2').value = hive.honeyFrames2 || 0;
     document.getElementById('hive-form-notes').value = hive.notes || '';
+    if (hive.apiaryId) {
+      document.getElementById('hive-form-apiary').value = hive.apiaryId;
+    }
     const canDelete = isOwnerActiveOp();
     deleteBtn.style.display = canDelete ? 'block' : 'none';
   } else {
@@ -1373,6 +1667,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     document.getElementById('insp-form-id').value = inspection.id;
     document.getElementById('insp-form-date').value = inspection.date;
     document.getElementById('insp-form-notes').value = inspection.notes || '';
+    fillInspectionChecklistForm(inspection);
     inpWeatherTemp.value = inspection.weatherTemp !== undefined ? inspection.weatherTemp : '';
     inpWeatherCond.value = inspection.weatherCondition || '';
     deleteBtn.style.display = 'block';
@@ -1391,6 +1686,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
   } else {
     document.getElementById('insp-form-id').value = '';
     document.getElementById('insp-form-date').value = new Date().toISOString().split('T')[0];
+    fillInspectionChecklistForm(null);
     deleteBtn.style.display = 'none';
     
     weatherStatusSection.style.display = 'flex';
@@ -1429,6 +1725,74 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
   }
 
   openModal('modal-inspection');
+}
+
+async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
+  if (!canEditActiveOp()) {
+    alert('Als Betrachter kannst du Behandlungen nur ansehen.');
+    return;
+  }
+  const form = document.getElementById('form-treatment');
+  const deleteBtn = document.getElementById('btn-delete-treatment');
+  const title = document.getElementById('modal-treatment-title');
+  form.reset();
+
+  const hives = await getHives();
+  if (hives.length === 0) {
+    alert('Bitte erstelle zuerst ein Volk/Kasten, bevor du Behandlungen erfasst.');
+    openHiveModal();
+    return;
+  }
+
+  const productSelect = document.getElementById('treatment-form-product');
+  productSelect.innerHTML = TREATMENT_PRODUCTS.map(
+    (p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.label)}</option>`
+  ).join('');
+
+  const hivesContainer = document.getElementById('treatment-form-hives-container');
+  const preselectIds = treatment?.hiveIds
+    || (preselectedHiveId ? [preselectedHiveId] : (activeHiveIdForDetail ? [activeHiveIdForDetail] : []));
+
+  hivesContainer.innerHTML = hives.map((h) => {
+    const isChecked = preselectIds.includes(h.id) ? 'checked' : '';
+    return `
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; margin: 0; padding: 4px;">
+        <input type="checkbox" class="treatment-hive-checkbox" value="${escapeHtml(h.id)}" ${isChecked} style="width: auto; margin: 0;" />
+        <span>${escapeHtml(h.name)}</span>
+      </label>
+    `;
+  }).join('');
+
+  if (treatment) {
+    title.innerText = 'Behandlung bearbeiten';
+    document.getElementById('treatment-form-id').value = treatment.id;
+    document.getElementById('treatment-form-date-start').value = treatment.dateStart || '';
+    document.getElementById('treatment-form-date-end').value = treatment.dateEnd || '';
+    document.getElementById('treatment-form-product').value = treatment.productId || 'formic_60';
+    document.getElementById('treatment-form-dose').value = treatment.dose || '';
+    document.getElementById('treatment-form-status').value = treatment.status || 'active';
+    document.getElementById('treatment-form-notes').value = treatment.notes || '';
+    deleteBtn.style.display = 'block';
+  } else {
+    title.innerText = 'Behandlung erfassen';
+    document.getElementById('treatment-form-id').value = '';
+    document.getElementById('treatment-form-date-start').value = new Date().toISOString().split('T')[0];
+    document.getElementById('treatment-form-date-end').value = '';
+    document.getElementById('treatment-form-product').value = 'formic_60';
+    document.getElementById('treatment-form-status').value = 'active';
+    deleteBtn.style.display = 'none';
+
+    // Prefill end date from product default duration
+    const product = getTreatmentProduct(productSelect.value);
+    if (product?.defaultDurationDays) {
+      const start = document.getElementById('treatment-form-date-start').value;
+      document.getElementById('treatment-form-date-end').value =
+        addDaysToDateStr(start, product.defaultDurationDays - 1) || '';
+    }
+  }
+
+  updateTreatmentPhiHint();
+  openModal('modal-treatment');
 }
 
 async function openFinanceModal(finance = null) {
@@ -1543,6 +1907,7 @@ function setupForms() {
     await withButtonLoading(submitBtn, async () => {
       try {
         const id = document.getElementById('hive-form-id').value;
+        const apiaryId = document.getElementById('hive-form-apiary')?.value || null;
         const hive = {
           name: document.getElementById('hive-form-name').value,
           queenName: document.getElementById('hive-form-queen-name').value,
@@ -1552,7 +1917,8 @@ function setupForms() {
           broodFrames: parseInt(document.getElementById('hive-form-brood-frames').value) || 0,
           honeyFrames1: parseInt(document.getElementById('hive-form-honey-frames-1').value) || 0,
           honeyFrames2: parseInt(document.getElementById('hive-form-honey-frames-2').value) || 0,
-          notes: document.getElementById('hive-form-notes').value
+          notes: document.getElementById('hive-form-notes').value,
+          apiaryId: apiaryId || null
         };
 
         if (id) hive.id = id;
@@ -1608,20 +1974,29 @@ function setupForms() {
         const notes = document.getElementById('insp-form-notes').value;
         const weatherTemp = document.getElementById('insp-weather-temp').value;
         const weatherCondition = document.getElementById('insp-weather-condition').value;
+        const checklist = readInspectionChecklistFromForm();
+        const broodStatus = summarizeChecklist(checklist);
+        const temperament = parseInt(document.getElementById('insp-temperament')?.value || '5', 10) || 5;
+        const feeding = document.getElementById('insp-feeding')?.value || '';
+        const honeySuper = document.getElementById('insp-honey-super')?.value || '';
+        const varroa = checklist.varroaLevel && VARROA_LEVEL_LABELS[checklist.varroaLevel]
+          ? VARROA_LEVEL_LABELS[checklist.varroaLevel]
+          : '';
 
         if (id) {
           const inspection = {
             id: id,
             hiveId: checkedCheckboxes[0].value,
             date: date,
-            broodStatus: '',
-            honeySuper: '',
-            temperament: 5,
+            broodStatus,
+            honeySuper,
+            temperament,
             weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
             weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
-            feeding: '',
-            varroa: '',
-            notes: notes
+            feeding,
+            varroa,
+            notes: notes,
+            checklist
           };
           await saveInspection(inspection);
         } else {
@@ -1629,14 +2004,15 @@ function setupForms() {
             const inspection = {
               hiveId: chk.value,
               date: date,
-              broodStatus: '',
-              honeySuper: '',
-              temperament: 5,
+              broodStatus,
+              honeySuper,
+              temperament,
               weatherTemp: weatherTemp !== '' ? parseFloat(weatherTemp) : undefined,
               weatherCondition: weatherCondition !== '' ? weatherCondition : undefined,
-              feeding: '',
-              varroa: '',
-              notes: notes
+              feeding,
+              varroa,
+              notes: notes,
+              checklist
             };
             await saveInspection(inspection);
           }
@@ -1672,6 +2048,84 @@ function setupForms() {
       }, 'Löschen…');
     }
   });
+
+  // Treatment Form Submit
+  document.getElementById('form-treatment')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const submitBtn = getFormSubmitButton(form, e);
+
+    const checked = Array.from(document.querySelectorAll('.treatment-hive-checkbox')).filter((el) => el.checked);
+    if (checked.length === 0) {
+      alert('Bitte wähle mindestens ein Bienenvolk aus.');
+      return;
+    }
+
+    await withButtonLoading(submitBtn, async () => {
+      try {
+        const id = document.getElementById('treatment-form-id').value;
+        const productId = document.getElementById('treatment-form-product').value;
+        const product = getTreatmentProduct(productId);
+        const dateStart = document.getElementById('treatment-form-date-start').value;
+        const dateEnd = document.getElementById('treatment-form-date-end').value || null;
+        const phiDays = product?.phiDays ?? null;
+        const treatment = {
+          hiveIds: checked.map((c) => c.value),
+          dateStart,
+          dateEnd,
+          disease: product?.disease || 'varroa',
+          productId,
+          productLabel: product?.label || productId,
+          dose: document.getElementById('treatment-form-dose').value || null,
+          phiDays,
+          harvestBlockedUntil: computeHarvestBlockedUntil(dateStart, dateEnd, phiDays),
+          status: document.getElementById('treatment-form-status').value || 'active',
+          notes: document.getElementById('treatment-form-notes').value || null
+        };
+        if (id) treatment.id = id;
+
+        await saveTreatment(treatment);
+        closeModal('modal-treatment');
+
+        if (currentView === 'hive-detail') {
+          await renderHiveDetailView();
+        } else if (currentView === 'hives') {
+          await renderHivesView();
+        }
+        await renderDashboardView();
+      } catch (err) {
+        console.error('Fehler beim Speichern der Behandlung:', err);
+        alert('Fehler beim Speichern der Behandlung: ' + (err.message || err));
+      }
+    });
+  });
+
+  document.getElementById('btn-delete-treatment')?.addEventListener('click', async () => {
+    const id = document.getElementById('treatment-form-id').value;
+    if (id && confirm('Diese Behandlung wirklich löschen?')) {
+      const btn = document.getElementById('btn-delete-treatment');
+      await withButtonLoading(btn, async () => {
+        await deleteTreatment(id);
+        closeModal('modal-treatment');
+        if (currentView === 'hive-detail') await renderHiveDetailView();
+        else if (currentView === 'hives') await renderHivesView();
+        await renderDashboardView();
+      }, 'Löschen…');
+    }
+  });
+
+  // Product change → suggest end date + PHI hint
+  document.getElementById('treatment-form-product')?.addEventListener('change', () => {
+    const product = getTreatmentProduct(document.getElementById('treatment-form-product').value);
+    const start = document.getElementById('treatment-form-date-start')?.value;
+    const endEl = document.getElementById('treatment-form-date-end');
+    if (product?.defaultDurationDays && start && endEl && !endEl.value) {
+      endEl.value = addDaysToDateStr(start, product.defaultDurationDays - 1) || '';
+    }
+    updateTreatmentPhiHint();
+  });
+  document.getElementById('treatment-form-date-start')?.addEventListener('change', updateTreatmentPhiHint);
+  document.getElementById('treatment-form-date-end')?.addEventListener('change', updateTreatmentPhiHint);
 
   // Finance Form Submit (Expenses)
   document.getElementById('form-finance').addEventListener('submit', async (e) => {
@@ -1892,6 +2346,37 @@ function refreshNetworkSettingsUI() {
   if (statusEl) statusEl.textContent = formatSyncStatusText();
 }
 
+async function renderApiariesSettings() {
+  const list = document.getElementById('apiaries-list');
+  if (!list) return;
+  const apiaries = await getApiaries();
+  const canEdit = canEditActiveOp();
+
+  if (apiaries.length === 0) {
+    list.innerHTML = `<p class="text-muted" style="font-size: 0.85rem; margin: 0;">Noch keine Bienenstände erfasst.</p>`;
+    return;
+  }
+
+  list.innerHTML = apiaries.map((a) => `
+    <div class="apiary-settings-row" data-id="${escapeHtml(a.id)}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid var(--border-color);">
+      <span style="font-weight: 500; font-size: 0.95rem;">${escapeHtml(a.name)}</span>
+      ${canEdit ? `<button type="button" class="btn btn-sm btn-danger btn-delete-apiary" data-id="${escapeHtml(a.id)}" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">Löschen</button>` : ''}
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.btn-delete-apiary').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!id || !confirm('Bienenstand löschen? Zugeordnete Völker behalten ihren Eintrag ohne Stand.')) return;
+      await withButtonLoading(btn, async () => {
+        await deleteApiary(id);
+        await renderApiariesSettings();
+        if (currentView === 'hives') await renderHivesView();
+      }, '…');
+    });
+  });
+}
+
 // --- Backup & Settings Administration ---
 function setupSettings() {
   const fieldEl = document.getElementById('pref-field-mode');
@@ -1940,6 +2425,26 @@ function setupSettings() {
   }
 
   refreshNetworkSettingsUI();
+
+  // Apiaries management
+  document.getElementById('btn-add-apiary')?.addEventListener('click', async () => {
+    if (!canEditActiveOp()) {
+      alert('Als Betrachter kannst du keine Stände anlegen.');
+      return;
+    }
+    const input = document.getElementById('apiary-name-input');
+    const name = (input?.value || '').trim();
+    if (!name) {
+      alert('Bitte einen Namen für den Bienenstand eingeben.');
+      return;
+    }
+    const btn = document.getElementById('btn-add-apiary');
+    await withButtonLoading(btn, async () => {
+      await saveApiary({ name });
+      if (input) input.value = '';
+      await renderApiariesSettings();
+    }, 'Speichern…');
+  });
 
   // Export Data
   document.getElementById('btn-export-backup').addEventListener('click', async () => {
@@ -2131,8 +2636,15 @@ function applyRoleBasedUI() {
   }
   const dashInsp = document.getElementById('dash-btn-insp');
   const dashHoney = document.getElementById('dash-btn-honey');
+  const dashTreatment = document.getElementById('dash-btn-treatment');
   if (dashInsp) dashInsp.style.display = canEdit ? '' : 'none';
   if (dashHoney) dashHoney.style.display = canEdit ? '' : 'none';
+  if (dashTreatment) dashTreatment.style.display = canEdit ? '' : 'none';
+
+  const apiaryAddBtn = document.getElementById('btn-add-apiary');
+  const apiaryNameInput = document.getElementById('apiary-name-input');
+  if (apiaryAddBtn) apiaryAddBtn.style.display = canEdit ? '' : 'none';
+  if (apiaryNameInput) apiaryNameInput.disabled = !canEdit;
 
   const newInsp = document.getElementById('btn-new-inspection');
   if (newInsp) newInsp.style.display = canEdit ? '' : 'none';

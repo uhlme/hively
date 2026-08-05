@@ -931,6 +931,46 @@ textarea {
   color: var(--text-secondary);
 }
 
+.checklist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.checklist-chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.treatment-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  white-space: nowrap;
+}
+
+.apiary-group-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.apiary-group-title:first-child {
+  margin-top: 0;
+}
+
 /* Fix for iOS Safari WebKit form input/select focus and click bugs */
 input, textarea, select {
   -webkit-user-select: text !important;
