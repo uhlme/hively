@@ -30,9 +30,15 @@ There is a single service: the Vite dev server.
   - `GEMINI_API_KEY` is **server-only** (Vite dev middleware at `/api/gemini` + the Netlify
     function). Absent → the AI features (voice assistant, receipt scanner, weather insight)
     are unavailable, but the rest of the app works. Never prefix it with `VITE_`.
+  - `VITE_GEMINI_PROXY_URL` (optional) overrides the absolute Gemini proxy URL used by
+    Capacitor/iOS builds; default is `https://hivelyy.netlify.app/api/gemini`.
+- Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
+  still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
+  Open-Meteo is unreachable; «Alle Daten löschen» also wipes the offline-AI IndexedDB.
 - Modals open with the CSS class `active` on `.modal-overlay` (not `open`). The header
   `#btn-quick-add` label changes by view (`+ Volk` on Kästen, `+ Kauf` on Finanzen).
 - The iOS/Capacitor path (`npm run ios:*`), `fastlane/`, and `Gemfile` require macOS + Xcode
-  and **cannot be built or run in the Linux cloud environment**. Ignore them for web dev/testing.
+  and **cannot be built or run in the Linux cloud environment**. Ignore them for web
+  /testing. After changing web code: `npm run ios:sync` before rebuilding in Xcode.
 - UI text is German (Swiss). Hive management lives under the "Kästen" navigation;
   add a hive via the "+ Volk" button → "Neues Volk erfassen" form → "Speichern".

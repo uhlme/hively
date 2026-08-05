@@ -26,6 +26,12 @@
 	<string>Hively benötigt deinen Standort, um lokales Wetter und Pollenflug für das Bienen-Radar anzuzeigen.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Hively benötigt deinen Standort, um lokales Wetter und Pollenflug für das Bienen-Radar anzuzeigen.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Hively benötigt das Mikrofon, damit du Durchsichten am Bienenstand freihändig diktieren kannst.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Hively benötigt die Kamera, um Belege und Quittungen für die Ausgaben-Erfassung zu fotografieren.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Hively benötigt Zugriff auf deine Fotos, damit du bestehende Beleg-Bilder für die Ausgaben-Erfassung auswählen kannst.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UILaunchStoryboardName</key>

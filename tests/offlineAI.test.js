@@ -3,6 +3,7 @@ import {
   saveOfflineMemo,
   getOfflineMemos,
   deleteOfflineMemo,
+  clearOfflineAiDatabase,
   blobToBase64,
   base64ToBlob
 } from '../src/offlineAI.js';
@@ -10,8 +11,12 @@ import {
 describe('offlineAI IndexedDB cache', () => {
   beforeEach(async () => {
     // Clear any leftover memos between tests
-    const memos = await getOfflineMemos();
-    await Promise.all(memos.map((m) => deleteOfflineMemo(m.id)));
+    try {
+      await clearOfflineAiDatabase();
+    } catch {
+      const memos = await getOfflineMemos();
+      await Promise.all(memos.map((m) => deleteOfflineMemo(m.id)));
+    }
   });
 
   it('round-trips blob <-> base64', async () => {
@@ -46,5 +51,11 @@ describe('offlineAI IndexedDB cache', () => {
     const memos = await getOfflineMemos();
     expect(memos).toHaveLength(2);
     expect(memos.map((m) => m.type).sort()).toEqual(['receipt', 'voice']);
+  });
+
+  it('clearOfflineAiDatabase removes all memos', async () => {
+    await saveOfflineMemo('voice', 'dm9pY2U=', 'audio/mp4');
+    await clearOfflineAiDatabase();
+    expect(await getOfflineMemos()).toHaveLength(0);
   });
 });

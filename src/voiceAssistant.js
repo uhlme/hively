@@ -5,11 +5,15 @@ let mediaRecorder = null;
 let audioChunks = [];
 let audioStream = null;
 
-function pickRecordingMimeType() {
-  if (!MediaRecorder.isTypeSupported) return 'audio/webm';
-  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+/** Prefer mp4/aac on iOS WKWebView; webm is often unsupported there. */
+export function pickRecordingMimeType() {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+    return 'audio/mp4';
+  }
   if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
   if (MediaRecorder.isTypeSupported('audio/aac')) return 'audio/aac';
+  if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
   return '';
 }
 
@@ -54,7 +58,7 @@ export function stopAudioRecording() {
     }
 
     mediaRecorder.onstop = () => {
-      const mimeType = mediaRecorder.mimeType || 'audio/webm';
+      const mimeType = mediaRecorder.mimeType || 'audio/mp4';
       const audioBlob = new Blob(audioChunks, { type: mimeType });
       cleanup();
       resolve(audioBlob);
@@ -80,7 +84,7 @@ export async function parseAudioWithGemini(audioBlob) {
       'parse_audio',
       {
         data: await blobToBase64(audioBlob),
-        mimeType: audioBlob.type || 'audio/webm'
+        mimeType: audioBlob.type || 'audio/mp4'
       },
       90000
     );

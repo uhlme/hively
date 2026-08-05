@@ -80,3 +80,18 @@ export async function deleteOfflineMemo(id) {
     request.onerror = (e) => reject(e.target.error);
   });
 }
+
+/** Wipe all offline AI memos (used by «Alle Daten löschen»). */
+export async function clearOfflineAiDatabase() {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.clear();
+    request.onsuccess = () => {
+      console.log('[Offline AI] All memos cleared.');
+      resolve(true);
+    };
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
