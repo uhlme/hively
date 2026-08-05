@@ -126,19 +126,21 @@
           </div>
 
           <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Nächste Schritte & Aktionen</h2>
-          <div class="grid-2" style="margin-bottom: 24px;">
-            <button id="dash-btn-insp" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
+          <div class="dash-actions" style="margin-bottom: 24px;">
+            <button id="dash-btn-insp" class="btn btn-secondary dash-action-btn dash-action-full">
               <span>📝 Durchsicht</span>
-              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Arbeit eintragen</span>
+              <span class="text-muted dash-action-sub">Arbeit eintragen</span>
             </button>
-            <button id="dash-btn-treatment" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
-              <span>💊 Behandlung</span>
-              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Varroa &amp; Co.</span>
-            </button>
-            <button id="dash-btn-honey" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
-              <span>🍯 Honigernte</span>
-              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Ertrag buchen</span>
-            </button>
+            <div class="grid-2">
+              <button id="dash-btn-treatment" class="btn btn-secondary dash-action-btn">
+                <span>💊 Behandlung</span>
+                <span class="text-muted dash-action-sub">Varroa &amp; Co.</span>
+              </button>
+              <button id="dash-btn-honey" class="btn btn-secondary dash-action-btn">
+                <span>🍯 Honigernte</span>
+                <span class="text-muted dash-action-sub">Ertrag buchen</span>
+              </button>
+            </div>
           </div>
 
           <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Letzte Aktivitäten</h2>
