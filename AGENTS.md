@@ -19,11 +19,15 @@ There is a single service: the Vite dev server.
 
 ### Non-obvious notes
 
+- Domain entities: hives, inspections, finances, honey, **apiaries** (Bienenstände),
+  **treatments** (Behandlungen). Apiaries belong to the active Betrieb (`operation_id`);
+  hives link via `apiaryId`. Inspection structured fields live in `checklist` (JSONB).
+  Supabase SQL: `supabase/migration_tier1_apiaries_treatments.sql` (apply manually if using sync).
 - The app is **local-first and runs fully without any secrets or login**. Domain data
-  (hives, inspections, finances, harvests) is stored in the browser's `localStorage`, so it
-  persists across page reloads but is per-browser-profile. No backend is required to develop
-  or test core flows (e.g. creating a "Volk"/hive). Without a session the app seeds demo
-  hives on first load (`bee_tracker_demo_seeded`).
+  is stored in the browser's `localStorage`, so it persists across page reloads but is
+  per-browser-profile. No backend is required to develop or test core flows. Without a
+  session the app seeds demo data on first load (`bee_tracker_demo_seeded`), including
+  demo apiaries and an active treatment.
 - Optional integrations are gated behind env vars and are **not needed** for local dev:
   - `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` enable cloud auth/sync. Absent → the app
     silently stays local-only (no login UI, no sync).

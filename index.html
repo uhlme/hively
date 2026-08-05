@@ -117,11 +117,23 @@
             </div>
           </div>
 
+          <!-- Active treatments -->
+          <div id="dashboard-treatments" class="card" style="display: none; margin-bottom: 24px; padding: 16px;">
+            <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">💊 Aktive Behandlungen</h3>
+            <div id="dashboard-treatments-list" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered dynamically via JS -->
+            </div>
+          </div>
+
           <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Nächste Schritte & Aktionen</h2>
           <div class="grid-2" style="margin-bottom: 24px;">
             <button id="dash-btn-insp" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
               <span>📝 Durchsicht</span>
               <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Arbeit eintragen</span>
+            </button>
+            <button id="dash-btn-treatment" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
+              <span>💊 Behandlung</span>
+              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">Varroa &amp; Co.</span>
             </button>
             <button id="dash-btn-honey" class="btn btn-secondary" style="flex-direction: column; gap: 6px; padding: 16px;">
               <span>🍯 Honigernte</span>
@@ -138,8 +150,11 @@
 
         <!-- View 2: Völker (Hives List) -->
         <section id="view-hives" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
             <h2 style="font-size: 1.25rem;">Deine Bienenstände</h2>
+            <select id="apiary-filter" class="form-control" style="width: auto; min-width: 160px; max-width: 100%;" aria-label="Bienenstand filtern">
+              <option value="">Alle Stände</option>
+            </select>
           </div>
           <div id="hives-list-container">
             <!-- Rendered via JS -->
@@ -287,6 +302,23 @@
           </div>
 
           <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenstände</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
+              Organisiere deine Völker nach Standorten (Ständen).
+            </p>
+            <div id="apiaries-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+              <!-- Rendered via JS -->
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label for="apiary-name-input">Neuer Stand</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="apiary-name-input" class="form-control" placeholder="z.B. Lindenweg" style="flex: 1;" />
+                <button type="button" id="btn-add-apiary" class="btn btn-primary" style="width: auto; white-space: nowrap;">Hinzufügen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Funkloch / Offline</h3>
             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
               Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
@@ -372,6 +404,12 @@
             <div class="form-group">
               <label for="hive-form-name">Name / Kasten-Nummer</label>
               <input type="text" id="hive-form-name" class="form-control" placeholder="z.B. Kasten 3 - Lindenweg" required />
+            </div>
+            <div class="form-group">
+              <label for="hive-form-apiary">Bienenstand</label>
+              <select id="hive-form-apiary" class="form-control">
+                <option value="">— Kein Stand —</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="hive-form-queen-name">Name der Königin</label>
@@ -473,12 +511,153 @@
               <label for="insp-form-date">Datum</label>
               <input type="date" id="insp-form-date" class="form-control" required />
             </div>
+
+            <div id="insp-checklist" class="card" style="padding: 14px; margin-bottom: 16px; background: rgba(255,255,255,0.03);">
+              <h3 style="font-size: 0.95rem; margin-bottom: 12px;">Strukturierte Beobachtung</h3>
+              <div class="form-group">
+                <label for="insp-queen-seen">Königin gesehen</label>
+                <select id="insp-queen-seen" class="form-control">
+                  <option value="">—</option>
+                  <option value="yes">Ja</option>
+                  <option value="no">Nein</option>
+                  <option value="unsure">Unsicher</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);">Brut &amp; Zellen</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> Stifte
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="insp-open-brood" style="width: auto; margin: 0;" /> Offene Brut
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="insp-capped-brood" style="width: auto; margin: 0;" /> Verdeckelte Brut
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="insp-play-cups" style="width: auto; margin: 0;" /> Spielnäpfchen
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="insp-queen-cells" style="width: auto; margin: 0;" /> Weiselzellen
+                  </label>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label for="insp-strength">Volkstärke</label>
+                  <select id="insp-strength" class="form-control">
+                    <option value="">—</option>
+                    <option value="weak">Schwach</option>
+                    <option value="mid">Mittel</option>
+                    <option value="strong">Stark</option>
+                    <option value="na">n.b.</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="insp-temperament">Sanftmut (1–5)</label>
+                  <select id="insp-temperament" class="form-control">
+                    <option value="5">5 – sehr sanft</option>
+                    <option value="4">4</option>
+                    <option value="3">3</option>
+                    <option value="2">2</option>
+                    <option value="1">1 – aggressiv</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label for="insp-feeding">Fütterung</label>
+                  <select id="insp-feeding" class="form-control">
+                    <option value="">Nein</option>
+                    <option value="1:1">1:1</option>
+                    <option value="3:2">3:2</option>
+                    <option value="Sonstiges">Sonstiges</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="insp-honey-super">Honigraum</label>
+                  <select id="insp-honey-super" class="form-control">
+                    <option value="">Keiner</option>
+                    <option value="1">1</option>
+                    <option value="2+">2+</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="insp-varroa-level">Varroa-Befall</label>
+                <select id="insp-varroa-level" class="form-control">
+                  <option value="">—</option>
+                  <option value="low">Niedrig</option>
+                  <option value="mid">Mittel</option>
+                  <option value="high">Hoch</option>
+                  <option value="na">n.b.</option>
+                </select>
+              </div>
+            </div>
+
             <div class="form-group">
               <label for="insp-form-notes">Arbeiten & Notizen</label>
-              <textarea id="insp-form-notes" placeholder="Detaillierte Beobachtungen, Arbeiten, Fütterung oder Varroabehandlung..." style="min-height: 180px;"></textarea>
+              <textarea id="insp-form-notes" placeholder="Detaillierte Beobachtungen, Arbeiten, Fütterung oder Varroabehandlung..." style="min-height: 120px;"></textarea>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
               <button type="button" id="btn-delete-inspection" class="btn btn-danger" style="display: none; flex: 1;">Durchsicht löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Behandlung erfassen -->
+      <div id="modal-treatment" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 id="modal-treatment-title">Behandlung erfassen</h2>
+            <button class="modal-close" data-close="modal-treatment">&times;</button>
+          </div>
+          <form id="form-treatment">
+            <input type="hidden" id="treatment-form-id" />
+            <div class="form-group">
+              <label>Völker</label>
+              <div id="treatment-form-hives-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background-color: var(--bg-secondary); display: flex; flex-direction: column; gap: 8px;">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="treatment-form-date-start">Start</label>
+                <input type="date" id="treatment-form-date-start" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label for="treatment-form-date-end">Ende</label>
+                <input type="date" id="treatment-form-date-end" class="form-control" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="treatment-form-product">Produkt</label>
+              <select id="treatment-form-product" class="form-control" required>
+                <!-- Filled via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="treatment-form-dose">Dosis / Menge</label>
+              <input type="text" id="treatment-form-dose" class="form-control" placeholder="z.B. 2 ml / Wabe" />
+            </div>
+            <div class="form-group">
+              <label for="treatment-form-status">Status</label>
+              <select id="treatment-form-status" class="form-control">
+                <option value="active">Aktiv</option>
+                <option value="done">Abgeschlossen</option>
+                <option value="cancelled">Abgebrochen</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="treatment-form-notes">Notizen</label>
+              <textarea id="treatment-form-notes" class="form-control" placeholder="z.B. Temperatur, Beobachtungen…"></textarea>
+            </div>
+            <p id="treatment-form-phi-hint" class="text-secondary" style="font-size: 0.8rem; margin-bottom: 12px;"></p>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button type="button" id="btn-delete-treatment" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
               <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
             </div>
           </form>
