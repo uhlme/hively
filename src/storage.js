@@ -9,6 +9,8 @@ const KEYS = {
   INSPECTIONS: 'bee_tracker_inspections',
   FINANCES: 'bee_tracker_finances',
   HONEY: 'bee_tracker_honey',
+  APIARIES: 'bee_tracker_apiaries',
+  TREATMENTS: 'bee_tracker_treatments',
   TASKS: 'bee_tracker_tasks',
   SYNC_QUEUE: 'bee_tracker_sync_queue',
   LAST_PULL: 'bee_tracker_last_pull'
@@ -28,6 +30,8 @@ export function clearLocalEntityCache() {
   localStorage.removeItem(KEYS.INSPECTIONS);
   localStorage.removeItem(KEYS.FINANCES);
   localStorage.removeItem(KEYS.HONEY);
+  localStorage.removeItem(KEYS.APIARIES);
+  localStorage.removeItem(KEYS.TREATMENTS);
   localStorage.removeItem(KEYS.LAST_PULL);
   // Keep sync queue – items carry operationId and will sync when due
 }
@@ -68,6 +72,7 @@ function mapHiveToDB(h) {
     brood_frames: h.broodFrames ? parseInt(h.broodFrames) : 0,
     honey_frames_1: h.honeyFrames1 ? parseInt(h.honeyFrames1) : 0,
     honey_frames_2: h.honeyFrames2 ? parseInt(h.honeyFrames2) : 0,
+    apiary_id: h.apiaryId || null,
     operation_id: h.operationId || null,
     created_by: h.createdBy || null,
     created_at: h.createdAt || new Date().toISOString(),
@@ -88,10 +93,25 @@ function mapHiveFromDB(h) {
     broodFrames: h.brood_frames || 0,
     honeyFrames1: h.honey_frames_1 || 0,
     honeyFrames2: h.honey_frames_2 || 0,
+    apiaryId: h.apiary_id || null,
     operationId: h.operation_id || null,
     createdBy: h.created_by || h.user_id || null,
     createdAt: h.created_at,
     updatedAt: h.updated_at
+  };
+}
+
+function normalizeChecklist(c) {
+  if (!c || typeof c !== 'object') return null;
+  return {
+    queenSeen: c.queenSeen ?? c.queen_seen ?? null,
+    eggs: c.eggs ?? null,
+    openBrood: c.openBrood ?? c.open_brood ?? null,
+    cappedBrood: c.cappedBrood ?? c.capped_brood ?? null,
+    playCups: c.playCups ?? c.play_cups ?? null,
+    queenCells: c.queenCells ?? c.queen_cells ?? null,
+    strength: c.strength ?? null,
+    varroaLevel: c.varroaLevel ?? c.varroa_level ?? null
   };
 }
 
@@ -108,6 +128,7 @@ function mapInspectionToDB(i) {
     weather_temp: i.weatherTemp !== undefined && i.weatherTemp !== '' ? parseFloat(i.weatherTemp) : null,
     weather_condition: i.weatherCondition || null,
     notes: i.notes || null,
+    checklist: normalizeChecklist(i.checklist),
     operation_id: i.operationId || null,
     created_by: i.createdBy || null,
     created_at: i.createdAt || new Date().toISOString(),
@@ -128,10 +149,82 @@ function mapInspectionFromDB(i) {
     weatherTemp: i.weather_temp,
     weatherCondition: i.weather_condition,
     notes: i.notes,
+    checklist: normalizeChecklist(i.checklist),
     operationId: i.operation_id || null,
     createdBy: i.created_by || i.user_id || null,
     createdAt: i.created_at,
     updatedAt: i.updated_at
+  };
+}
+
+function mapApiaryToDB(a) {
+  return {
+    id: a.id,
+    name: a.name,
+    notes: a.notes || null,
+    operation_id: a.operationId || null,
+    created_by: a.createdBy || null,
+    created_at: a.createdAt || new Date().toISOString(),
+    updated_at: a.updatedAt || new Date().toISOString()
+  };
+}
+
+function mapApiaryFromDB(a) {
+  return {
+    id: a.id,
+    name: a.name,
+    notes: a.notes,
+    operationId: a.operation_id || null,
+    createdBy: a.created_by || a.user_id || null,
+    createdAt: a.created_at,
+    updatedAt: a.updated_at
+  };
+}
+
+function mapTreatmentToDB(t) {
+  const hiveIds = Array.isArray(t.hiveIds) ? t.hiveIds : (t.hive_ids || []);
+  return {
+    id: t.id,
+    hive_ids: hiveIds,
+    apiary_id: t.apiaryId || null,
+    date_start: t.dateStart || t.date_start,
+    date_end: t.dateEnd || t.date_end || null,
+    disease: t.disease || 'varroa',
+    product_id: t.productId || null,
+    product_label: t.productLabel || null,
+    dose: t.dose || null,
+    phi_days: t.phiDays !== undefined && t.phiDays !== null && t.phiDays !== ''
+      ? Number(t.phiDays)
+      : null,
+    harvest_blocked_until: t.harvestBlockedUntil || null,
+    status: t.status || 'active',
+    notes: t.notes || null,
+    operation_id: t.operationId || null,
+    created_by: t.createdBy || null,
+    created_at: t.createdAt || new Date().toISOString(),
+    updated_at: t.updatedAt || new Date().toISOString()
+  };
+}
+
+function mapTreatmentFromDB(t) {
+  return {
+    id: t.id,
+    hiveIds: Array.isArray(t.hive_ids) ? t.hive_ids : (t.hiveIds || []),
+    apiaryId: t.apiary_id || null,
+    dateStart: t.date_start,
+    dateEnd: t.date_end || null,
+    disease: t.disease || 'varroa',
+    productId: t.product_id || null,
+    productLabel: t.product_label || null,
+    dose: t.dose || null,
+    phiDays: t.phi_days ?? null,
+    harvestBlockedUntil: t.harvest_blocked_until || null,
+    status: t.status || 'active',
+    notes: t.notes || null,
+    operationId: t.operation_id || null,
+    createdBy: t.created_by || t.user_id || null,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at
   };
 }
 
@@ -208,6 +301,7 @@ export async function initStorage() {
     seedDemoData();
     localStorage.setItem('bee_tracker_demo_seeded', 'true');
   }
+  await ensureDefaultApiary();
 }
 
 // --- Sync Queue (Outbox) Helpers ---
@@ -284,6 +378,12 @@ function mapPayloadToDB(type, payload, userId, operationId) {
   }
   if (type === 'honey_harvests') {
     return { ...mapHoneyToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
+  if (type === 'apiaries') {
+    return { ...mapApiaryToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
+  }
+  if (type === 'treatments') {
+    return { ...mapTreatmentToDB(payload), user_id: userId, operation_id: opId, created_by: createdBy };
   }
   return null;
 }
@@ -495,7 +595,9 @@ export async function syncNow() {
       getHives(),
       getInspections(),
       getFinances(),
-      getHoneyHarvests()
+      getHoneyHarvests(),
+      getApiaries(),
+      getTreatments()
     ]);
   }
   return { ...queueResult, pending: getSyncQueueLength(), ...getLastSyncSummary() };
@@ -567,6 +669,21 @@ export async function deleteHive(id) {
     KEYS.HONEY,
     JSON.stringify(readLocalArray(KEYS.HONEY).filter(h => h.hiveId !== id))
   );
+
+  // Cascade: remove hive from treatments, or delete treatment if no hives left
+  const treatments = readLocalArray(KEYS.TREATMENTS);
+  const nextTreatments = [];
+  for (const t of treatments) {
+    const hiveIds = Array.isArray(t.hiveIds) ? t.hiveIds : [];
+    if (!hiveIds.includes(id)) {
+      nextTreatments.push(t);
+      continue;
+    }
+    const remaining = hiveIds.filter(hid => hid !== id);
+    if (remaining.length === 0) continue;
+    nextTreatments.push({ ...t, hiveIds: remaining, updatedAt: new Date().toISOString() });
+  }
+  localStorage.setItem(KEYS.TREATMENTS, JSON.stringify(nextTreatments));
 
   await syncOrQueue('delete', 'hives', id, async () => {
     const { error } = await supabase.from('hives').delete().eq('id', id);
@@ -697,6 +814,144 @@ export async function deleteHoneyHarvest(id) {
   });
 }
 
+// --- Apiaries CRUD ---
+
+export async function getApiaries() {
+  const pulled = await pullEntity({
+    pullKey: 'apiaries',
+    storageKey: KEYS.APIARIES,
+    table: 'apiaries',
+    mapFrom: mapApiaryFromDB,
+    order: 'name',
+    warnMsg: 'Failed to fetch apiaries from Supabase, loading from local cache:'
+  });
+  if (pulled) return pulled;
+  return readLocalArray(KEYS.APIARIES);
+}
+
+export async function getApiaryById(id) {
+  const apiaries = await getApiaries();
+  return apiaries.find(a => a.id === id);
+}
+
+export async function saveApiary(apiary) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Stände bearbeiten.');
+  }
+  const ctx = await getRemoteContext();
+  prepareEntity(apiary, 'apiary_', ctx);
+  upsertLocal(KEYS.APIARIES, apiary);
+  await syncOrQueue('upsert', 'apiaries', apiary, () => remoteUpsert('apiaries', apiary));
+  return apiary;
+}
+
+export async function deleteApiary(id) {
+  if (await useRemote() && !isOperationOwner()) {
+    throw new Error('Nur Betriebsinhaber dürfen Stände löschen.');
+  }
+
+  removeLocalById(KEYS.APIARIES, id);
+
+  // Unassign hives that belonged to this apiary (local)
+  const hives = readLocalArray(KEYS.HIVES);
+  let changed = false;
+  const nextHives = hives.map(h => {
+    if (h.apiaryId === id) {
+      changed = true;
+      return { ...h, apiaryId: null, updatedAt: new Date().toISOString() };
+    }
+    return h;
+  });
+  if (changed) {
+    localStorage.setItem(KEYS.HIVES, JSON.stringify(nextHives));
+  }
+
+  await syncOrQueue('delete', 'apiaries', id, async () => {
+    const { error } = await supabase.from('apiaries').delete().eq('id', id);
+    if (error) throw error;
+  });
+}
+
+/**
+ * Ensure at least one apiary exists; assign orphan hives to it.
+ * Called from initStorage after demo seed (local-first).
+ */
+export async function ensureDefaultApiary() {
+  const apiaries = readLocalArray(KEYS.APIARIES);
+  if (apiaries.length > 0) return apiaries[0];
+
+  const apiary = {
+    id: makeLocalId('apiary_'),
+    name: 'Hauptstand',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  upsertLocal(KEYS.APIARIES, apiary);
+
+  const hives = readLocalArray(KEYS.HIVES);
+  const nextHives = hives.map(h => {
+    if (h.apiaryId) return h;
+    return { ...h, apiaryId: apiary.id, updatedAt: new Date().toISOString() };
+  });
+  localStorage.setItem(KEYS.HIVES, JSON.stringify(nextHives));
+
+  return apiary;
+}
+
+// --- Treatments CRUD ---
+
+export async function getTreatments(filters = {}) {
+  await pullEntity({
+    pullKey: 'treatments',
+    storageKey: KEYS.TREATMENTS,
+    table: 'treatments',
+    mapFrom: mapTreatmentFromDB,
+    order: { column: 'date_start', ascending: false },
+    warnMsg: 'Failed to fetch treatments from remote, using local cache:'
+  });
+
+  let treatments = readLocalArray(KEYS.TREATMENTS);
+  const { hiveId, status } = filters || {};
+  if (hiveId) {
+    treatments = treatments.filter(t => Array.isArray(t.hiveIds) && t.hiveIds.includes(hiveId));
+  }
+  if (status) {
+    treatments = treatments.filter(t => t.status === status);
+  }
+  return treatments.sort((a, b) => new Date(b.dateStart) - new Date(a.dateStart));
+}
+
+export async function getActiveTreatmentsForHive(hiveId) {
+  return getTreatments({ hiveId, status: 'active' });
+}
+
+export async function saveTreatment(treatment) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Behandlungen erfassen.');
+  }
+  if (!Array.isArray(treatment.hiveIds)) {
+    treatment.hiveIds = treatment.hiveIds ? [treatment.hiveIds] : [];
+  }
+  const ctx = await getRemoteContext();
+  prepareEntity(treatment, 'treat_', ctx);
+  // Do not auto-change hive.status — UI owns that decision
+  upsertLocal(KEYS.TREATMENTS, treatment);
+  await syncOrQueue('upsert', 'treatments', treatment, () => remoteUpsert('treatments', treatment));
+  return treatment;
+}
+
+export async function deleteTreatment(id) {
+  if (await useRemote() && !canEditOperation()) {
+    throw new Error('Nur Inhaber und Mitarbeiter dürfen Behandlungen löschen.');
+  }
+  removeLocalById(KEYS.TREATMENTS, id);
+
+  await syncOrQueue('delete', 'treatments', id, async () => {
+    const { error } = await supabase.from('treatments').delete().eq('id', id);
+    if (error) throw error;
+  });
+}
+
 // --- Tasks State (Calendar) ---
 
 export async function getTasksState() {
@@ -713,6 +968,7 @@ export async function saveTaskState(month, taskId, isChecked) {
 
 function buildRemoteEntityConfigs(sources, { skipEmpty }) {
   const configs = [
+    { label: 'Stände', table: 'apiaries', mapTo: mapApiaryToDB, data: sources.apiaries, logName: 'apiaries' },
     { label: 'Völker', table: 'hives', mapTo: mapHiveToDB, data: sources.hives, logName: 'hives' },
     { label: 'Durchsichten', table: 'inspections', mapTo: mapInspectionToDB, data: sources.inspections, logName: 'inspections' }
   ];
@@ -731,6 +987,13 @@ function buildRemoteEntityConfigs(sources, { skipEmpty }) {
     mapTo: mapHoneyToDB,
     data: sources.honey,
     logName: 'honey'
+  });
+  configs.push({
+    label: 'Behandlungen',
+    table: 'treatments',
+    mapTo: mapTreatmentToDB,
+    data: sources.treatments,
+    logName: 'treatments'
   });
 
   return configs.filter(cfg => {
@@ -764,10 +1027,12 @@ export async function syncLocalToRemote() {
   const errors = [];
   const configs = buildRemoteEntityConfigs(
     {
+      apiaries: readLocalArray(KEYS.APIARIES),
       hives: readLocalArray(KEYS.HIVES),
       inspections: readLocalArray(KEYS.INSPECTIONS),
       finances: readLocalArray(KEYS.FINANCES),
-      honey: readLocalArray(KEYS.HONEY)
+      honey: readLocalArray(KEYS.HONEY),
+      treatments: readLocalArray(KEYS.TREATMENTS)
     },
     { skipEmpty: true }
   );
@@ -786,10 +1051,12 @@ export async function syncLocalToRemote() {
 // Export/Import JSON Backup (for local backup/restore)
 export async function exportData() {
   const data = {
+    apiaries: await getApiaries(),
     hives: await getHives(),
     inspections: await getInspections(),
     finances: await getFinances(),
     honey: await getHoneyHarvests(),
+    treatments: await getTreatments(),
     exportedAt: new Date().toISOString()
   };
   return JSON.stringify(data, null, 2);
@@ -797,7 +1064,7 @@ export async function exportData() {
 
 function isBackupShape(data) {
   if (!data || typeof data !== 'object') return false;
-  const keys = ['hives', 'inspections', 'finances', 'honey'];
+  const keys = ['apiaries', 'hives', 'inspections', 'finances', 'honey', 'treatments'];
   return keys.some((k) => Array.isArray(data[k]));
 }
 
@@ -820,10 +1087,12 @@ export async function importData(jsonString) {
       const errors = [];
       const configs = buildRemoteEntityConfigs(
         {
+          apiaries: data.apiaries,
           hives: data.hives,
           inspections: data.inspections,
           finances: data.finances,
-          honey: data.honey
+          honey: data.honey,
+          treatments: data.treatments
         },
         { skipEmpty: false }
       );
@@ -838,6 +1107,9 @@ export async function importData(jsonString) {
       }
       invalidatePullCache();
     } else {
+      if (data.apiaries && Array.isArray(data.apiaries)) {
+        localStorage.setItem(KEYS.APIARIES, JSON.stringify(data.apiaries));
+      }
       if (data.hives && Array.isArray(data.hives)) {
         localStorage.setItem(KEYS.HIVES, JSON.stringify(data.hives));
       }
@@ -850,6 +1122,9 @@ export async function importData(jsonString) {
       if (data.honey && Array.isArray(data.honey)) {
         localStorage.setItem(KEYS.HONEY, JSON.stringify(data.honey));
       }
+      if (data.treatments && Array.isArray(data.treatments)) {
+        localStorage.setItem(KEYS.TREATMENTS, JSON.stringify(data.treatments));
+      }
     }
     return true;
   } catch (e) {
@@ -860,6 +1135,21 @@ export async function importData(jsonString) {
 
 // Seed Demo Data
 export function seedDemoData() {
+  const demoApiaries = [
+    {
+      id: 'apiary_demo_1',
+      name: 'Apfelwiese',
+      notes: 'Sonneniger Stand am Obstgarten.',
+      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'apiary_demo_2',
+      name: 'Waldrand',
+      notes: 'Halbschatten, guter Windschutz.',
+      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
   const demoHives = [
     {
       id: 'hive_demo_1',
@@ -873,6 +1163,7 @@ export function seedDemoData() {
       broodFrames: 10,
       honeyFrames1: 8,
       honeyFrames2: 0,
+      apiaryId: 'apiary_demo_1',
       createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -887,6 +1178,7 @@ export function seedDemoData() {
       broodFrames: 10,
       honeyFrames1: 0,
       honeyFrames2: 0,
+      apiaryId: 'apiary_demo_2',
       createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
     }
   ];
@@ -901,6 +1193,16 @@ export function seedDemoData() {
       broodStatus: 'Stifte, offene und verdeckelte Brut vorhanden',
       honeySuper: '2 Honigräume aufgesetzt',
       temperament: '5',
+      checklist: {
+        queenSeen: 'yes',
+        eggs: true,
+        openBrood: true,
+        cappedBrood: true,
+        playCups: false,
+        queenCells: false,
+        strength: 'strong',
+        varroaLevel: 'low'
+      },
       notes: 'Schwarmstimmung kontrolliert, keine Spielnäpfchen bestiftet. Honigräume gut gefüllt.'
     },
     {
@@ -909,9 +1211,19 @@ export function seedDemoData() {
       date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       feeding: '1:1 Zuckerwasser (3 Liter)',
       varroa: 'Ameisensäure (60% ad us. vet.)',
-      broodStatus: 'Brutnest verkleinert, aber Brut in allen Stadien vorhanden',
+      broodStatus: 'Stifte, offene und verdeckelte Brut vorhanden',
       honeySuper: 'Kein Honigraum',
       temperament: '3',
+      checklist: {
+        queenSeen: 'yes',
+        eggs: true,
+        openBrood: true,
+        cappedBrood: true,
+        playCups: false,
+        queenCells: false,
+        strength: 'mid',
+        varroaLevel: 'high'
+      },
       notes: 'Ameisensäure-Verdunster eingesetzt. Milbenfall kontrollieren.'
     }
   ];
@@ -960,8 +1272,32 @@ export function seedDemoData() {
     }
   ];
 
+  const treatStart = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const treatEnd = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const demoTreatments = [
+    {
+      id: 'treat_demo_1',
+      hiveIds: ['hive_demo_2'],
+      apiaryId: 'apiary_demo_2',
+      dateStart: treatStart,
+      dateEnd: treatEnd,
+      disease: 'varroa',
+      productId: 'formic_60',
+      productLabel: 'Ameisensäure 60%',
+      dose: '2 × 50 ml',
+      phiDays: 0,
+      harvestBlockedUntil: null,
+      status: 'active',
+      notes: 'Ameisensäure-Verdunster (Liebig) eingesetzt.',
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  localStorage.setItem(KEYS.APIARIES, JSON.stringify(demoApiaries));
   localStorage.setItem(KEYS.HIVES, JSON.stringify(demoHives));
   localStorage.setItem(KEYS.INSPECTIONS, JSON.stringify(demoInspections));
   localStorage.setItem(KEYS.FINANCES, JSON.stringify(demoFinances));
   localStorage.setItem(KEYS.HONEY, JSON.stringify(demoHoney));
+  localStorage.setItem(KEYS.TREATMENTS, JSON.stringify(demoTreatments));
 }
