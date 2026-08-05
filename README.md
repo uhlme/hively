@@ -64,15 +64,19 @@ On Netlify, set these under **Site settings → Environment variables**:
 | `VITE_SUPABASE_URL` | yes | yes | yes (baked into the web bundle at build time) |
 | `VITE_SUPABASE_ANON_KEY` | yes | yes | yes (baked into the web bundle at build time) |
 | `GEMINI_API_KEY` | yes (dev middleware) | yes (server-only) | only if CI runs/tests the proxy — **not** needed for the iOS archive job |
+| `VITE_GEMINI_PROXY_URL` | optional (Capacitor) | no | optional — absolute proxy URL baked into the native web bundle |
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 GEMINI_API_KEY=your-gemini-api-key
+# Optional for Capacitor/iOS (defaults to https://hivelyy.netlify.app/api/gemini):
+# VITE_GEMINI_PROXY_URL=https://hivelyy.netlify.app/api/gemini
 ```
 
 `GEMINI_API_KEY` is **server-only** (Vite dev middleware + Netlify Function `/api/gemini`).
 Do **not** prefix it with `VITE_` — that would embed the key in the client bundle.
+`VITE_GEMINI_PROXY_URL` is the public proxy URL only (no secret); used by the native app because relative `/api/gemini` does not exist under `capacitor://`.
 
 Share real values with collaborators out of band (password manager, etc.). Do not commit `.env` or paste secrets into issues/PRs.
 
