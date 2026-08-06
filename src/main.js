@@ -732,7 +732,7 @@ async function loadDashboardRadar() {
 
     elTemp.innerText = data.temperature;
     elCond.innerText = data.conditionText;
-    elEmoji.innerText = data.conditionEmoji;
+    if (elEmoji) elEmoji.innerText = data.conditionEmoji;
     elWind.innerText = data.windSpeed;
     elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
     const ageHint = stale ? ' (Cache)' : '';
@@ -3405,26 +3405,33 @@ function updateConnectionStatusUI() {
   const pendingCount = getSyncQueueLength();
   const prefs = getNetworkPrefs();
 
+  statusEl.classList.remove('is-online', 'is-offline', 'is-pending', 'is-field');
+  statusEl.innerText = '';
+
   if (!navigator.onLine) {
-    statusEl.innerText = '🔌';
+    statusEl.classList.add('is-offline');
     statusEl.title = 'Offline – Änderungen werden lokal gespeichert';
+    statusEl.setAttribute('aria-label', 'Offline');
     return;
   }
 
   if (prefs.fieldMode && isConstrainedConnection()) {
-    statusEl.innerText = pendingCount > 0 ? '📡' : '🟡';
+    statusEl.classList.add('is-field');
     statusEl.title = pendingCount > 0
       ? `Funkloch-Modus – ${pendingCount} Änderungen lokal wartend`
       : `Funkloch-Modus (${getConnectionType() || 'schwaches Netz'}) – lokale Daten`;
+    statusEl.setAttribute('aria-label', 'Funkloch-Modus');
     return;
   }
 
   if (pendingCount > 0) {
-    statusEl.innerText = '🔄';
+    statusEl.classList.add('is-pending');
     statusEl.title = `Online – ${pendingCount} Änderungen ausstehend`;
+    statusEl.setAttribute('aria-label', 'Sync ausstehend');
   } else {
-    statusEl.innerText = '🟢';
+    statusEl.classList.add('is-online');
     statusEl.title = 'Online – synchronisiert';
+    statusEl.setAttribute('aria-label', 'Online');
   }
 }
 
