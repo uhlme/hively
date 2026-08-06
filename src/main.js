@@ -861,7 +861,7 @@ function renderGuideStepsHtml(steps = []) {
 
   return `
     <div class="calendar-guide-steps">
-      <h4 class="calendar-guide-heading">Schritte Schweizerkasten</h4>
+      <h4 class="calendar-guide-heading">Kurzablauf</h4>
       <ol class="calendar-guide-step-list">
         ${items}
       </ol>

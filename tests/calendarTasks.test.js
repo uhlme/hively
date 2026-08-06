@@ -40,4 +40,10 @@ describe('calendarTasks schema', () => {
     expect(blob).not.toMatch(/\/calendar\//);
     expect(blob).not.toMatch(/\.webp|\.jpg|\.png/);
   });
+
+  it('keeps guides hive-system neutral', () => {
+    const blob = JSON.stringify(CALENDAR_TASKS).toLowerCase();
+    expect(blob).not.toMatch(/schweizerkasten/);
+    expect(blob).not.toMatch(/hintertür/);
+  });
 });
