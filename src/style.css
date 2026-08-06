@@ -789,9 +789,9 @@ textarea {
 /* Hive detail styles */
 .detail-header {
   margin-bottom: 20px;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-card);
   padding: 16px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
 }
 
@@ -808,11 +808,15 @@ textarea {
 
 /* Log history items */
 .log-item {
-  border-left: 3px solid var(--primary);
+  border-left: 2px solid var(--border-strong);
   background-color: var(--bg-card);
   padding: 12px;
-  border-radius: 0 12px 12px 0;
+  padding-left: 12px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   margin-bottom: 12px;
+  border-top: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .log-item-header {
@@ -826,9 +830,9 @@ textarea {
 /* Segmented Control (iOS style switcher) */
 .segmented-control {
   display: flex;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   padding: 2px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   margin-bottom: 16px;
   border: 1px solid var(--border-color);
 }

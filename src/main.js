@@ -580,7 +580,7 @@ async function renderDashboardView() {
       type: 'inspection',
       hiveName: hive ? hive.name : 'Unbekanntes Volk',
       details: i.notes || 'Durchsicht protokolliert.',
-      tag: '📝 Durchsicht',
+      tag: 'Durchsicht',
       raw: i
     });
   });
@@ -592,7 +592,7 @@ async function renderDashboardView() {
       type: 'honey',
       hiveName: hive ? hive.name : 'Unbekanntes Volk',
       details: `${h.amount} kg geerntet (${h.type || 'Blüte'})`,
-      tag: '🍯 Honigernte',
+      tag: 'Honigernte',
       raw: h
     });
   });
@@ -913,7 +913,7 @@ async function renderCalendarView() {
 
   let html = `
     <div class="calendar-month-header">
-      <h3>📌 Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
+      <h3>Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
       <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung (Schweizerkasten)</p>
     </div>
     <div class="calendar-task-list">
@@ -936,7 +936,7 @@ async function renderCalendarView() {
           </button>
         </div>
         <div class="calendar-task-meta">
-          <span class="calendar-task-date" title="Richttermin">🗓 ${escapeHtml(task.approxDate)}</span>
+          <span class="calendar-task-date" title="Richttermin">${escapeHtml(task.approxDate)}</span>
           ${hasVisuals ? '<span class="calendar-task-visual-badge">Bilder</span>' : ''}
         </div>
         <div id="guide-${escapeHtml(task.id)}" class="calendar-task-guide hidden" hidden>
@@ -1069,7 +1069,7 @@ async function renderHivesView() {
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
           <div>
             <h3 style="font-size: 1.15rem; font-weight: 600;">${escapeHtml(hive.name)}</h3>
-            ${apiaryName ? `<div class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">📍 ${escapeHtml(apiaryName)}</div>` : ''}
+            ${apiaryName ? `<div class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">${escapeHtml(apiaryName)}</div>` : ''}
             <span class="text-muted" style="font-size: 0.85rem;">Rasse: ${escapeHtml(hive.breed || 'Nicht definiert')}</span>
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
@@ -1249,11 +1249,11 @@ async function renderHiveDetailView() {
   recommendationBlock.style.cssText = 'margin: 20px 0; padding: 16px; background: linear-gradient(135deg, rgba(255, 160, 0, 0.1), rgba(255, 143, 0, 0.05)); border: 1px solid rgba(255, 160, 0, 0.2);';
   recommendationBlock.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <h3 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">🤖 KI-Empfehlung</h3>
+      <h3 style="font-size: 1.1rem; margin: 0;">KI-Empfehlung</h3>
       <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
     </div>
     <div id="recommendation-content" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary);">
-      <span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>
+      <span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen…</span>
     </div>
   `;
   
@@ -1266,7 +1266,7 @@ async function renderHiveDetailView() {
     if (!recommendationContent) return;
     
     try {
-      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>';
+      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen…</span>';
       const recommendation = await getHiveRecommendation(hive, inspections);
       
       // Simple text formatting
@@ -1449,7 +1449,7 @@ async function renderFinanceView() {
             </div>
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">🍯 ${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
+            <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
             <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
           </div>
         </div>
@@ -1499,7 +1499,7 @@ async function renderFinanceView() {
       return `
         <div class="card sponsorship-card" data-id="${escapeHtml(item.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
           <div>
-            <h4 style="font-size: 1rem; font-weight: 600;">👤 ${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
+            <h4 style="font-size: 1rem; font-weight: 600;">${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
             <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
               <span>${escapeHtml(formatDateString(item.date))}</span> &bull; 
               <span>Kasten: <strong>${escapeHtml(hive ? hive.name : 'Gelöschtes Volk')}</strong></span>
@@ -1694,12 +1694,12 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     inpWeatherCond.value = '';
     
     const loadWeather = async () => {
-      weatherDisplay.innerHTML = 'Wird ermittelt... ⏳';
+      weatherDisplay.innerHTML = 'Wird ermittelt…';
       btnWeatherRetry.style.display = 'none';
       try {
         const w = await fetchCurrentWeather();
         const cacheHint = w.fromCache ? ' <span class="text-muted" style="font-weight:400;">(Cache)</span>' : '';
-        weatherDisplay.innerHTML = `${escapeHtml(w.conditionEmoji)} ${escapeHtml(w.temperature)}°C${cacheHint}`;
+        weatherDisplay.innerHTML = `${escapeHtml(w.conditionText)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
         inpWeatherTemp.value = w.temperature;
         inpWeatherCond.value = w.conditionText;
         if (w.fromCache) {
@@ -3076,7 +3076,7 @@ function setupVoiceAssistant() {
 
   function resetUI() {
     currentStatus = 'idle';
-    btnIcon.innerText = '🎙️';
+    btnIcon.innerText = '';
     btnText.innerText = 'Diktieren starten';
     statusBadge.innerText = 'Bereit';
     statusBadge.style.background = 'rgba(255,255,255,0.1)';
@@ -3088,7 +3088,7 @@ function setupVoiceAssistant() {
 
   function updateUIForStatus(status) {
     if (status === 'listening') {
-      btnIcon.innerText = '🛑';
+      btnIcon.innerText = '';
       btnText.innerText = 'Diktieren stoppen';
       statusBadge.innerText = 'Aufnahme...';
       statusBadge.style.background = '#ef4444';
@@ -3097,8 +3097,8 @@ function setupVoiceAssistant() {
       btnRecord.classList.add('btn-danger');
       statusBadge.classList.add('voice-badge-listening');
     } else if (status === 'processing') {
-      btnIcon.innerText = '⏳';
-      btnText.innerText = 'KI analysiert...';
+      btnIcon.innerText = '';
+      btnText.innerText = 'KI analysiert…';
       statusBadge.innerText = 'Analysiere...';
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
@@ -3313,14 +3313,14 @@ function setupReceiptScanner() {
   function updateUI(status) {
     if (status === 'processing') {
       btnScan.disabled = true;
-      btnIcon.innerText = '⏳';
-      btnText.innerText = 'Beleg wird analysiert...';
+      btnIcon.innerText = '';
+      btnText.innerText = 'Beleg wird analysiert…';
       statusBadge.innerText = 'Analysiere...';
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
     } else {
       btnScan.disabled = false;
-      btnIcon.innerText = '📷';
+      btnIcon.innerText = '';
       btnText.innerText = 'Beleg hochladen / fotografieren';
       statusBadge.innerText = 'Bereit';
       statusBadge.style.background = 'rgba(255,255,255,0.1)';
@@ -3332,13 +3332,13 @@ function setupReceiptScanner() {
 function formatGeminiError(err, defaultMessage) {
   const errMsg = err.message || err.toString() || '';
   if (errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
-    return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut. ⏳';
+    return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut.';
   }
   if (errMsg.includes('403') || errMsg.includes('400') || errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('key not valid')) {
-    return 'Der KI-API-Schlüssel ist ungültig oder abgelaufen. Bitte überprüfe deine Einstellungen oder deinen Schlüssel. 🔑';
+    return 'Der KI-API-Schlüssel ist ungültig oder abgelaufen. Bitte überprüfe deine Einstellungen oder deinen Schlüssel.';
   }
   if (errMsg.toLowerCase().includes('fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch')) {
-    return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung. 📡';
+    return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung.';
   }
   return defaultMessage || 'Ein unerwarteter Fehler ist bei der KI-Analyse aufgetreten. Bitte versuche es erneut.';
 }
@@ -3450,7 +3450,7 @@ async function renderOfflineMemos() {
   list.innerHTML = memos.map(memo => {
     const dateStr = new Date(memo.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     const stamped = `${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`;
-    const typeLabel = memo.type === 'voice' ? '🎙️ Diktat' : '📷 Beleg-Scan';
+    const typeLabel = memo.type === 'voice' ? 'Diktat' : 'Beleg-Scan';
     const detailText =
       memo.type === 'voice' ? `Sprachmemo vom ${stamped}` : `Beleg hochgeladen am ${stamped}`;
 

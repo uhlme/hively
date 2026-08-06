@@ -360,10 +360,10 @@
               Sichere deine Daten regelmäßig. Sie werden lokal auf diesem Gerät gespeichert.
             </p>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-export-backup" class="btn btn-secondary">💾 Backup herunterladen (JSON)</button>
-              <button id="btn-trigger-import" class="btn btn-secondary">📂 Backup einspielen (JSON)</button>
+              <button id="btn-export-backup" class="btn btn-secondary">Backup herunterladen (JSON)</button>
+              <button id="btn-trigger-import" class="btn btn-secondary">Backup einspielen (JSON)</button>
               <input type="file" id="input-import-file" accept=".json" style="display: none;" />
-              <button id="btn-force-refresh" class="btn btn-secondary" style="margin-top: 6px; border-color: var(--primary); color: var(--primary);">🔄 App aktualisieren (Neu laden)</button>
+              <button id="btn-force-refresh" class="btn btn-secondary" style="margin-top: 6px; border-color: var(--primary); color: var(--primary);">App aktualisieren (Neu laden)</button>
             </div>
           </div>
 
@@ -373,8 +373,8 @@
               Füge Demo-Daten hinzu, um die App mit Beispieldaten zu testen.
             </p>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-seed-data" class="btn btn-secondary">🐝 Demo-Daten laden</button>
-              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">🗑️ Alle Daten löschen</button>
+              <button id="btn-seed-data" class="btn btn-secondary">Demo-Daten laden</button>
+              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">Alle Daten löschen</button>
             </div>
           </div>
 
@@ -490,19 +490,19 @@
           
           <!-- Weather Status Section -->
           <div id="weather-status-section" style="margin-bottom: 12px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-            <span>Wetter: <span id="weather-display" style="font-weight: 600;">Wird ermittelt... ⏳</span></span>
+            <span>Wetter: <span id="weather-display" style="font-weight: 600;">Wird ermittelt…</span></span>
             <button type="button" id="btn-weather-retry" class="btn btn-secondary btn-sm" style="display: none; padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
           </div>
 
           <!-- Voice Assistant Section -->
           <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">🎙️ KI-Sprach-Assistent</span>
+              <span style="font-size: 0.9rem; font-weight: 600;">KI-Sprach-Assistent</span>
               <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-voice-record" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
-                <span id="voice-btn-icon">🎙️</span>
+                <span id="voice-btn-icon" aria-hidden="true"></span>
                 <span id="voice-btn-text">Diktieren starten</span>
               </button>
             </div>
@@ -688,12 +688,12 @@
           <!-- Receipt Scan Section -->
           <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">📷 KI-Beleg-Scanner</span>
+              <span style="font-size: 0.9rem; font-weight: 600;">KI-Beleg-Scanner</span>
               <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-receipt-scan" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
-                <span id="receipt-btn-icon">📷</span>
+                <span id="receipt-btn-icon" aria-hidden="true"></span>
                 <span id="receipt-btn-text">Beleg hochladen / fotografieren</span>
               </button>
               <input type="file" id="input-receipt-file" accept="image/*" style="display: none;" />

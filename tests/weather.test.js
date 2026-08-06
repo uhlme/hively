@@ -34,7 +34,6 @@ describe('weather inspection cache', () => {
     writeWeatherCache({
       temperature: 18.5,
       conditionText: 'Sonnig',
-      conditionEmoji: '☀️',
       timestamp: 1000
     });
     expect(readWeatherCache()).toMatchObject({
@@ -52,7 +51,6 @@ describe('weather inspection cache', () => {
     writeWeatherCache({
       temperature: 12,
       conditionText: 'Wolkig',
-      conditionEmoji: '⛅',
       code: 2,
       timestamp: Date.now() - 60_000
     });
