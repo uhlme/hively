@@ -50,6 +50,7 @@ Want me to set that up?
 | Building a mobile app | `react-native-patterns` |
 | Working with LLM prompts | `prompt-engineering` |
 | Designing a database | `database-design` |
+| Polished UI / redesign / design critique | `web-design-engineer` |
 
 ## Rules
 
