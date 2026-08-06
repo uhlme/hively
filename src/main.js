@@ -897,7 +897,7 @@ async function renderCalendarView() {
   const canEdit = canEditActiveOp();
 
   if (tasksForMonth.length === 0) {
-    container.innerHTML = `<p class="text-muted text-center">Keine Aufgaben für diesen Monat hinterlegt.</p>`;
+    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Aufgaben für diesen Monat hinterlegt.</p></div>`;
     return;
   }
 
