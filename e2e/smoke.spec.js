@@ -12,7 +12,7 @@ test.describe('Hively smoke', () => {
     await page.goto('/');
     await page.locator('.nav-item[data-view="hives"]').click();
     await expect(page.locator('#view-hives')).toBeVisible();
-    await expect(page.getByText('Deine Bienenstände')).toBeVisible();
+    await expect(page.locator('#view-hives .section-title')).toHaveText('Bienenstände');
 
     await page.locator('.nav-item[data-view="finances"]').click();
     await expect(page.locator('#view-finances')).toBeVisible();
