@@ -253,11 +253,12 @@ main {
 }
 
 /* Bottom Navigation Bar — in normal flex flow, pinned to bottom of #app.
-   --sab is the JS-measured safe-area-inset-bottom (reliable where env() is flaky). */
+   --sab is the JS-measured safe-area-inset-bottom (reliable where env() is flaky).
+   Extra 10px lifts the nav icons slightly above the screen edge / home indicator. */
 nav.bottom-nav {
   flex-shrink: 0;
   height: var(--nav-height);
-  padding-bottom: var(--sab, env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--sab, env(safe-area-inset-bottom, 0px)) + 10px);
   box-sizing: content-box;
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
@@ -316,6 +317,28 @@ nav.bottom-nav {
 .card:active {
   transform: scale(0.98);
   background-color: var(--bg-card-hover);
+}
+
+/* Dashboard quick actions: full-width primary + half/half secondary row */
+.dash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-action-btn {
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+}
+
+.dash-action-full {
+  width: 100%;
+}
+
+.dash-action-sub {
+  font-size: 0.75rem;
+  font-weight: normal;
 }
 
 /* Grid Layouts */
