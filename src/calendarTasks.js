@@ -1,6 +1,6 @@
 /**
- * Saisonkalender: Imker-Arbeitsschritte mit Richttermin, Anleitung
- * und Bildschritten für den Schweizerkasten (Heckbedienung).
+ * Saisonkalender: Imker-Arbeitsschritte mit Richttermin und Textanleitung
+ * für den Schweizerkasten (Heckbedienung).
  *
  * Zeitangaben: grob Schweizer Mittelland – an Wetter/Tracht anpassen.
  */
@@ -10,36 +10,14 @@ export const CALENDAR_MONTH_NAMES = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ];
 
-/** Shared image paths for Schweizerkasten visual steps */
-const IMG = {
-  exterior: '/calendar/swiss-hive-exterior.webp',
-  flight: '/calendar/swiss-hive-flight-entrance.webp',
-  rear: '/calendar/swiss-hive-rear-frames.webp',
-  weight: '/calendar/swiss-hive-weight-check.webp',
-  honey: '/calendar/swiss-hive-honey-super.webp',
-  drone: '/calendar/swiss-hive-drone-frame.webp',
-  feed: '/calendar/swiss-hive-feeding.webp',
-  treat: '/calendar/swiss-hive-treatment.webp',
-  harvest: '/calendar/swiss-hive-harvest.webp',
-  winter: '/calendar/swiss-hive-winter.webp'
-};
-
-const JPG = Object.fromEntries(
-  Object.entries(IMG).map(([k, v]) => [k, v.replace(/\.webp$/, '.jpg')])
-);
-
-function step(key, caption, alt) {
-  return {
-    src: IMG[key],
-    fallback: JPG[key],
-    caption,
-    alt: alt || caption
-  };
+/** Numbered text step in a task guide (no images). */
+function step(caption) {
+  return { caption };
 }
 
 /**
- * @typedef {{ src: string, fallback?: string, caption: string, alt: string }} VisualStep
- * @typedef {{ id: string, title: string, approxDate: string, guide: string, visualSteps?: VisualStep[] }} CalendarTask
+ * @typedef {{ caption: string }} GuideStep
+ * @typedef {{ id: string, title: string, approxDate: string, guide: string, guideSteps?: GuideStep[] }} CalendarTask
  * @type {Record<string, CalendarTask[]>}
  */
 export const CALENDAR_TASKS = {
@@ -57,9 +35,9 @@ So gehst du vor:
 • Bei Schnee: Flugloch und Stand freischaufeln, damit Luft zirkuliert.
 
 Tipp: Kurzer Blick bei frostfreien Tagen reicht. Viele frische Totbienen oder Unruhe → für Februar notieren.`,
-      visualSteps: [
-        step('winter', 'Schweizerkasten im Winter: geschlossen lassen, nur von aussen beobachten.', 'Geschlossener Schweizerkasten im Winter'),
-        step('exterior', 'Flugloch und Beutenfront von vorne prüfen – ohne die Hintertür zu öffnen.', 'Schweizerkasten von aussen')
+      guideSteps: [
+        step('Schweizerkasten im Winter: geschlossen lassen, nur von aussen beobachten.'),
+        step('Flugloch und Beutenfront von vorne prüfen – ohne die Hintertür zu öffnen.')
       ]
     },
     {
@@ -75,8 +53,8 @@ So gehst du vor (Schweizerkasten):
 • Hintertür bleibt zu.
 
 Achtung: Nur von aussen arbeiten.`,
-      visualSteps: [
-        step('flight', 'Flugloch mit Mäusegitter: auf Verstopfung und festen Sitz prüfen.', 'Flugloch und Mäusegitter am Schweizerkasten')
+      guideSteps: [
+        step('Flugloch mit Mäusegitter: auf Verstopfung und festen Sitz prüfen.')
       ]
     },
     {
@@ -109,8 +87,8 @@ So beobachtest du:
 • Kotspuren an der Front notieren.
 
 Schweizerkasten: Hintertür auch bei Flugbetrieb geschlossen lassen, solange es unter ca. 12–14 °C ist.`,
-      visualSteps: [
-        step('exterior', 'Beobachtung am Flugloch: Verkehr, Krabbler und Kotspuren von aussen beurteilen.', 'Schweizerkasten Flugbeobachtung')
+      guideSteps: [
+        step('Beobachtung am Flugloch: Verkehr, Krabbler und Kotspuren von aussen beurteilen.')
       ]
     },
     {
@@ -126,9 +104,9 @@ So gehst du vor:
 • Flugloch eng halten.
 
 Im Zweifel lieber stützen als riskieren.`,
-      visualSteps: [
-        step('weight', 'Gewichtskontrolle: Schweizerkasten hinten leicht anheben und vergleichen.', 'Gewichtskontrolle am Schweizerkasten'),
-        step('feed', 'Notfütterung nur kurz über die geöffnete Hinterseite – rasch wieder schliessen.', 'Notfütterung Schweizerkasten')
+      guideSteps: [
+        step('Gewichtskontrolle: Schweizerkasten hinten leicht anheben und vergleichen.'),
+        step('Notfütterung nur kurz über die geöffnete Hinterseite – rasch wieder schliessen.')
       ]
     },
     {
@@ -144,8 +122,8 @@ So gehst du vor:
 • Mäusegitter und Fluglochweite wintertauglich belassen.
 
 Auffällige Völker in Hively markieren.`,
-      visualSteps: [
-        step('flight', 'Flugloch freimachen: Totbienen und Abfall entfernen, Gitter belassen.', 'Flugloch reinigen')
+      guideSteps: [
+        step('Flugloch freimachen: Totbienen und Abfall entfernen, Gitter belassen.')
       ]
     }
   ],
@@ -169,9 +147,9 @@ Ablauf Schweizerkasten:
 5. Kranke/schimmelige Waben ausscheiden, Hintertür fest schliessen.
 
 Dauer: ideal unter 10 Minuten. Bei Kälte sofort abbrechen.`,
-      visualSteps: [
-        step('rear', 'Waben laufen vorne→hinten: Rahmen an der Hintertür herausziehen (nicht links–rechts).', 'Frühjahrsdurchsicht Schweizerkasten'),
-        step('exterior', 'Vor dem Öffnen: Temperatur und Flugbetrieb prüfen.', 'Vorbereitung Durchsicht')
+      guideSteps: [
+        step('Waben laufen vorne→hinten: Rahmen an der Hintertür herausziehen (nicht links–rechts).'),
+        step('Vor dem Öffnen: Temperatur und Flugbetrieb prüfen.')
       ]
     },
     {
@@ -187,8 +165,8 @@ So gehst du vor:
 • Bei Verdacht: bei der Durchsicht von hinten genauer kontrollieren.
 
 Lieber eine Woche warten als zu früh entfernen.`,
-      visualSteps: [
-        step('flight', 'Mäusegitter am Flugloch demontieren und Fluglochweite anpassen.', 'Mäusegitter entfernen')
+      guideSteps: [
+        step('Mäusegitter am Flugloch demontieren und Fluglochweite anpassen.')
       ]
     },
     {
@@ -204,8 +182,8 @@ So gehst du vor (Schweizerkasten):
 • Alles trocken wiedereinsetzen, Hintertür schliessen.
 
 Hoher Milbenfall → Drohnenrahmen und Ableger früh einplanen.`,
-      visualSteps: [
-        step('rear', 'Bei der Durchsicht von hinten Bodenbereich und Gemüll mitbeurteilen.', 'Bodenkontrolle Schweizerkasten')
+      guideSteps: [
+        step('Bei der Durchsicht von hinten Bodenbereich und Gemüll mitbeurteilen.')
       ]
     }
   ],
@@ -223,9 +201,9 @@ Schweizerkasten:
 • Nach 3–5 Tagen kontrollieren, ob der Raum angenommen wird.
 
 Zu spätes Erweitern ist ein klassischer Schwarm-Auslöser.`,
-      visualSteps: [
-        step('honey', 'Honigraum am Schweizerkasten erweitern – rechtzeitig bei Trachtbeginn.', 'Honigraum aufsetzen'),
-        step('rear', 'Kontrolle von hinten: Wird der Honigraum angenommen?', 'Honigraum-Kontrolle')
+      guideSteps: [
+        step('Honigraum am Schweizerkasten erweitern – rechtzeitig bei Trachtbeginn.'),
+        step('Kontrolle von hinten: Wird der Honigraum angenommen?')
       ]
     },
     {
@@ -241,9 +219,9 @@ Schweizerkasten-Ablauf:
 4. Rahmen wieder einhängen – Zyklus wiederholen.
 
 Wichtig: Ausschneiden nicht vergessen.`,
-      visualSteps: [
-        step('drone', 'Drohnenrahmen in Flugrichtung (vorne→hinten) einhängen – siehe Schema.', 'Drohnenrahmen einhängen'),
-        step('rear', 'Zum Ausschneiden den Rahmen nach hinten entnehmen (Achse vorne–hinten).', 'Drohnenrahmen entnehmen')
+      guideSteps: [
+        step('Drohnenrahmen in Flugrichtung (vorne→hinten) einhängen – siehe Schema.'),
+        step('Zum Ausschneiden den Rahmen nach hinten entnehmen (Achse vorne–hinten).')
       ]
     },
     {
@@ -259,8 +237,8 @@ Kontrollpunkte:
 
 Massnahmen: Platz geben, Ableger bilden, Zellen nach Betriebsweise behandeln.
 Intervall: alle 7–9 Tage.`,
-      visualSteps: [
-        step('rear', 'Schwarmkontrolle: Rahmen von hinten ziehen und Wabenunterkanten prüfen.', 'Schwarmkontrolle Schweizerkasten')
+      guideSteps: [
+        step('Schwarmkontrolle: Rahmen von hinten ziehen und Wabenunterkanten prüfen.')
       ]
     }
   ],
@@ -278,8 +256,8 @@ Routine Schweizerkasten:
 3. Platz und Tracht checken.
 4. Bei Zellen: Ableger oder geplante Massnahme.
 5. Nächstes Datum sofort einplanen.`,
-      visualSteps: [
-        step('rear', 'Wöchentlich: Hintertür öffnen, Rahmen ziehen, Weiselzellen suchen.', 'Wöchentliche Schwarmkontrolle')
+      guideSteps: [
+        step('Wöchentlich: Hintertür öffnen, Rahmen ziehen, Weiselzellen suchen.')
       ]
     },
     {
@@ -296,9 +274,9 @@ Aus dem Schweizerkasten:
 5. Eng halten, bei Bedarf füttern, vor Räuberei schützen.
 
 Spendervolk muss stark genug bleiben.`,
-      visualSteps: [
-        step('rear', 'Brut- und Futterwaben von hinten entnehmen und in den Ableger setzen.', 'Ablegerbildung aus Schweizerkasten'),
-        step('feed', 'Jungvölker bei Bedarf eng und mit Futter schützen.', 'Ableger füttern')
+      guideSteps: [
+        step('Brut- und Futterwaben von hinten entnehmen und in den Ableger setzen.'),
+        step('Jungvölker bei Bedarf eng und mit Futter schützen.')
       ]
     },
     {
@@ -314,9 +292,9 @@ Schweizerkasten:
 • Bei Trachtstopp kein unnötiges Leervolumen.
 
 Ziel: genug Platz, ohne auszukühlen.`,
-      visualSteps: [
-        step('honey', 'Honigraum bei voller Tracht rechtzeitig erweitern.', 'Honigraum erweitern'),
-        step('harvest', 'Füllung und Verdeckelung an den Honigrahmen prüfen.', 'Honigrahmen prüfen')
+      guideSteps: [
+        step('Honigraum bei voller Tracht rechtzeitig erweitern.'),
+        step('Füllung und Verdeckelung an den Honigrahmen prüfen.')
       ]
     }
   ],
@@ -332,8 +310,8 @@ So gehst du vor:
 • Intervalle beibehalten, bis kaum noch Näpfchen angesetzt werden.
 • Jungvölker und enge Kästen weiter von hinten kontrollieren.
 • Danach Fokus auf Ernte und Gesundheit legen.`,
-      visualSteps: [
-        step('rear', 'Letzte Schwarmkontrollen weiterhin über die Hintertür.', 'Späte Schwarmkontrolle')
+      guideSteps: [
+        step('Letzte Schwarmkontrollen weiterhin über die Hintertür.')
       ]
     },
     {
@@ -350,9 +328,9 @@ Schweizerkasten-Ablauf:
 5. Ertrag in Hively verbuchen.
 
 Lebensmittelhygiene beachten.`,
-      visualSteps: [
-        step('harvest', 'Honigrahmen von hinten entnehmen; lange Rahmenachse zeigt vorne→hinten.', 'Honigernte Schweizerkasten'),
-        step('honey', 'Honigraum: auch hier Waben von vorne nach hinten führen.', 'Nach der Ernte')
+      guideSteps: [
+        step('Honigrahmen von hinten entnehmen; lange Rahmenachse zeigt vorne→hinten.'),
+        step('Honigraum: auch hier Waben von vorne nach hinten führen.')
       ]
     },
     {
@@ -366,9 +344,9 @@ Massnahmen:
 • Bei Bedarf abends füttern, Flugloch eng.
 • Keine offenen Futterreste am Stand.
 • Schwache Völker nicht unnötig öffnen.`,
-      visualSteps: [
-        step('weight', 'In der Trachtlücke Gewicht und Futterlage im Blick behalten.', 'Futterkontrolle Trachtlücke'),
-        step('feed', 'Nur dosiert und abends füttern – Räuberei vermeiden.', 'Dosierte Fütterung')
+      guideSteps: [
+        step('In der Trachtlücke Gewicht und Futterlage im Blick behalten.'),
+        step('Nur dosiert und abends füttern – Räuberei vermeiden.')
       ]
     }
   ],
@@ -386,9 +364,9 @@ Massnahmen:
 • Behandlungsplan sofort terminieren.
 
 Keine offenen Honigreste am Stand stehen lassen.`,
-      visualSteps: [
-        step('harvest', 'Blick von hinten: Rahmen-Enden sichtbar, Waben gehen in die Tiefe nach vorne.', 'Sommerernte'),
-        step('rear', 'Nach der Ernte: Brutraum prüfen – weiterhin Wabenrichtung vorne→hinten.', 'Nach der Sommerernte')
+      guideSteps: [
+        step('Blick von hinten: Rahmen-Enden sichtbar, Waben gehen in die Tiefe nach vorne.'),
+        step('Nach der Ernte: Brutraum prüfen – weiterhin Wabenrichtung vorne→hinten.')
       ]
     },
     {
@@ -405,9 +383,9 @@ Schweizerkasten:
 • Schutzausrüstung tragen.
 
 Datum, Mittel und Völker dokumentieren.`,
-      visualSteps: [
-        step('treat', 'Behandlungsmittel von hinten in den Schweizerkasten einsetzen (nach Packungsangabe).', 'Varroa-Behandlung Schweizerkasten'),
-        step('rear', 'Platzierung und Volksruhe nach dem Einsetzen kontrollieren, dann schliessen.', 'Behandlung abschliessen')
+      guideSteps: [
+        step('Behandlungsmittel von hinten in den Schweizerkasten einsetzen (nach Packungsangabe).'),
+        step('Platzierung und Volksruhe nach dem Einsetzen kontrollieren, dann schliessen.')
       ]
     },
     {
@@ -423,9 +401,9 @@ Schweizerkasten:
 4. Nach 3–5 Tagen Fortschritt prüfen.
 
 Richtwert grob 15–20 kg – an Betriebsweise anpassen.`,
-      visualSteps: [
-        step('feed', 'Auffütterung über die Hinterseite: Fütterer einsetzen und portionieren.', 'Auffütterung Schweizerkasten'),
-        step('weight', 'Fortschritt am Gewicht und an den Randwaben kontrollieren.', 'Futterfortschritt prüfen')
+      guideSteps: [
+        step('Auffütterung über die Hinterseite: Fütterer einsetzen und portionieren.'),
+        step('Fortschritt am Gewicht und an den Randwaben kontrollieren.')
       ]
     }
   ],
@@ -441,9 +419,9 @@ Richtwert grob 15–20 kg – an Betriebsweise anpassen.`,
 • Flüssiges Futter Zeit zum Verdeckeln geben.
 • Wabenordnung von hinten korrigieren falls nötig.
 • Ableger und Wirtschaftsvölker getrennt beurteilen.`,
-      visualSteps: [
-        step('weight', 'Abschlusskontrolle: Kasten muss sich kräftig anfühlen.', 'Auffütterung abschliessen'),
-        step('feed', 'Nur noch kleine Korrekturen – keine grossen Gaben mehr.', 'Letzte Futtergaben')
+      guideSteps: [
+        step('Abschlusskontrolle: Kasten muss sich kräftig anfühlen.'),
+        step('Nur noch kleine Korrekturen – keine grossen Gaben mehr.')
       ]
     },
     {
@@ -456,8 +434,8 @@ Richtwert grob 15–20 kg – an Betriebsweise anpassen.`,
 • Hoher Restbefall → Nachbehandlung planen.
 • Auffällige Völker markieren.
 • Drohnenrahmen-Zyklen beenden, wenn nicht mehr nötig.`,
-      visualSteps: [
-        step('treat', 'Nach der Behandlung den Erfolg kontrollieren – nicht nur «einmal behandeln und fertig».', 'Erfolgskontrolle Varroa')
+      guideSteps: [
+        step('Nach der Behandlung den Erfolg kontrollieren – nicht nur «einmal behandeln und fertig».')
       ]
     },
     {
@@ -472,9 +450,9 @@ Massnahmen am Schweizerkasten:
 • Keine offenen Honig-/Futterreste.
 • Durchsichten kurz halten.
 • Schwache Völker besonders schützen.`,
-      visualSteps: [
-        step('flight', 'Flugloch stark einengen – wichtigster Schutz gegen Räuberei.', 'Flugloch einengen'),
-        step('exterior', 'Stand ruhig halten, keine offenen Süssstoffe liegen lassen.', 'Stand gegen Räuberei sichern')
+      guideSteps: [
+        step('Flugloch stark einengen – wichtigster Schutz gegen Räuberei.'),
+        step('Stand ruhig halten, keine offenen Süssstoffe liegen lassen.')
       ]
     }
   ],
@@ -492,8 +470,8 @@ Massnahmen am Schweizerkasten:
 • Dokumentieren und nachkontrollieren.
 
 Ziel: milbenarme Winterbienen.`,
-      visualSteps: [
-        step('treat', 'Zweite Behandlung nur nach Kontrolle und mit klarem Konzept.', 'Zweite Varroa-Behandlung')
+      guideSteps: [
+        step('Zweite Behandlung nur nach Kontrolle und mit klarem Konzept.')
       ]
     },
     {
@@ -508,8 +486,8 @@ Ziel: milbenarme Winterbienen.`,
 • Brutbild der Königin in Ordnung?
 
 Zu schwache Völker nicht allein lassen – siehe Vereinigung.`,
-      visualSteps: [
-        step('rear', 'Volksstärke von hinten an Sitz und Wabengassen ablesen.', 'Volksstärke prüfen')
+      guideSteps: [
+        step('Volksstärke von hinten an Sitz und Wabengassen ablesen.')
       ]
     },
     {
@@ -525,9 +503,9 @@ Beim Schweizerkasten oft über Waben umhängen oder angepasste Zeitungsmethode:
 4. Futter und Sitz danach prüfen.
 
 Früh genug, damit sich das Volk noch findet.`,
-      visualSteps: [
-        step('rear', 'Waben von hinten umhängen bzw. Völker kontrolliert zusammenführen.', 'Völker vereinigen'),
-        step('flight', 'Nach dem Vereinigen Flugloch eng halten.', 'Flugloch nach Vereinigung')
+      guideSteps: [
+        step('Waben von hinten umhängen bzw. Völker kontrolliert zusammenführen.'),
+        step('Nach dem Vereinigen Flugloch eng halten.')
       ]
     }
   ],
@@ -543,8 +521,8 @@ Früh genug, damit sich das Volk noch findet.`,
 • Flüssiges Futter sollte weitgehend verdeckelt sein.
 • Notfalls nur noch kleiner Futterteig von hinten.
 • Keine grossen offenen Gaben bei Kälte.`,
-      visualSteps: [
-        step('weight', 'Finale Gewichtskontrolle vor dem Einwintern.', 'Auffütterung beendet')
+      guideSteps: [
+        step('Finale Gewichtskontrolle vor dem Einwintern.')
       ]
     },
     {
@@ -558,9 +536,9 @@ So gehst du vor:
 • Sicherstellen, dass Bienen noch passieren können.
 • Umgebung auf Nagerhinweise prüfen.
 • Liste führen: Welches Volk ist geschützt?`,
-      visualSteps: [
-        step('flight', 'Mäusegitter vor dem Winter fest am Flugloch montieren.', 'Mäusegitter anbringen'),
-        step('winter', 'Kasten winterfest: Gitter drauf, Hintertür dicht, Stand ruhig.', 'Winterfertig Schweizerkasten')
+      guideSteps: [
+        step('Mäusegitter vor dem Winter fest am Flugloch montieren.'),
+        step('Kasten winterfest: Gitter drauf, Hintertür dicht, Stand ruhig.')
       ]
     },
     {
@@ -573,9 +551,9 @@ So gehst du vor:
 • Deckel/Dach beschweren, windgeschützt ausrichten.
 • Specht-/Sturmschäden im Blick behalten.
 • Letzte Notizen in Hively setzen.`,
-      visualSteps: [
-        step('winter', 'Winterruhe: Schweizerkasten geschlossen, Standort gesichert.', 'Winterruhe einleiten'),
-        step('exterior', 'Nur noch äussere Kontrollen – keine Hintertür mehr öffnen.', 'Nur noch Aussenkontrolle')
+      guideSteps: [
+        step('Winterruhe: Schweizerkasten geschlossen, Standort gesichert.'),
+        step('Nur noch äussere Kontrollen – keine Hintertür mehr öffnen.')
       ]
     }
   ],
@@ -592,8 +570,8 @@ So gehst du vor:
 • Termin für Oxalsäure (brutfrei) planen.
 
 Ohne Windel: Diagnose nach deiner Betriebsweise.`,
-      visualSteps: [
-        step('treat', 'Befallslage vor der Winterbehandlung nochmals einschätzen.', 'Varroa-Kontrolle November')
+      guideSteps: [
+        step('Befallslage vor der Winterbehandlung nochmals einschätzen.')
       ]
     },
     {
@@ -634,9 +612,9 @@ Schweizerkasten (Träufeln – Prinzip):
 4. Datum/Menge dokumentieren.
 
 Packungsbeilage und Vorschriften haben Vorrang. Sublimieren nur mit geeignetem Gerät/Schutz.`,
-      visualSteps: [
-        step('treat', 'Winterbehandlung: Kasten nur kurz von hinten öffnen, rasch wieder schliessen.', 'Oxalsäure am Schweizerkasten'),
-        step('winter', 'Danach absolute Ruhe – Beute geschlossen lassen.', 'Nach der Winterbehandlung')
+      guideSteps: [
+        step('Winterbehandlung: Kasten nur kurz von hinten öffnen, rasch wieder schliessen.'),
+        step('Danach absolute Ruhe – Beute geschlossen lassen.')
       ]
     },
     {
@@ -652,9 +630,9 @@ Don’ts:
 • Keine neugierigen Öffnungen der Hintertür.
 • Kein Verschieben ohne Not.
 • Keine lauten Arbeiten direkt am Stand.`,
-      visualSteps: [
-        step('winter', 'Beste Dezember-Arbeit: nichts tun und von aussen beobachten.', 'Winterruhe Dezember'),
-        step('flight', 'Nur Flugloch freilegen – sonst den Kasten in Ruhe lassen.', 'Flugloch im Winter freilegen')
+      guideSteps: [
+        step('Beste Dezember-Arbeit: nichts tun und von aussen beobachten.'),
+        step('Nur Flugloch freilegen – sonst den Kasten in Ruhe lassen.')
       ]
     }
   ]
