@@ -6,7 +6,7 @@
 - **Anchor:** Linear warm-dark + Raycast precision; accent = Hively Amber
 
 ## Assets
-- Logo mark: inline SVG hexagon/hive stroke in header (amber)
+- Logo mark: cute filled bee SVG in header (amber `currentColor`, dark face/stripes)
 - Favicon: `/favicon.svg` (existing; optional later update)
 - No photography required (asset-dependence 3)
 - **No emoji** in UI chrome, tags, weather, AI controls, or settings
