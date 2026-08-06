@@ -563,7 +563,7 @@ async function renderDashboardView() {
     const amountClass = amountStr.replace('-', '').length >= 7
       ? 'stat-amount stat-amount-sm'
       : 'stat-amount';
-    financeSumEl.innerHTML = `<span class="stat-currency">CHF</span><span class="${amountClass}">${escapeHtml(amountStr)}</span>`;
+    financeSumEl.innerHTML = `<span class="${amountClass}">${escapeHtml(amountStr)}</span><span class="stat-currency">CHF</span>`;
     financeSumEl.classList.toggle('is-positive', balance >= 0);
     financeSumEl.classList.toggle('is-negative', balance < 0);
     financeSumEl.style.color = '';
