@@ -412,27 +412,30 @@ nav.bottom-nav {
 }
 
 /* Dashboard quick actions: full-width primary + half/half secondary row */
+/* Dashboard quick actions: icon + label on one row */
 .dash-actions {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.dash-action-btn {
+.btn.dash-action-btn {
+  display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   text-align: left;
+  min-height: 52px;
 }
 
 .dash-action-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--primary-soft);
@@ -442,6 +445,8 @@ nav.bottom-nav {
 
 .dash-action-icon svg {
   display: block;
+  width: 18px;
+  height: 18px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -450,13 +455,17 @@ nav.bottom-nav {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  justify-content: center;
+  gap: 1px;
   min-width: 0;
+  flex: 1;
 }
 
 .dash-action-label {
   font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .dash-action-full {
@@ -464,9 +473,14 @@ nav.bottom-nav {
 }
 
 .dash-action-sub {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 400;
   color: var(--text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Grid Layouts */
@@ -520,40 +534,37 @@ nav.bottom-nav {
   font-family: var(--font-mono), var(--font-family);
 }
 
-#stat-finance-sum {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  gap: 4px;
+#stat-finance-sum.stat-val {
+  display: block;
   white-space: nowrap;
-  line-height: 1.15;
   overflow: hidden;
-  max-width: 100%;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+#stat-finance-sum .stat-amount,
+#stat-finance-sum .stat-currency {
+  display: inline;
+  vertical-align: baseline;
 }
 
 #stat-finance-sum .stat-currency {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-secondary);
-  line-height: 1.2;
-  flex-shrink: 0;
+  margin-left: 3px;
 }
 
 #stat-finance-sum .stat-amount {
-  font-size: clamp(0.95rem, 3.8vw, 1.35rem);
+  font-size: clamp(0.88rem, 3.4vw, 1.25rem);
   font-weight: 700;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono), var(--font-family);
 }
 
 #stat-finance-sum .stat-amount-sm {
-  font-size: clamp(0.82rem, 3.2vw, 1.1rem);
+  font-size: clamp(0.78rem, 3vw, 1.05rem);
 }
 
 #stat-finance-sum.is-positive .stat-amount {
@@ -812,7 +823,7 @@ textarea {
   background-color: transparent;
   border: none;
   border-right: 1px solid var(--border-color);
-  padding: 12px 10px;
+  padding: 12px 8px;
   border-radius: 0;
   min-width: 0;
   overflow: hidden;
