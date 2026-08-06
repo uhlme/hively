@@ -419,11 +419,39 @@ nav.bottom-nav {
 }
 
 .dash-action-btn {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
   padding: 14px 16px;
   text-align: left;
+}
+
+.dash-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: var(--primary);
+}
+
+.dash-action-icon svg {
+  display: block;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dash-action-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
 }
 
 .dash-action-label {
