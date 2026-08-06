@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Hively" />
-    <meta name="theme-color" content="#141417" />
+    <meta name="theme-color" content="#08090a" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
@@ -34,14 +34,46 @@
     <div id="app">
       <!-- Header -->
       <header>
-        <h1 id="app-title"><span class="brand-mark" aria-hidden="true">🐝</span>Hively</h1>
+        <h1 id="app-title">
+          <span class="brand-mark" aria-hidden="true">
+            <svg class="brand-bee" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+              <!-- Wings -->
+              <ellipse cx="5.8" cy="11" rx="4.2" ry="3" fill="currentColor" opacity="0.3" transform="rotate(-28 5.8 11)"/>
+              <ellipse cx="18.2" cy="11" rx="4.2" ry="3" fill="currentColor" opacity="0.3" transform="rotate(28 18.2 11)"/>
+              <!-- Body -->
+              <ellipse cx="12" cy="13.5" rx="5" ry="5.8" fill="currentColor"/>
+              <!-- Head -->
+              <circle cx="12" cy="6.6" r="3.35" fill="currentColor"/>
+              <!-- Stripes -->
+              <path d="M7.4 11.4h9.2M7.2 14.1h9.6M8.1 16.8h7.8" stroke="#0a0a0c" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+              <!-- Antennae -->
+              <path d="M10.4 4C9 2.5 7.6 2.9 7.3 4.1" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+              <path d="M13.6 4c1.4-1.5 2.8-1.1 3.1.1" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+              <circle cx="7.25" cy="4.15" r="0.95" fill="currentColor"/>
+              <circle cx="16.75" cy="4.15" r="0.95" fill="currentColor"/>
+              <!-- Face -->
+              <circle cx="10.55" cy="6.35" r="0.75" fill="#0a0a0c"/>
+              <circle cx="13.45" cy="6.35" r="0.75" fill="#0a0a0c"/>
+              <path d="M10.7 7.65c.65.75 1.95.75 2.6 0" fill="none" stroke="#0a0a0c" stroke-width="0.8" stroke-linecap="round"/>
+              <!-- Tiny blush -->
+              <circle cx="9.35" cy="7.35" r="0.55" fill="#0a0a0c" opacity="0.18"/>
+              <circle cx="14.65" cy="7.35" r="0.55" fill="#0a0a0c" opacity="0.18"/>
+            </svg>
+          </span>
+          Hively
+        </h1>
         <div class="header-actions">
-          <span id="connection-status" class="header-status-dot" title="Online" aria-label="Online">🟢</span>
+          <span id="connection-status" class="header-status-dot is-online" title="Online" aria-label="Online"></span>
           <button id="btn-operation-switcher" class="btn btn-sm btn-secondary header-btn header-op-btn" type="button" title="Betrieb wechseln" style="display: none;">Betrieb</button>
           <span id="user-status" class="user-status-text">Lokal</span>
           <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn">Login</button>
           <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn">+ Volk</button>
-          <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
+          <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -70,30 +102,28 @@
           </div>
 
           <!-- Bienen-Radar Widget -->
-          <div id="dashboard-radar-widget" class="card" style="margin-bottom: 24px; padding: 16px; background: linear-gradient(135deg, rgba(255, 160, 0, 0.1), rgba(255, 143, 0, 0.05)); border: 1px solid rgba(255, 160, 0, 0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <h2 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">📡 Bienen-Radar</h2>
+          <div id="dashboard-radar-widget" class="card radar-card">
+            <div class="radar-card-header">
+              <h2 class="radar-card-title">Bienen-Radar</h2>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <button id="btn-radar-locate" class="btn btn-sm btn-secondary" style="width: auto; padding: 4px 8px; font-size: 0.8rem; display: none;" title="Standort aktualisieren">📍 Ortung</button>
-                <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);">Lädt... ⏳</span>
+                <button id="btn-radar-locate" class="btn btn-sm btn-secondary" style="width: auto; padding: 4px 8px; font-size: 0.8rem; display: none;" title="Standort aktualisieren">Ortung</button>
+                <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);">Lädt…</span>
               </div>
             </div>
-            
+
             <!-- Location Setup Prompt (if no coords stored) -->
             <div id="radar-setup-prompt" style="display: none; flex-direction: column; align-items: center; gap: 12px; padding: 16px 8px; text-align: center;">
-              <span style="font-size: 2rem;">🐝</span>
               <div>
                 <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">Standort für Wetterdaten festlegen</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 260px; margin: 0 auto;">Hively benötigt deinen Standort, um das aktuelle Wetter und den Pollenflug anzuzeigen.</div>
               </div>
               <button id="btn-radar-setup" class="btn btn-primary btn-sm" style="width: auto; padding: 8px 16px;">Standort freigeben</button>
             </div>
-            
+
             <div id="radar-content" style="display: none; flex-direction: column; gap: 12px;">
-              <div style="display: flex; gap: 16px; align-items: center; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
-                <div id="radar-weather-emoji" style="font-size: 2.5rem; line-height: 1;">☀️</div>
+              <div class="radar-metrics">
                 <div>
-                  <div style="font-size: 1.2rem; font-weight: 700;"><span id="radar-temp">--</span>°C</div>
+                  <div class="radar-temp"><span id="radar-temp">--</span>°</div>
                   <div id="radar-condition" style="font-size: 0.85rem; color: var(--text-secondary);">--</div>
                 </div>
                 <div style="margin-left: auto; text-align: right; font-size: 0.85rem;">
@@ -101,17 +131,17 @@
                   <div style="color: var(--text-secondary);">Pollen: <span id="radar-pollen" style="color: var(--text-primary); font-weight: 500;">--</span></div>
                 </div>
               </div>
-              
-              <div style="background: rgba(255, 160, 0, 0.1); border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 4px;">
-                <span style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 4px;">🤖 KI-Einschätzung:</span>
-                <span id="radar-insight" style="font-size: 0.9rem; font-style: italic; line-height: 1.4;">--</span>
+
+              <div class="radar-insight">
+                <span class="radar-insight-label">KI-Einschätzung</span>
+                <span id="radar-insight" style="font-size: 0.9rem; line-height: 1.45; color: var(--text-secondary);">--</span>
               </div>
             </div>
           </div>
-          
+
           <!-- Offline Memos Queue -->
-          <div id="dashboard-offline-memos" class="card" style="display: none; margin-bottom: 24px; padding: 16px; border: 1px solid var(--primary); background: rgba(255, 160, 0, 0.05);">
-            <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">💾 Offline-Diktate ausstehend</h3>
+          <div id="dashboard-offline-memos" class="card" style="display: none; margin-bottom: 24px; padding: 16px; border: 1px solid var(--primary); background: var(--primary-soft);">
+            <h3 style="font-size: 1rem; margin-bottom: 12px;">Offline-Diktate ausstehend</h3>
             <div id="offline-memos-list" style="display: flex; flex-direction: column; gap: 10px;">
               <!-- Rendered dynamically via JS -->
             </div>
@@ -119,31 +149,58 @@
 
           <!-- Active treatments -->
           <div id="dashboard-treatments" class="card" style="display: none; margin-bottom: 24px; padding: 16px;">
-            <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">💊 Aktive Behandlungen</h3>
+            <h3 style="font-size: 1rem; margin-bottom: 12px;">Aktive Behandlungen</h3>
             <div id="dashboard-treatments-list" style="display: flex; flex-direction: column; gap: 10px;">
               <!-- Rendered dynamically via JS -->
             </div>
           </div>
 
-          <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Nächste Schritte & Aktionen</h2>
+          <h2 class="section-title">Nächste Schritte</h2>
           <div class="dash-actions" style="margin-bottom: 24px;">
             <button id="dash-btn-insp" class="btn btn-secondary dash-action-btn dash-action-full">
-              <span>📝 Durchsicht</span>
-              <span class="text-muted dash-action-sub">Arbeit eintragen</span>
+              <span class="dash-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22">
+                  <rect x="6" y="3" width="12" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                  <path d="M9 3.5h6v2.5H9z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                  <path d="M9 11h6M9 14.5h4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  <path d="M9 17.5l1.4 1.4 2.8-3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="dash-action-text">
+                <span class="dash-action-label">Durchsicht</span>
+                <span class="dash-action-sub">Arbeit eintragen</span>
+              </span>
             </button>
             <div class="grid-2">
               <button id="dash-btn-treatment" class="btn btn-secondary dash-action-btn">
-                <span>💊 Behandlung</span>
-                <span class="text-muted dash-action-sub">Varroa &amp; Co.</span>
+                <span class="dash-action-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22">
+                    <path d="M12 3c-2.2 3.2-5.5 6.4-5.5 10a5.5 5.5 0 0 0 11 0c0-3.6-3.3-6.8-5.5-10z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                    <path d="M12 14.5v3.5M10.2 16.2h3.6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="dash-action-text">
+                  <span class="dash-action-label">Behandlung</span>
+                  <span class="dash-action-sub">Varroa &amp; Co.</span>
+                </span>
               </button>
               <button id="dash-btn-honey" class="btn btn-secondary dash-action-btn">
-                <span>🍯 Honigernte</span>
-                <span class="text-muted dash-action-sub">Ertrag buchen</span>
+                <span class="dash-action-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22">
+                    <path d="M8 9.5h8l1.2 2.2v7.3a1.5 1.5 0 0 1-1.5 1.5h-7.4a1.5 1.5 0 0 1-1.5-1.5v-7.3L8 9.5z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                    <path d="M9.5 9.5V7.8c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5v1.7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                    <path d="M10 14h4M10 17h4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  </svg>
+                </span>
+                <span class="dash-action-text">
+                  <span class="dash-action-label">Honigernte</span>
+                  <span class="dash-action-sub">Ertrag buchen</span>
+                </span>
               </button>
             </div>
           </div>
 
-          <h2 style="margin-bottom: 12px; font-size: 1.25rem;">Letzte Aktivitäten</h2>
+          <h2 class="section-title">Letzte Aktivitäten</h2>
           <div id="dashboard-recent-activities">
             <!-- Rendered via JS -->
             <p class="text-muted text-center" style="padding: 20px;">Keine Aktivitäten vorhanden.</p>
@@ -152,9 +209,9 @@
 
         <!-- View 2: Völker (Hives List) -->
         <section id="view-hives" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
-            <h2 style="font-size: 1.25rem;">Deine Bienenstände</h2>
-            <select id="apiary-filter" class="form-control" style="width: auto; min-width: 160px; max-width: 100%;" aria-label="Bienenstand filtern">
+          <div class="view-toolbar">
+            <h2 class="section-title">Bienenstände</h2>
+            <select id="apiary-filter" class="form-control view-toolbar-select" aria-label="Bienenstand filtern">
               <option value="">Alle Stände</option>
             </select>
           </div>
@@ -165,17 +222,17 @@
 
         <!-- View 3: Volk Details (Single Hive View) -->
         <section id="view-hive-detail" class="view hidden">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto; padding: 8px 12px;">← Zurück</button>
-            <h2 id="detail-hive-title" style="font-size: 1.25rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Kasten Details</h2>
+          <div class="view-toolbar">
+            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto;">Zurück</button>
+            <h2 id="detail-hive-title" class="view-title">Kasten Details</h2>
           </div>
 
           <div class="detail-header" id="detail-hive-info">
             <!-- Rendered via JS -->
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="font-size: 1.1rem;">Verlaufsprotokoll</h3>
+          <div class="view-toolbar">
+            <h3 class="section-title">Verlaufsprotokoll</h3>
             <button id="btn-new-inspection" class="btn btn-sm btn-primary">+ Neue Durchsicht</button>
           </div>
 
@@ -187,15 +244,15 @@
         <!-- View 4: Finanzen (Finance & Harvests) -->
         <section id="view-finances" class="view hidden">
           <div class="segmented-control">
-            <button id="tab-fin-expenses" class="active">Ausgaben / Einkäufe</button>
-            <button id="tab-fin-honey">Honigerträge</button>
-            <button id="tab-fin-sponsorships">Patenschaften</button>
+            <button id="tab-fin-expenses" class="active">Ausgaben</button>
+            <button id="tab-fin-honey">Honig</button>
+            <button id="tab-fin-sponsorships">Paten</button>
           </div>
 
           <!-- Section: Expenses -->
           <div id="section-expenses">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Einkäufe & Belege</h2>
+            <div class="view-toolbar">
+              <h2 class="section-title">Einkäufe &amp; Belege</h2>
             </div>
             <div id="expenses-list-container">
               <!-- Rendered via JS -->
@@ -204,8 +261,8 @@
 
           <!-- Section: Honey Yield -->
           <div id="section-honey" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Ernteübersicht</h2>
+            <div class="view-toolbar">
+              <h2 class="section-title">Ernteübersicht</h2>
               <button id="btn-add-honey" class="btn btn-sm btn-primary">+ Ernte buchen</button>
             </div>
             <div id="honey-list-container">
@@ -215,9 +272,9 @@
 
           <!-- Section: Sponsorships -->
           <div id="section-sponsorships" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Patenschaften</h2>
-              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft buchen</button>
+            <div class="view-toolbar">
+              <h2 class="section-title">Patenschaften</h2>
+              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft</button>
             </div>
             <div id="sponsorships-list-container">
               <!-- Rendered via JS -->
@@ -227,9 +284,9 @@
 
         <!-- View 5: Kalender -->
         <section id="view-calendar" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h2 style="font-size: 1.25rem;">Saison-Kalender</h2>
-            <select id="calendar-month-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.9rem; margin-bottom: 0;" aria-label="Monat wählen">
+          <div class="view-toolbar">
+            <h2 class="section-title">Saison-Kalender</h2>
+            <select id="calendar-month-select" class="form-control view-toolbar-select" aria-label="Monat wählen">
               <option value="1">Januar</option>
               <option value="2">Februar</option>
               <option value="3">März</option>
@@ -244,8 +301,8 @@
               <option value="12">Dezember</option>
             </select>
           </div>
-          <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-            Arbeitsschritte mit Richttermin, Text- und Bildanleitung für den Schweizerkasten – an Wetter und Tracht anpassen.
+          <p class="view-lead">
+            Arbeitsschritte mit Richttermin und Textanleitung – an Wetter, Tracht und Betriebsweise anpassen.
           </p>
           
           <div id="calendar-tasks-container">
@@ -255,7 +312,7 @@
 
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
-          <h2 style="font-size: 1.25rem; margin-bottom: 16px;">App-Einstellungen</h2>
+          <h2 class="section-title">App-Einstellungen</h2>
 
           <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenbetrieb</h3>
@@ -349,10 +406,10 @@
               Sichere deine Daten regelmäßig. Sie werden lokal auf diesem Gerät gespeichert.
             </p>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-export-backup" class="btn btn-secondary">💾 Backup herunterladen (JSON)</button>
-              <button id="btn-trigger-import" class="btn btn-secondary">📂 Backup einspielen (JSON)</button>
+              <button id="btn-export-backup" class="btn btn-secondary">Backup herunterladen (JSON)</button>
+              <button id="btn-trigger-import" class="btn btn-secondary">Backup einspielen (JSON)</button>
               <input type="file" id="input-import-file" accept=".json" style="display: none;" />
-              <button id="btn-force-refresh" class="btn btn-secondary" style="margin-top: 6px; border-color: var(--primary); color: var(--primary);">🔄 App aktualisieren (Neu laden)</button>
+              <button id="btn-force-refresh" class="btn btn-secondary" style="margin-top: 6px; border-color: var(--primary); color: var(--primary);">App aktualisieren (Neu laden)</button>
             </div>
           </div>
 
@@ -362,8 +419,8 @@
               Füge Demo-Daten hinzu, um die App mit Beispieldaten zu testen.
             </p>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-seed-data" class="btn btn-secondary">🐝 Demo-Daten laden</button>
-              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">🗑️ Alle Daten löschen</button>
+              <button id="btn-seed-data" class="btn btn-secondary">Demo-Daten laden</button>
+              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">Alle Daten löschen</button>
             </div>
           </div>
 
@@ -479,19 +536,19 @@
           
           <!-- Weather Status Section -->
           <div id="weather-status-section" style="margin-bottom: 12px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-            <span>Wetter: <span id="weather-display" style="font-weight: 600;">Wird ermittelt... ⏳</span></span>
+            <span>Wetter: <span id="weather-display" style="font-weight: 600;">Wird ermittelt…</span></span>
             <button type="button" id="btn-weather-retry" class="btn btn-secondary btn-sm" style="display: none; padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
           </div>
 
           <!-- Voice Assistant Section -->
           <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">🎙️ KI-Sprach-Assistent</span>
+              <span style="font-size: 0.9rem; font-weight: 600;">KI-Sprach-Assistent</span>
               <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-voice-record" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
-                <span id="voice-btn-icon">🎙️</span>
+                <span id="voice-btn-icon" aria-hidden="true"></span>
                 <span id="voice-btn-text">Diktieren starten</span>
               </button>
             </div>
@@ -677,12 +734,12 @@
           <!-- Receipt Scan Section -->
           <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">📷 KI-Beleg-Scanner</span>
+              <span style="font-size: 0.9rem; font-weight: 600;">KI-Beleg-Scanner</span>
               <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-receipt-scan" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
-                <span id="receipt-btn-icon">📷</span>
+                <span id="receipt-btn-icon" aria-hidden="true"></span>
                 <span id="receipt-btn-text">Beleg hochladen / fotografieren</span>
               </button>
               <input type="file" id="input-receipt-file" accept="image/*" style="display: none;" />

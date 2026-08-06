@@ -7,34 +7,34 @@ import { fetchWithTimeout } from './network.js';
 import { safeJsonParse } from './utils.js';
 
 const WMO_CODES = {
-  0: { label: 'Sonnig', emoji: '☀️' },
-  1: { label: 'Heiter', emoji: '🌤️' },
-  2: { label: 'Wolkig', emoji: '⛅' },
-  3: { label: 'Bedeckt', emoji: '☁️' },
-  45: { label: 'Nebel', emoji: '🌫️' },
-  48: { label: 'Rauhreifnebel', emoji: '🌫️' },
-  51: { label: 'Leichter Nieselregen', emoji: '🌧️' },
-  53: { label: 'Nieselregen', emoji: '🌧️' },
-  55: { label: 'Dichter Nieselregen', emoji: '🌧️' },
-  56: { label: 'Leichter gefrierender Nieselregen', emoji: '🌧️' },
-  57: { label: 'Dichter gefrierender Nieselregen', emoji: '🌧️' },
-  61: { label: 'Leichter Regen', emoji: '🌧️' },
-  63: { label: 'Regen', emoji: '🌧️' },
-  65: { label: 'Starker Regen', emoji: '🌧️' },
-  66: { label: 'Leichter gefrierender Regen', emoji: '🌧️' },
-  67: { label: 'Starker gefrierender Regen', emoji: '🌧️' },
-  71: { label: 'Leichter Schneefall', emoji: '🌨️' },
-  73: { label: 'Schneefall', emoji: '🌨️' },
-  75: { label: 'Starker Schneefall', emoji: '🌨️' },
-  77: { label: 'Schneegriesel', emoji: '🌨️' },
-  80: { label: 'Leichte Regenschauer', emoji: '🌦️' },
-  81: { label: 'Regenschauer', emoji: '🌦️' },
-  82: { label: 'Starke Regenschauer', emoji: '🌧️' },
-  85: { label: 'Leichte Schneeschauer', emoji: '🌨️' },
-  86: { label: 'Starke Schneeschauer', emoji: '🌨️' },
-  95: { label: 'Gewitter', emoji: '🌩️' },
-  96: { label: 'Gewitter mit leichtem Hagel', emoji: '⛈️' },
-  99: { label: 'Gewitter mit starkem Hagel', emoji: '⛈️' }
+  0: { label: 'Sonnig' },
+  1: { label: 'Heiter' },
+  2: { label: 'Wolkig' },
+  3: { label: 'Bedeckt' },
+  45: { label: 'Nebel' },
+  48: { label: 'Rauhreifnebel' },
+  51: { label: 'Leichter Nieselregen' },
+  53: { label: 'Nieselregen' },
+  55: { label: 'Dichter Nieselregen' },
+  56: { label: 'Leichter gefrierender Nieselregen' },
+  57: { label: 'Dichter gefrierender Nieselregen' },
+  61: { label: 'Leichter Regen' },
+  63: { label: 'Regen' },
+  65: { label: 'Starker Regen' },
+  66: { label: 'Leichter gefrierender Regen' },
+  67: { label: 'Starker gefrierender Regen' },
+  71: { label: 'Leichter Schneefall' },
+  73: { label: 'Schneefall' },
+  75: { label: 'Starker Schneefall' },
+  77: { label: 'Schneegriesel' },
+  80: { label: 'Leichte Regenschauer' },
+  81: { label: 'Regenschauer' },
+  82: { label: 'Starke Regenschauer' },
+  85: { label: 'Leichte Schneeschauer' },
+  86: { label: 'Starke Schneeschauer' },
+  95: { label: 'Gewitter' },
+  96: { label: 'Gewitter mit leichtem Hagel' },
+  99: { label: 'Gewitter mit starkem Hagel' }
 };
 
 const GEO_OPTIONS = { timeout: 10000, maximumAge: 60000 };
@@ -70,7 +70,7 @@ export function writeWeatherCache(data) {
 }
 
 function conditionFromCode(code) {
-  return WMO_CODES[code] || { label: 'Unbekannt', emoji: '🌡️' };
+  return WMO_CODES[code] || { label: 'Unbekannt' };
 }
 
 async function resolveUserCoords(forceRefresh) {
@@ -162,7 +162,7 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
   return {
     temperature: weatherData.current?.temperature_2m,
     conditionText: conditionData.label,
-    conditionEmoji: conditionData.emoji,
+    conditionEmoji: '',
     windSpeed: weatherData.current?.wind_speed_10m,
     dominantPollen: pollenLevels[0].value > 1 ? pollenLevels[0] : null,
     allPollen: p,
@@ -189,7 +189,7 @@ async function fetchCurrentWeatherByCoords(lat, lon) {
   return {
     temperature: current.temperature_2m,
     conditionText: conditionData.label,
-    conditionEmoji: conditionData.emoji,
+    conditionEmoji: '',
     code: current.weather_code,
     latitude: lat,
     longitude: lon

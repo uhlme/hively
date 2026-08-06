@@ -563,7 +563,7 @@ async function renderDashboardView() {
     const amountClass = amountStr.replace('-', '').length >= 7
       ? 'stat-amount stat-amount-sm'
       : 'stat-amount';
-    financeSumEl.innerHTML = `<span class="stat-currency">CHF</span><span class="${amountClass}">${escapeHtml(amountStr)}</span>`;
+    financeSumEl.innerHTML = `<span class="${amountClass}">${escapeHtml(amountStr)}</span><span class="stat-currency">CHF</span>`;
     financeSumEl.classList.toggle('is-positive', balance >= 0);
     financeSumEl.classList.toggle('is-negative', balance < 0);
     financeSumEl.style.color = '';
@@ -580,7 +580,7 @@ async function renderDashboardView() {
       type: 'inspection',
       hiveName: hive ? hive.name : 'Unbekanntes Volk',
       details: i.notes || 'Durchsicht protokolliert.',
-      tag: '📝 Durchsicht',
+      tag: 'Durchsicht',
       raw: i
     });
   });
@@ -592,7 +592,7 @@ async function renderDashboardView() {
       type: 'honey',
       hiveName: hive ? hive.name : 'Unbekanntes Volk',
       details: `${h.amount} kg geerntet (${h.type || 'Blüte'})`,
-      tag: '🍯 Honigernte',
+      tag: 'Honigernte',
       raw: h
     });
   });
@@ -732,7 +732,7 @@ async function loadDashboardRadar() {
 
     elTemp.innerText = data.temperature;
     elCond.innerText = data.conditionText;
-    elEmoji.innerText = data.conditionEmoji;
+    if (elEmoji) elEmoji.innerText = data.conditionEmoji;
     elWind.innerText = data.windSpeed;
     elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
     const ageHint = stale ? ' (Cache)' : '';
@@ -846,32 +846,25 @@ function formatGuideHtml(guide) {
   return escapeHtml(guide).replace(/\n/g, '<br>');
 }
 
-function renderVisualStepsHtml(steps = []) {
+function renderGuideStepsHtml(steps = []) {
   if (!steps.length) return '';
 
   const items = steps.map((step, i) => {
-    const src = escapeHtml(step.src);
-    const fallback = escapeHtml(step.fallback || step.src);
-    const alt = escapeHtml(step.alt || step.caption || 'Bildanleitung');
     const caption = escapeHtml(step.caption || '');
     return `
-      <figure class="calendar-visual-step">
-        <div class="calendar-visual-step-media">
-          <span class="calendar-visual-step-num">${i + 1}</span>
-          <picture>
-            <source srcset="${src}" type="image/webp" />
-            <img src="${fallback}" alt="${alt}" loading="lazy" decoding="async" />
-          </picture>
-        </div>
-        <figcaption>${caption}</figcaption>
-      </figure>
+      <li class="calendar-guide-step">
+        <span class="calendar-guide-step-num">${i + 1}</span>
+        <span class="calendar-guide-step-text">${caption}</span>
+      </li>
     `;
   }).join('');
 
   return `
-    <div class="calendar-visual-steps">
-      <h4 class="calendar-visual-heading">Bildanleitung Schweizerkasten</h4>
-      ${items}
+    <div class="calendar-guide-steps">
+      <h4 class="calendar-guide-heading">Kurzablauf</h4>
+      <ol class="calendar-guide-step-list">
+        ${items}
+      </ol>
     </div>
   `;
 }
@@ -904,7 +897,7 @@ async function renderCalendarView() {
   const canEdit = canEditActiveOp();
 
   if (tasksForMonth.length === 0) {
-    container.innerHTML = `<p class="text-muted text-center">Keine Aufgaben für diesen Monat hinterlegt.</p>`;
+    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Aufgaben für diesen Monat hinterlegt.</p></div>`;
     return;
   }
 
@@ -913,8 +906,8 @@ async function renderCalendarView() {
 
   let html = `
     <div class="calendar-month-header">
-      <h3>📌 Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
-      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung (Schweizerkasten)</p>
+      <h3>Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
+      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung</p>
     </div>
     <div class="calendar-task-list">
   `;
@@ -922,7 +915,6 @@ async function renderCalendarView() {
   tasksForMonth.forEach((task, index) => {
     const done = isTaskDone(monthState, task, index);
     const checked = done ? 'checked' : '';
-    const hasVisuals = Array.isArray(task.visualSteps) && task.visualSteps.length > 0;
     const disabledAttr = canEdit ? '' : 'disabled';
     html += `
       <article class="calendar-task ${done ? 'is-done' : ''}" data-task-id="${escapeHtml(task.id)}">
@@ -936,12 +928,11 @@ async function renderCalendarView() {
           </button>
         </div>
         <div class="calendar-task-meta">
-          <span class="calendar-task-date" title="Richttermin">🗓 ${escapeHtml(task.approxDate)}</span>
-          ${hasVisuals ? '<span class="calendar-task-visual-badge">Bilder</span>' : ''}
+          <span class="calendar-task-date" title="Richttermin">${escapeHtml(task.approxDate)}</span>
         </div>
         <div id="guide-${escapeHtml(task.id)}" class="calendar-task-guide hidden" hidden>
           <p class="calendar-task-guide-text">${formatGuideHtml(task.guide)}</p>
-          ${renderVisualStepsHtml(task.visualSteps || [])}
+          ${renderGuideStepsHtml(task.guideSteps || [])}
         </div>
       </article>
     `;
@@ -1021,9 +1012,10 @@ async function renderHivesView() {
 
   if (hives.length === 0) {
     container.innerHTML = `
-      <div class="card text-center" style="padding: 40px 20px;">
-        <p class="text-muted" style="margin-bottom: 20px;">${canEdit ? 'Du hast noch keine Völker erfasst.' : 'In diesem Betrieb sind noch keine Völker erfasst.'}</p>
-        ${canEdit ? '<button id="btn-add-hive-empty" class="btn btn-primary" style="width: auto; margin: 0 auto;">Erstes Volk erfassen</button>' : ''}
+      <div class="card empty-state">
+        <p class="empty-state-title">${canEdit ? 'Noch keine Völker' : 'Keine Völker'}</p>
+        <p class="empty-state-text">${canEdit ? 'Du hast noch keine Völker erfasst.' : 'In diesem Betrieb sind noch keine Völker erfasst.'}</p>
+        ${canEdit ? '<button id="btn-add-hive-empty" class="btn btn-primary">Erstes Volk erfassen</button>' : ''}
       </div>
     `;
     document.getElementById('btn-add-hive-empty')?.addEventListener('click', () => openHiveModal());
@@ -1048,7 +1040,7 @@ async function renderHivesView() {
   }
 
   if (filtered.length === 0) {
-    container.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Völker in diesem Stand.</p>`;
+    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Völker in diesem Stand.</p></div>`;
     return;
   }
 
@@ -1066,23 +1058,23 @@ async function renderHivesView() {
     const hasTreatment = (treatmentsByHive[hive.id] || []).length > 0;
     return `
       <div class="card hive-card" data-id="${escapeHtml(hive.id)}" role="button" tabindex="0">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <div class="hive-card-top">
           <div>
-            <h3 style="font-size: 1.15rem; font-weight: 600;">${escapeHtml(hive.name)}</h3>
-            ${apiaryName ? `<div class="text-muted" style="font-size: 0.8rem; margin-top: 2px;">📍 ${escapeHtml(apiaryName)}</div>` : ''}
-            <span class="text-muted" style="font-size: 0.85rem;">Rasse: ${escapeHtml(hive.breed || 'Nicht definiert')}</span>
+            <h3 class="hive-card-name">${escapeHtml(hive.name)}</h3>
+            ${apiaryName ? `<div class="hive-card-meta">${escapeHtml(apiaryName)}</div>` : ''}
+            <div class="hive-card-meta">Rasse: ${escapeHtml(hive.breed || 'Nicht definiert')}</div>
           </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+          <div class="hive-card-badges">
             <span class="status-badge status-${statusClass}">${escapeHtml(hive.status)}</span>
             ${hasTreatment ? '<span class="treatment-badge">Behandlung</span>' : ''}
           </div>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
-          <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="hive-card-footer">
+          <div class="hive-card-queen">
             <span class="queen-badge ${qColorClass}">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?' }</span>
-            <span class="text-secondary" style="font-size: 0.85rem;">Königin ${queenLabel} (${escapeHtml(hive.queenYear || 'Unbekannt')}, ${escapeHtml(qColorName)})</span>
+            <span class="hive-card-queen-text">Königin ${queenLabel} (${escapeHtml(hive.queenYear || 'Unbekannt')}, ${escapeHtml(qColorName)})</span>
           </div>
-          <span class="text-primary-color" style="font-size: 0.85rem; font-weight: 500;">Details anzeigen →</span>
+          <span class="hive-card-cta">Details</span>
         </div>
       </div>
     `;
@@ -1150,21 +1142,21 @@ async function renderHiveDetailView() {
   const qColorName = qColor.name;
 
   const treatmentsBanner = activeTreatments.length
-    ? `<div style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+    ? `<div class="treatment-banner-list">
         ${activeTreatments.map((t) => {
           const label = t.productLabel || getTreatmentProduct(t.productId)?.label || 'Behandlung';
           const blocked = t.harvestBlockedUntil
             ? ` · Honig frei ab ${formatDateString(t.harvestBlockedUntil)}`
             : '';
           return `
-            <div class="treatment-banner" data-treatment-id="${escapeHtml(t.id)}" style="padding: 10px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: ${canEdit ? 'pointer' : 'default'};">
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div class="treatment-banner${canEdit ? ' is-clickable' : ''}" data-treatment-id="${escapeHtml(t.id)}">
+              <div class="treatment-banner-row">
                 <div>
-                  <span class="treatment-badge" style="margin-right: 6px;">Aktiv</span>
-                  <strong style="font-size: 0.9rem;">${escapeHtml(label)}</strong>
-                  <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}</div>
+                  <span class="treatment-badge">Aktiv</span>
+                  <strong class="treatment-banner-label">${escapeHtml(label)}</strong>
+                  <div class="treatment-banner-meta">Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}</div>
                 </div>
-                ${canEdit ? '<span class="text-secondary" style="font-size: 0.8rem;">Bearbeiten →</span>' : ''}
+                ${canEdit ? '<span class="treatment-banner-cta">Bearbeiten</span>' : ''}
               </div>
             </div>
           `;
@@ -1174,49 +1166,49 @@ async function renderHiveDetailView() {
   
   infoBlock.innerHTML = `
     ${treatmentsBanner}
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div class="detail-header-top">
       <span class="status-badge status-${statusToCssClass(hive.status)}">${escapeHtml(hive.status)}</span>
       ${canEdit ? '<button id="btn-edit-hive-details" class="btn btn-secondary btn-sm">Stammdaten bearbeiten</button>' : ''}
     </div>
     <div class="detail-row">
       <span class="text-secondary">Bienenstand</span>
-      <span style="font-weight: 500;">${escapeHtml(apiary?.name || 'Kein Stand')}</span>
+      <span class="detail-row-value">${escapeHtml(apiary?.name || 'Kein Stand')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Name der Königin</span>
-      <span style="font-weight: 500;">${escapeHtml(hive.queenName || 'Kein Name vergeben')}</span>
+      <span class="detail-row-value">${escapeHtml(hive.queenName || 'Kein Name vergeben')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Rasse / Herkunft</span>
-      <span style="font-weight: 500;">${escapeHtml(hive.breed || 'Nicht angegeben')}</span>
+      <span class="detail-row-value">${escapeHtml(hive.breed || 'Nicht angegeben')}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Königinnen-Jahrgang</span>
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <span class="queen-badge ${qColorClass}" style="width: 20px; height: 20px; font-size: 0.65rem;">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?'}</span>
-        <span style="font-weight: 500;">${escapeHtml(hive.queenYear || 'Unbekannt')} (${escapeHtml(qColorName)})</span>
+      <div class="detail-row-queen">
+        <span class="queen-badge ${qColorClass}">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?'}</span>
+        <span class="detail-row-value">${escapeHtml(hive.queenYear || 'Unbekannt')} (${escapeHtml(qColorName)})</span>
       </div>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Brutraum (Waben)</span>
-      <span style="font-weight: 500;">${escapeHtml(hive.broodFrames || 0)}</span>
+      <span class="detail-row-value">${escapeHtml(hive.broodFrames || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">1. Honigraum (Waben)</span>
-      <span style="font-weight: 500;">${escapeHtml(hive.honeyFrames1 || 0)}</span>
+      <span class="detail-row-value">${escapeHtml(hive.honeyFrames1 || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">2. Honigraum (Waben)</span>
-      <span style="font-weight: 500;">${escapeHtml(hive.honeyFrames2 || 0)}</span>
+      <span class="detail-row-value">${escapeHtml(hive.honeyFrames2 || 0)}</span>
     </div>
     <div class="detail-row">
       <span class="text-secondary">Erstellt am</span>
-      <span style="font-weight: 500;">${escapeHtml(formatDateString(hive.createdAt))}</span>
+      <span class="detail-row-value">${escapeHtml(formatDateString(hive.createdAt))}</span>
     </div>
     ${hive.notes ? `
-      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
-        <span class="text-muted" style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Notizen:</span>
-        <p class="text-secondary" style="font-size: 0.9rem; white-space: pre-wrap;">${escapeHtml(hive.notes)}</p>
+      <div class="detail-notes">
+        <span class="detail-notes-label">Notizen</span>
+        <p class="detail-notes-text">${escapeHtml(hive.notes)}</p>
       </div>
     ` : ''}
   `;
@@ -1245,15 +1237,14 @@ async function renderHiveDetailView() {
   const inspections = await getInspections(activeHiveIdForDetail);
   const recommendationBlock = document.createElement('div');
   recommendationBlock.id = 'hive-recommendation-block';
-  recommendationBlock.className = 'card';
-  recommendationBlock.style.cssText = 'margin: 20px 0; padding: 16px; background: linear-gradient(135deg, rgba(255, 160, 0, 0.1), rgba(255, 143, 0, 0.05)); border: 1px solid rgba(255, 160, 0, 0.2);';
+  recommendationBlock.className = 'card recommendation-card';
   recommendationBlock.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <h3 style="font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">🤖 KI-Empfehlung</h3>
-      <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
+    <div class="recommendation-header">
+      <h3 class="section-title">KI-Empfehlung</h3>
+      <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary">Neu laden</button>
     </div>
-    <div id="recommendation-content" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary);">
-      <span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>
+    <div id="recommendation-content" class="recommendation-body">
+      <span>Empfehlung wird geladen…</span>
     </div>
   `;
   
@@ -1266,17 +1257,17 @@ async function renderHiveDetailView() {
     if (!recommendationContent) return;
     
     try {
-      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; line-height: 1.6;">Empfehlung wird geladen... ⏳</span>';
+      recommendationContent.innerHTML = '<span>Empfehlung wird geladen…</span>';
       const recommendation = await getHiveRecommendation(hive, inspections);
       
       // Simple text formatting
       const formattedRecommendation = escapeHtml(recommendation)
         .replace(/\n/g, '<br>');
       
-      recommendationContent.innerHTML = `<div style="font-size: 0.9rem; line-height: 1.6;">${formattedRecommendation}</div>`;
+      recommendationContent.innerHTML = `<div>${formattedRecommendation}</div>`;
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
-      recommendationContent.innerHTML = '<span style="font-size: 0.9rem; color: var(--danger);">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
+      recommendationContent.innerHTML = '<span class="text-danger">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
     }
   }
 
@@ -1299,9 +1290,9 @@ async function renderHiveDetailView() {
   
   if (inspections.length === 0) {
     timeline.innerHTML = `
-      <div class="card text-center" style="padding: 24px; border-style: dashed;">
-        <p class="text-muted">Keine Durchsichten erfasst.</p>
-        ${canEdit ? '<button id="btn-new-insp-empty" class="btn btn-sm btn-secondary" style="margin-top: 12px;">Erste Durchsicht eintragen</button>' : ''}
+      <div class="card empty-state empty-state-dashed">
+        <p class="empty-state-text">Keine Durchsichten erfasst.</p>
+        ${canEdit ? '<button id="btn-new-insp-empty" class="btn btn-sm btn-secondary">Erste Durchsicht eintragen</button>' : ''}
       </div>
     `;
     document.getElementById('btn-new-insp-empty')?.addEventListener('click', () => {
@@ -1322,7 +1313,7 @@ async function renderHiveDetailView() {
 
   timeline.innerHTML = inspections.map(insp => {
     const weatherString = (insp.weatherTemp !== undefined && insp.weatherTemp !== null) ? 
-        `<span style="margin-left: 8px; font-size: 0.85rem;" class="text-secondary">| ${escapeHtml(insp.weatherCondition || '')} ${escapeHtml(insp.weatherTemp)}°C</span>` : '';
+        `<span class="log-item-weather">${escapeHtml(insp.weatherCondition || '')} ${escapeHtml(insp.weatherTemp)}°C</span>` : '';
     const byName = insp.createdBy ? (creatorNames[insp.createdBy] || null) : null;
     const byChip = byName
       ? `<span class="created-by-chip">von ${escapeHtml(byName)}</span>`
@@ -1333,15 +1324,15 @@ async function renderHiveDetailView() {
       : '';
     return `
       <div class="log-item inspection-log-card" data-id="${escapeHtml(insp.id)}">
-        <div class="log-item-header" style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <div class="log-item-header">
           <span>${escapeHtml(formatDateString(insp.date))}${weatherString}</span>
           ${byChip}
         </div>
         ${chipsHtml}
-        ${insp.notes ? `<p class="text-secondary" style="font-size: 0.95rem; white-space: pre-wrap; margin-top: 8px;">${escapeHtml(insp.notes)}</p>` : ''}
+        ${insp.notes ? `<p class="log-item-notes">${escapeHtml(insp.notes)}</p>` : ''}
         ${canEdit ? `
-        <div style="text-align: right; margin-top: 8px;">
-          <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${escapeHtml(insp.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.75rem;">Bearbeiten</button>
+        <div class="log-item-actions">
+          <button class="btn btn-sm btn-secondary btn-edit-insp" data-id="${escapeHtml(insp.id)}">Bearbeiten</button>
         </div>` : ''}
       </div>
     `;
@@ -1378,22 +1369,21 @@ async function renderFinanceView() {
     // Render Expenses
     const finances = (await getFinances()).filter(f => f.type === 'expense' || !f.type);
     if (finances.length === 0) {
-      expensesList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Käufe erfasst.</p>`;
+      expensesList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Käufe erfasst.</p></div>`;
       return;
     }
 
     expensesList.innerHTML = finances.map(item => `
-      <div class="card finance-card" data-id="${escapeHtml(item.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
-        <div>
-          <h4 style="font-size: 1rem; font-weight: 600;">${escapeHtml(item.description)}</h4>
-          <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-            <span>${escapeHtml(formatDateString(item.date))}</span> &bull; 
-            <span style="color: var(--primary);">${escapeHtml(item.category)}</span>
+      <div class="data-row finance-card" data-id="${escapeHtml(item.id)}" role="button" tabindex="0">
+        <div class="data-row-main">
+          <h4 class="data-row-title">${escapeHtml(item.description)}</h4>
+          <div class="data-row-meta">
+            ${escapeHtml(formatDateString(item.date))} · <span class="data-row-cat">${escapeHtml(item.category)}</span>
           </div>
         </div>
-        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-          <span style="font-weight: 700; color: var(--danger); font-size: 1.1rem;">- ${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
-          <button class="btn btn-sm btn-danger btn-delete-fin-item" data-id="${escapeHtml(item.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+        <div class="data-row-side">
+          <span class="amount amount-danger">−${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
+          <button class="btn btn-sm btn-danger btn-row-delete btn-delete-fin-item" data-id="${escapeHtml(item.id)}">Löschen</button>
         </div>
       </div>
     `).join('');
@@ -1433,24 +1423,23 @@ async function renderFinanceView() {
     const hives = await getHives();
     
     if (honey.length === 0) {
-      honeyList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Honigernten erfasst.</p>`;
+      honeyList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Honigernten erfasst.</p></div>`;
       return;
     }
 
     honeyList.innerHTML = honey.map(harvest => {
       const hive = hives.find(h => h.id === harvest.hiveId);
       return `
-        <div class="card honey-card" data-id="${escapeHtml(harvest.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
-          <div>
-            <h4 style="font-size: 1rem; font-weight: 600;">${escapeHtml(hive ? hive.name : 'Unbekanntes Volk')}</h4>
-            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-              <span>${escapeHtml(formatDateString(harvest.date))}</span> &bull; 
-              <span>Sorte: <strong>${escapeHtml(harvest.type || 'Frühtracht')}</strong></span>
+        <div class="data-row honey-card" data-id="${escapeHtml(harvest.id)}" role="button" tabindex="0">
+          <div class="data-row-main">
+            <h4 class="data-row-title">${escapeHtml(hive ? hive.name : 'Unbekanntes Volk')}</h4>
+            <div class="data-row-meta">
+              ${escapeHtml(formatDateString(harvest.date))} · Sorte: ${escapeHtml(harvest.type || 'Frühtracht')}
             </div>
           </div>
-          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">🍯 ${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
-            <button class="btn btn-sm btn-danger btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+          <div class="data-row-side">
+            <span class="amount amount-primary">${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
+            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}">Löschen</button>
           </div>
         </div>
       `;
@@ -1490,24 +1479,23 @@ async function renderFinanceView() {
     const hives = await getHives();
 
     if (finances.length === 0) {
-      sponsorshipsList.innerHTML = `<p class="text-muted text-center" style="padding: 40px 20px;">Keine Patenschaften erfasst.</p>`;
+      sponsorshipsList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Patenschaften erfasst.</p></div>`;
       return;
     }
 
     sponsorshipsList.innerHTML = finances.map(item => {
       const hive = hives.find(h => h.id === item.hiveId);
       return `
-        <div class="card sponsorship-card" data-id="${escapeHtml(item.id)}" style="padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" role="button" tabindex="0">
-          <div>
-            <h4 style="font-size: 1rem; font-weight: 600;">👤 ${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
-            <div class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
-              <span>${escapeHtml(formatDateString(item.date))}</span> &bull; 
-              <span>Kasten: <strong>${escapeHtml(hive ? hive.name : 'Gelöschtes Volk')}</strong></span>
+        <div class="data-row sponsorship-card" data-id="${escapeHtml(item.id)}" role="button" tabindex="0">
+          <div class="data-row-main">
+            <h4 class="data-row-title">${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
+            <div class="data-row-meta">
+              ${escapeHtml(formatDateString(item.date))} · Kasten: ${escapeHtml(hive ? hive.name : 'Gelöschtes Volk')}
             </div>
           </div>
-          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span style="font-weight: 700; color: var(--success); font-size: 1.1rem;">+ ${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
-            <button class="btn btn-sm btn-danger btn-delete-sponsorship-item" data-id="${escapeHtml(item.id)}" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; width: auto; background: none; border: 1px solid var(--danger); color: var(--danger); z-index: 2;">Löschen</button>
+          <div class="data-row-side">
+            <span class="amount amount-success">+${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
+            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-sponsorship-item" data-id="${escapeHtml(item.id)}">Löschen</button>
           </div>
         </div>
       `;
@@ -1694,12 +1682,12 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     inpWeatherCond.value = '';
     
     const loadWeather = async () => {
-      weatherDisplay.innerHTML = 'Wird ermittelt... ⏳';
+      weatherDisplay.innerHTML = 'Wird ermittelt…';
       btnWeatherRetry.style.display = 'none';
       try {
         const w = await fetchCurrentWeather();
         const cacheHint = w.fromCache ? ' <span class="text-muted" style="font-weight:400;">(Cache)</span>' : '';
-        weatherDisplay.innerHTML = `${escapeHtml(w.conditionEmoji)} ${escapeHtml(w.temperature)}°C${cacheHint}`;
+        weatherDisplay.innerHTML = `${escapeHtml(w.conditionText)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
         inpWeatherTemp.value = w.temperature;
         inpWeatherCond.value = w.conditionText;
         if (w.fromCache) {
@@ -3076,7 +3064,7 @@ function setupVoiceAssistant() {
 
   function resetUI() {
     currentStatus = 'idle';
-    btnIcon.innerText = '🎙️';
+    btnIcon.innerText = '';
     btnText.innerText = 'Diktieren starten';
     statusBadge.innerText = 'Bereit';
     statusBadge.style.background = 'rgba(255,255,255,0.1)';
@@ -3088,7 +3076,7 @@ function setupVoiceAssistant() {
 
   function updateUIForStatus(status) {
     if (status === 'listening') {
-      btnIcon.innerText = '🛑';
+      btnIcon.innerText = '';
       btnText.innerText = 'Diktieren stoppen';
       statusBadge.innerText = 'Aufnahme...';
       statusBadge.style.background = '#ef4444';
@@ -3097,8 +3085,8 @@ function setupVoiceAssistant() {
       btnRecord.classList.add('btn-danger');
       statusBadge.classList.add('voice-badge-listening');
     } else if (status === 'processing') {
-      btnIcon.innerText = '⏳';
-      btnText.innerText = 'KI analysiert...';
+      btnIcon.innerText = '';
+      btnText.innerText = 'KI analysiert…';
       statusBadge.innerText = 'Analysiere...';
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
@@ -3313,14 +3301,14 @@ function setupReceiptScanner() {
   function updateUI(status) {
     if (status === 'processing') {
       btnScan.disabled = true;
-      btnIcon.innerText = '⏳';
-      btnText.innerText = 'Beleg wird analysiert...';
+      btnIcon.innerText = '';
+      btnText.innerText = 'Beleg wird analysiert…';
       statusBadge.innerText = 'Analysiere...';
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
     } else {
       btnScan.disabled = false;
-      btnIcon.innerText = '📷';
+      btnIcon.innerText = '';
       btnText.innerText = 'Beleg hochladen / fotografieren';
       statusBadge.innerText = 'Bereit';
       statusBadge.style.background = 'rgba(255,255,255,0.1)';
@@ -3332,13 +3320,13 @@ function setupReceiptScanner() {
 function formatGeminiError(err, defaultMessage) {
   const errMsg = err.message || err.toString() || '';
   if (errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
-    return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut. ⏳';
+    return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut.';
   }
   if (errMsg.includes('403') || errMsg.includes('400') || errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('key not valid')) {
-    return 'Der KI-API-Schlüssel ist ungültig oder abgelaufen. Bitte überprüfe deine Einstellungen oder deinen Schlüssel. 🔑';
+    return 'Der KI-API-Schlüssel ist ungültig oder abgelaufen. Bitte überprüfe deine Einstellungen oder deinen Schlüssel.';
   }
   if (errMsg.toLowerCase().includes('fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch')) {
-    return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung. 📡';
+    return 'Netzwerkfehler: Keine Verbindung zur künstlichen Intelligenz möglich. Bitte überprüfe deine Internetverbindung.';
   }
   return defaultMessage || 'Ein unerwarteter Fehler ist bei der KI-Analyse aufgetreten. Bitte versuche es erneut.';
 }
@@ -3405,26 +3393,33 @@ function updateConnectionStatusUI() {
   const pendingCount = getSyncQueueLength();
   const prefs = getNetworkPrefs();
 
+  statusEl.classList.remove('is-online', 'is-offline', 'is-pending', 'is-field');
+  statusEl.innerText = '';
+
   if (!navigator.onLine) {
-    statusEl.innerText = '🔌';
+    statusEl.classList.add('is-offline');
     statusEl.title = 'Offline – Änderungen werden lokal gespeichert';
+    statusEl.setAttribute('aria-label', 'Offline');
     return;
   }
 
   if (prefs.fieldMode && isConstrainedConnection()) {
-    statusEl.innerText = pendingCount > 0 ? '📡' : '🟡';
+    statusEl.classList.add('is-field');
     statusEl.title = pendingCount > 0
       ? `Funkloch-Modus – ${pendingCount} Änderungen lokal wartend`
       : `Funkloch-Modus (${getConnectionType() || 'schwaches Netz'}) – lokale Daten`;
+    statusEl.setAttribute('aria-label', 'Funkloch-Modus');
     return;
   }
 
   if (pendingCount > 0) {
-    statusEl.innerText = '🔄';
+    statusEl.classList.add('is-pending');
     statusEl.title = `Online – ${pendingCount} Änderungen ausstehend`;
+    statusEl.setAttribute('aria-label', 'Sync ausstehend');
   } else {
-    statusEl.innerText = '🟢';
+    statusEl.classList.add('is-online');
     statusEl.title = 'Online – synchronisiert';
+    statusEl.setAttribute('aria-label', 'Online');
   }
 }
 
@@ -3443,7 +3438,7 @@ async function renderOfflineMemos() {
   list.innerHTML = memos.map(memo => {
     const dateStr = new Date(memo.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     const stamped = `${formatDateString(new Date(memo.timestamp).toISOString())} um ${dateStr}`;
-    const typeLabel = memo.type === 'voice' ? '🎙️ Diktat' : '📷 Beleg-Scan';
+    const typeLabel = memo.type === 'voice' ? 'Diktat' : 'Beleg-Scan';
     const detailText =
       memo.type === 'voice' ? `Sprachmemo vom ${stamped}` : `Beleg hochgeladen am ${stamped}`;
 
