@@ -209,9 +209,9 @@
 
         <!-- View 2: Völker (Hives List) -->
         <section id="view-hives" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap;">
-            <h2 style="font-size: 1.25rem;">Deine Bienenstände</h2>
-            <select id="apiary-filter" class="form-control" style="width: auto; min-width: 160px; max-width: 100%;" aria-label="Bienenstand filtern">
+          <div class="view-toolbar">
+            <h2 class="section-title">Bienenstände</h2>
+            <select id="apiary-filter" class="form-control view-toolbar-select" aria-label="Bienenstand filtern">
               <option value="">Alle Stände</option>
             </select>
           </div>
@@ -222,17 +222,17 @@
 
         <!-- View 3: Volk Details (Single Hive View) -->
         <section id="view-hive-detail" class="view hidden">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto; padding: 8px 12px;">← Zurück</button>
-            <h2 id="detail-hive-title" style="font-size: 1.25rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Kasten Details</h2>
+          <div class="view-toolbar">
+            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto;">Zurück</button>
+            <h2 id="detail-hive-title" class="view-title">Kasten Details</h2>
           </div>
 
           <div class="detail-header" id="detail-hive-info">
             <!-- Rendered via JS -->
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="font-size: 1.1rem;">Verlaufsprotokoll</h3>
+          <div class="view-toolbar">
+            <h3 class="section-title">Verlaufsprotokoll</h3>
             <button id="btn-new-inspection" class="btn btn-sm btn-primary">+ Neue Durchsicht</button>
           </div>
 
@@ -244,15 +244,15 @@
         <!-- View 4: Finanzen (Finance & Harvests) -->
         <section id="view-finances" class="view hidden">
           <div class="segmented-control">
-            <button id="tab-fin-expenses" class="active">Ausgaben / Einkäufe</button>
-            <button id="tab-fin-honey">Honigerträge</button>
-            <button id="tab-fin-sponsorships">Patenschaften</button>
+            <button id="tab-fin-expenses" class="active">Ausgaben</button>
+            <button id="tab-fin-honey">Honig</button>
+            <button id="tab-fin-sponsorships">Paten</button>
           </div>
 
           <!-- Section: Expenses -->
           <div id="section-expenses">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Einkäufe & Belege</h2>
+            <div class="view-toolbar">
+              <h2 class="section-title">Einkäufe &amp; Belege</h2>
             </div>
             <div id="expenses-list-container">
               <!-- Rendered via JS -->
@@ -261,8 +261,8 @@
 
           <!-- Section: Honey Yield -->
           <div id="section-honey" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Ernteübersicht</h2>
+            <div class="view-toolbar">
+              <h2 class="section-title">Ernteübersicht</h2>
               <button id="btn-add-honey" class="btn btn-sm btn-primary">+ Ernte buchen</button>
             </div>
             <div id="honey-list-container">
@@ -272,9 +272,9 @@
 
           <!-- Section: Sponsorships -->
           <div id="section-sponsorships" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h2 style="font-size: 1.25rem;">Patenschaften</h2>
-              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft buchen</button>
+            <div class="view-toolbar">
+              <h2 class="section-title">Patenschaften</h2>
+              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft</button>
             </div>
             <div id="sponsorships-list-container">
               <!-- Rendered via JS -->
@@ -284,9 +284,9 @@
 
         <!-- View 5: Kalender -->
         <section id="view-calendar" class="view hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h2 style="font-size: 1.25rem;">Saison-Kalender</h2>
-            <select id="calendar-month-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.9rem; margin-bottom: 0;" aria-label="Monat wählen">
+          <div class="view-toolbar">
+            <h2 class="section-title">Saison-Kalender</h2>
+            <select id="calendar-month-select" class="form-control view-toolbar-select" aria-label="Monat wählen">
               <option value="1">Januar</option>
               <option value="2">Februar</option>
               <option value="3">März</option>
@@ -301,7 +301,7 @@
               <option value="12">Dezember</option>
             </select>
           </div>
-          <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+          <p class="view-lead">
             Arbeitsschritte mit Richttermin und Textanleitung für den Schweizerkasten – an Wetter und Tracht anpassen.
           </p>
           
@@ -312,7 +312,7 @@
 
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
-          <h2 style="font-size: 1.25rem; margin-bottom: 16px;">App-Einstellungen</h2>
+          <h2 class="section-title">App-Einstellungen</h2>
 
           <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenbetrieb</h3>
