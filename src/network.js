@@ -39,18 +39,31 @@ export function isSaveDataEnabled() {
   return !!(conn && conn.saveData);
 }
 
-/** True when the link looks expensive or weak. */
+/** True when the link looks expensive or weak. Used to gate large payloads
+ * (media uploads) where even a genuine 3g link is worth deferring. */
 export function isConstrainedConnection() {
   if (isSaveDataEnabled()) return true;
   const type = getConnectionType();
   return type === 'slow-2g' || type === '2g' || type === '3g';
 }
 
+/** Like isConstrainedConnection(), but for small requests (a few KB of JSON,
+ * e.g. the weather/AI insight call) where even 3g is plenty. Excludes 3g
+ * from the constrained set because Android's Network Information API often
+ * misreports a perfectly good link as 3g (iOS doesn't implement the API at
+ * all, so this asymmetry only shows up on Android). saveData and genuinely
+ * poor links (2g/slow-2g) still count as constrained. */
+export function isConstrainedForLightRequests() {
+  if (isSaveDataEnabled()) return true;
+  const type = getConnectionType();
+  return type === 'slow-2g' || type === '2g';
+}
+
 /** Should we attempt background network work (pulls, weather, AI)? */
 export function shouldUseBackgroundNetwork() {
   if (!navigator.onLine) return false;
   const prefs = getNetworkPrefs();
-  if (prefs.fieldMode && isConstrainedConnection()) return false;
+  if (prefs.fieldMode && isConstrainedForLightRequests()) return false;
   return true;
 }
 

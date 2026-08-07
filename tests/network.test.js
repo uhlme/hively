@@ -4,6 +4,7 @@ import {
   getNetworkPrefs,
   saveNetworkPrefs,
   isConstrainedConnection,
+  isConstrainedForLightRequests,
   shouldUseBackgroundNetwork,
   shouldAutoProcessMedia,
   fetchWithTimeout,
@@ -65,6 +66,28 @@ describe('connection policy', () => {
 
     mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
     expect(shouldUseBackgroundNetwork()).toBe(true);
+  });
+
+  it('does not block background network on 3g (Android often misreports good links as 3g)', () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '3g' });
+    expect(shouldUseBackgroundNetwork()).toBe(true);
+  });
+
+  it('still blocks background network when saveData is explicitly on, even on 4g', () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g', saveData: true });
+    expect(shouldUseBackgroundNetwork()).toBe(false);
+  });
+
+  it('distinguishes light requests (weather/AI text) from heavy ones (media): 3g is fine for light, still constrained for media', () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '3g' });
+    expect(isConstrainedForLightRequests()).toBe(false);
+    expect(isConstrainedConnection()).toBe(true);
+
+    mockNavigatorNetwork({ onLine: true, effectiveType: '2g' });
+    expect(isConstrainedForLightRequests()).toBe(true);
+
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g', saveData: true });
+    expect(isConstrainedForLightRequests()).toBe(true);
   });
 
   it('allows background network on weak links when field mode is off', () => {
