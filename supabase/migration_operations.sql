@@ -183,7 +183,10 @@ drop policy if exists "Members can view their operations" on public.operations;
 create policy "Members can view their operations"
   on public.operations for select
   to authenticated
-  using (public.is_operation_member(id));
+  using (
+    public.is_operation_member(id)
+    or created_by = auth.uid()
+  );
 
 drop policy if exists "Authenticated users can create operations" on public.operations;
 create policy "Authenticated users can create operations"
@@ -223,13 +226,13 @@ create policy "Owners can insert members"
       and exists (
         select 1
         from public.operations o
-        where o.id = operation_id
+        where o.id = operation_members.operation_id
           and o.created_by = auth.uid()
       )
       and not exists (
         select 1
         from public.operation_members m
-        where m.operation_id = operation_id
+        where m.operation_id = operation_members.operation_id
       )
     ) -- bootstrap: creator adds self as first owner only
   );
