@@ -94,6 +94,8 @@ export function isNetworkError(err) {
     msg.includes('abort') ||
     msg.includes('network') ||
     msg.includes('failed to fetch') ||
+    // WebKit / Capacitor WKWebView (iOS) bei CORS- oder Verbindungsfehlern
+    msg.includes('load failed') ||
     msg.includes('timeout') ||
     msg.includes('offline')
   );
