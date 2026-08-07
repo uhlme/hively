@@ -17,6 +17,7 @@ describe('analytics', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    delete window.__hivelyErrorHandlersInstalled;
     posthogMock.init.mockImplementation((_key, opts) => {
       opts?.loaded?.(posthogMock);
     });
@@ -60,5 +61,30 @@ describe('analytics', () => {
 
     analytics.resetAnalyticsUser();
     expect(posthogMock.reset).toHaveBeenCalled();
+  });
+
+  it('captures exceptions and installs global handlers once', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    const onError = vi.fn();
+    const analytics = await import('../src/analytics.js');
+    analytics.initAnalytics();
+
+    analytics.captureException(new Error('boom'), { source: 'test' });
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      '$exception',
+      expect.objectContaining({
+        $exception_message: 'boom',
+        source: 'test'
+      })
+    );
+
+    analytics.installGlobalErrorHandlers({ onError });
+    analytics.installGlobalErrorHandlers({ onError }); // idempotent
+    window.dispatchEvent(new ErrorEvent('error', { message: 'window boom', error: new Error('window boom') }));
+    expect(onError).toHaveBeenCalled();
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      '$exception',
+      expect.objectContaining({ source: 'window.error' })
+    );
   });
 });

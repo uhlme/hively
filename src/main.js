@@ -83,8 +83,15 @@ import {
   trackPageView,
   trackEvent,
   identifyUser,
-  resetAnalyticsUser
+  resetAnalyticsUser,
+  installGlobalErrorHandlers
 } from './analytics.js';
+import {
+  APP_VERSION,
+  prepareBugReport,
+  openMailto,
+  rememberError
+} from './bugReport.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
@@ -347,10 +354,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Storage-Initialisierung fehlgeschlagen:', err);
   }
   initAnalytics();
+  installGlobalErrorHandlers({ onError: rememberError });
+  const versionLabel = document.getElementById('app-version-label');
+  if (versionLabel) versionLabel.textContent = `Hively v${APP_VERSION}`;
   setupRouting();
   setupModals();
   setupForms();
   setupSettings();
+  setupBugReport();
   setupOperationsUI();
   setupAuth();
   setupVoiceAssistant();
@@ -2396,6 +2407,68 @@ async function renderApiariesSettings() {
 }
 
 // --- Backup & Settings Administration ---
+function setupBugReport() {
+  const openBtn = document.getElementById('btn-report-bug');
+  const form = document.getElementById('form-bug-report');
+  const errorEl = document.getElementById('bug-report-error');
+  const successEl = document.getElementById('bug-report-success');
+  const messageEl = document.getElementById('bug-report-message');
+  const emailEl = document.getElementById('bug-report-email');
+  const submitBtn = document.getElementById('btn-bug-report-submit');
+
+  const showError = (text) => {
+    if (!errorEl) return;
+    errorEl.style.display = text ? 'block' : 'none';
+    errorEl.textContent = text || '';
+    if (successEl) {
+      successEl.style.display = 'none';
+      successEl.textContent = '';
+    }
+  };
+
+  const showSuccess = (text) => {
+    if (!successEl) return;
+    successEl.style.display = text ? 'block' : 'none';
+    successEl.textContent = text || '';
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+  };
+
+  openBtn?.addEventListener('click', () => {
+    form?.reset();
+    showError('');
+    showSuccess('');
+    openModal('modal-bug-report');
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prepared = prepareBugReport({
+      message: messageEl?.value || '',
+      replyEmail: emailEl?.value || '',
+      view: currentView
+    });
+    if (!prepared.ok) {
+      showError(prepared.error);
+      return;
+    }
+
+    await withButtonLoading(submitBtn, async () => {
+      trackEvent('bug_report_submitted', prepared.analyticsProps);
+      const opened = openMailto(prepared.mailtoUrl);
+      if (opened) {
+        showSuccess('Mail-Programm geöffnet. Sende die Nachricht ab – danke fürs Melden!');
+      } else {
+        showError(
+          `Mail konnte nicht geöffnet werden. Bitte schreib an ${prepared.mailtoUrl.replace(/^mailto:/, '').split('?')[0]}`
+        );
+      }
+    }, 'Öffne Mail…');
+  });
+}
+
 function setupSettings() {
   const fieldEl = document.getElementById('pref-field-mode');
   const wifiEl = document.getElementById('pref-wifi-only-media');

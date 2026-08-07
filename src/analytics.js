@@ -106,3 +106,54 @@ export function resetAnalyticsUser() {
   if (!ready) return;
   posthog.reset();
 }
+
+/**
+ * Capture an uncaught / unexpected error (PostHog exception event).
+ * @param {unknown} error
+ * @param {Record<string, unknown>} [properties]
+ */
+export function captureException(error, properties = {}) {
+  if (!ready) return;
+  const message =
+    error instanceof Error
+      ? error.message || error.name || 'Error'
+      : String(error || 'Unknown error');
+  const stack = error instanceof Error ? error.stack || '' : '';
+  posthog.capture('$exception', {
+    $exception_message: message,
+    $exception_type: error instanceof Error ? error.name || 'Error' : 'Error',
+    $exception_stack_trace_raw: stack,
+    ...properties
+  });
+}
+
+/**
+ * Remember + forward window errors / unhandled rejections to PostHog.
+ * Safe no-op when analytics is disabled (still records last error via onError).
+ * @param {{ onError?: (error: unknown) => void }} [opts]
+ */
+export function installGlobalErrorHandlers(opts = {}) {
+  if (typeof window === 'undefined') return;
+  if (window.__hivelyErrorHandlersInstalled) return;
+  window.__hivelyErrorHandlersInstalled = true;
+
+  window.addEventListener('error', (event) => {
+    const err = event.error || event.message || 'window.error';
+    try {
+      opts.onError?.(err);
+    } catch {
+      /* ignore */
+    }
+    captureException(err, { source: 'window.error' });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const err = event.reason || 'unhandledrejection';
+    try {
+      opts.onError?.(err);
+    } catch {
+      /* ignore */
+    }
+    captureException(err, { source: 'unhandledrejection' });
+  });
+}
