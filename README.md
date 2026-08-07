@@ -104,8 +104,15 @@ For the planned pipeline **GitHub Actions → macOS runner → Archive → TestF
 | `VITE_SUPABASE_URL` | Injected into `npm run build` / `cap sync` |
 | `VITE_SUPABASE_ANON_KEY` | Injected into `npm run build` / `cap sync` |
 | `VITE_POSTHOG_KEY` | Optional — PostHog project API key baked into the web bundle |
-| `VITE_POSTHOG_HOST` | Optional — e.g. `https://eu.i.posthog.com` (EU default in code if unset) |
+| `VITE_POSTHOG_HOST` | Optional — defaults to `https://eu.i.posthog.com` in the iOS workflow |
 | `VITE_POSTHOG_SESSION_REPLAY` | Optional — `true` to enable masked session replay |
+
+The iOS workflow also bakes in (hardcoded, no secrets needed):
+`VITE_BILLING_ENABLED=true`, `VITE_GEMINI_PROXY_URL=https://hivelyy.netlify.app/api/gemini`,
+`VITE_STRIPE_API_ORIGIN=https://hivelyy.netlify.app`.
+
+| Secret | Purpose |
+|---|---|
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key ID |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | App Store Connect issuer ID |
 | `APP_STORE_CONNECT_API_KEY_P8` | Contents of the `.p8` private key |
