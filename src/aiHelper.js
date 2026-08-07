@@ -9,6 +9,6 @@ export async function getWeatherInsightFromGemini(weatherData) {
     return text || UNAVAILABLE;
   } catch (e) {
     console.error('Fehler bei Gemini Insight:', e);
-    return UNAVAILABLE;
+    return e?.message || UNAVAILABLE;
   }
 }
