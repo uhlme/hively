@@ -95,6 +95,9 @@ For the planned pipeline **GitHub Actions → macOS runner → Archive → TestF
 |---|---|
 | `VITE_SUPABASE_URL` | Injected into `npm run build` / `cap sync` |
 | `VITE_SUPABASE_ANON_KEY` | Injected into `npm run build` / `cap sync` |
+| `VITE_POSTHOG_KEY` | Optional — PostHog project API key baked into the web bundle |
+| `VITE_POSTHOG_HOST` | Optional — e.g. `https://eu.i.posthog.com` (EU default in code if unset) |
+| `VITE_POSTHOG_SESSION_REPLAY` | Optional — `true` to enable masked session replay |
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key ID |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | App Store Connect issuer ID |
 | `APP_STORE_CONNECT_API_KEY_P8` | Contents of the `.p8` private key |
@@ -115,7 +118,7 @@ Vite build (`ios/App/App/public` is the synced `dist/` output — do not edit it
 # Install JS dependencies (includes Capacitor)
 npm install
 
-# Ensure `.env` has VITE_SUPABASE_* (and GEMINI_API_KEY for local AI proxy)
+# Ensure `.env` has VITE_SUPABASE_* (and optional VITE_POSTHOG_* for analytics)
 cp .env.example .env   # if not already done
 
 # Native pods (only needed after adding/updating Capacitor plugins)
@@ -136,8 +139,9 @@ In Xcode:
 
 Run `npm run ios:sync` after every change to the web app before rebuilding in Xcode.
 
-`VITE_SUPABASE_*` are embedded at `npm run build` time. The Gemini API key stays on the server (Netlify);
-the native app should call the production `/api/gemini` proxy, not ship the key in the IPA.
+`VITE_SUPABASE_*` and `VITE_POSTHOG_*` are embedded at `npm run build` time (same bundle as the PWA).
+Events from TestFlight are tagged `platform: ios` via Capacitor detection. The Gemini API key stays
+on the server (Netlify); the native app should call the production `/api/gemini` proxy, not ship the key in the IPA.
 
 ### CI → TestFlight (planned)
 
