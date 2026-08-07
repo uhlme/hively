@@ -4,8 +4,8 @@
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseGeminiJson } from '../src/utils.js';
-import { assertUserOperationHasPro } from './stripeHandlers.js';
 import { isBillingEnforced } from './billing.js';
+import { assertUserOperationHasPro } from './proGate.js';
 
 const MODEL = 'gemini-2.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;

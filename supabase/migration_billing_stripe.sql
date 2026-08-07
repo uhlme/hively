@@ -80,8 +80,9 @@ begin
     NEW.stripe_customer_id := OLD.stripe_customer_id;
     NEW.stripe_subscription_id := OLD.stripe_subscription_id;
   elsif TG_OP = 'INSERT' then
-    NEW.plan := coalesce(NEW.plan, 'free');
-    NEW.plan_status := coalesce(NEW.plan_status, 'none');
+    -- Never trust client-supplied plan fields on create (bypass via plan=pro).
+    NEW.plan := 'free';
+    NEW.plan_status := 'none';
     NEW.plan_interval := null;
     NEW.plan_period_end := null;
     NEW.stripe_customer_id := null;

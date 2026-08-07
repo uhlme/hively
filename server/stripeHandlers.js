@@ -2,15 +2,18 @@
  * Shared HTTP helpers for Stripe Netlify functions + Vite middleware.
  */
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
 import {
   getAppOrigin,
   isBillingEnforced,
-  isProEntitlement,
+  isTrialEligible,
   mapSubscriptionToBilling,
+  publicBillingError,
   resolvePriceId,
   TRIAL_DAYS
 } from './billing.js';
+import { getServiceSupabase } from './proGate.js';
+
+export { assertUserOperationHasPro, getServiceSupabase } from './proGate.js';
 
 export const STRIPE_JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -41,17 +44,6 @@ export function getStripe(env = process.env) {
   const key = env.STRIPE_SECRET_KEY || '';
   if (!key) throw new Error('STRIPE_SECRET_KEY fehlt.');
   return new Stripe(key, { apiVersion: '2024-12-18.acacia' });
-}
-
-export function getServiceSupabase(env = process.env) {
-  const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL || '';
-  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || '';
-  if (!url || !serviceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY / VITE_SUPABASE_URL fehlen.');
-  }
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
 }
 
 export async function authenticateBearer(headers = {}, env = process.env) {
@@ -148,7 +140,7 @@ async function ensureStripeCustomer(stripe, supabase, operation, user) {
 }
 
 /**
- * Create Stripe Checkout Session for Pro (14-day trial).
+ * Create Stripe Checkout Session for Pro (14-day trial when eligible).
  */
 export async function handleCreateCheckout(body, context = {}) {
   const env = context.env || process.env;
@@ -174,6 +166,17 @@ export async function handleCreateCheckout(body, context = {}) {
     const priceId = resolvePriceId(interval, env);
     const origin = getAppOrigin(env);
 
+    const subscriptionData = {
+      metadata: {
+        operation_id: operationId,
+        user_id: auth.user.id,
+        plan_interval: interval
+      }
+    };
+    if (isTrialEligible(operation)) {
+      subscriptionData.trial_period_days = TRIAL_DAYS;
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
@@ -182,14 +185,7 @@ export async function handleCreateCheckout(body, context = {}) {
       cancel_url: `${origin}/?view=settings&billing=cancel`,
       allow_promotion_codes: true,
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: {
-        trial_period_days: TRIAL_DAYS,
-        metadata: {
-          operation_id: operationId,
-          user_id: auth.user.id,
-          plan_interval: interval
-        }
-      },
+      subscription_data: subscriptionData,
       metadata: {
         operation_id: operationId,
         user_id: auth.user.id,
@@ -202,7 +198,7 @@ export async function handleCreateCheckout(body, context = {}) {
     console.error('[stripe checkout]', err);
     const status = err.status || 500;
     return stripeJson(status, {
-      error: err.message || 'Checkout konnte nicht gestartet werden.'
+      error: publicBillingError(err, 'Checkout konnte nicht gestartet werden.')
     });
   }
 }
@@ -244,7 +240,7 @@ export async function handleCreatePortal(body, context = {}) {
     console.error('[stripe portal]', err);
     const status = err.status || 500;
     return stripeJson(status, {
-      error: err.message || 'Kundenportal konnte nicht geöffnet werden.'
+      error: publicBillingError(err, 'Kundenportal konnte nicht geöffnet werden.')
     });
   }
 }
@@ -308,14 +304,25 @@ export async function handleStripeEvent(event, env = process.env) {
 
     const customerId =
       typeof session.customer === 'string' ? session.customer : session.customer?.id;
-    let subscription = null;
-    if (session.subscription) {
-      const subId =
-        typeof session.subscription === 'string'
-          ? session.subscription
-          : session.subscription.id;
-      subscription = await stripe.subscriptions.retrieve(subId);
+
+    // Never map a missing subscription to Free — that can wipe an active Pro plan.
+    if (!session.subscription) {
+      console.warn('[stripe webhook] checkout without subscription; only linking customer', operationId);
+      if (customerId) {
+        const { error } = await supabase
+          .from('operations')
+          .update({ stripe_customer_id: customerId })
+          .eq('id', operationId);
+        if (error) throw error;
+      }
+      return { ok: true, skipped: true, reason: 'no_subscription' };
     }
+
+    const subId =
+      typeof session.subscription === 'string'
+        ? session.subscription
+        : session.subscription.id;
+    const subscription = await stripe.subscriptions.retrieve(subId);
 
     const extra = {};
     if (customerId) extra.stripe_customer_id = customerId;
@@ -385,52 +392,6 @@ export async function handleStripeWebhook(rawBody, signature, env = process.env)
     return stripeJson(200, { received: true });
   } catch (err) {
     console.error('[stripe webhook]', err);
-    return stripeJson(400, { error: err.message || 'Webhook ungültig.' });
-  }
-}
-
-/**
- * Server-side Pro check for an operation the user belongs to.
- */
-export async function assertUserOperationHasPro(userId, operationId, env = process.env) {
-  if (!isBillingEnforced(env)) {
-    return { ok: true, enforced: false };
-  }
-  if (!operationId) {
-    return { ok: false, status: 402, error: 'Hively Pro erforderlich (kein Betrieb aktiv).' };
-  }
-
-  try {
-    const supabase = getServiceSupabase(env);
-    const { data: membership, error: memErr } = await supabase
-      .from('operation_members')
-      .select('role')
-      .eq('operation_id', operationId)
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (memErr) throw memErr;
-    if (!membership) {
-      return { ok: false, status: 403, error: 'Kein Zugriff auf diesen Betrieb.' };
-    }
-
-    const { data: op, error } = await supabase
-      .from('operations')
-      .select('plan, plan_status, plan_period_end')
-      .eq('id', operationId)
-      .maybeSingle();
-    if (error) throw error;
-
-    if (!isProEntitlement(op || {})) {
-      return {
-        ok: false,
-        status: 402,
-        error: 'Hively Pro erforderlich für KI-Funktionen.',
-        code: 'pro_required'
-      };
-    }
-    return { ok: true, enforced: true };
-  } catch (err) {
-    console.error('[billing assert]', err);
-    return { ok: false, status: 502, error: 'Abo-Status konnte nicht geprüft werden.' };
+    return stripeJson(400, { error: 'Webhook ungültig.' });
   }
 }

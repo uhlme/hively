@@ -111,7 +111,8 @@ export default defineConfig(({ mode }) => {
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
     'APP_ORIGIN',
-    'VITE_BILLING_ENABLED'
+    'VITE_BILLING_ENABLED',
+    'BILLING_ENABLED'
   ]) {
     if (env[key]) process.env[key] = env[key];
   }

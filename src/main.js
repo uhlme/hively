@@ -418,16 +418,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const billingParam = urlParams.get('billing');
   if (billingParam === 'success') {
     trackEvent('billing_checkout_returned', { result: 'success' });
-    try {
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) await bootstrapOperationsForSession(session, {});
-      }
-    } catch (err) {
-      console.warn('Billing refresh failed:', err);
+    const activated = await pollBillingAfterCheckout();
+    if (activated) {
+      alert('Willkommen bei Hively Pro! Dein Abo ist aktiv.');
+    } else {
+      alert(
+        'Willkommen bei Hively Pro! Die Freischaltung kann noch kurz dauern – bitte Einstellungen in einer Minute aktualisieren.'
+      );
     }
-    refreshBillingSettingsUI();
-    alert('Willkommen bei Hively Pro! Dein Abo wird in Kürze aktiv (Webhook).');
+    // Drop billing query so a refresh does not re-trigger the flow
+    try {
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('billing');
+      window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    } catch {
+      /* ignore */
+    }
   } else if (billingParam === 'cancel') {
     trackEvent('billing_checkout_returned', { result: 'cancel' });
   }
@@ -2469,6 +2475,28 @@ function requireProFeature(featureLabel) {
   openProModal(featureLabel);
   trackEvent('pro_upsell_shown', { feature: featureLabel || 'unknown' });
   return false;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** After Checkout success: poll until webhook has set Pro (or give up). */
+async function pollBillingAfterCheckout({ attempts = 8, delayMs = 1500 } = {}) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await bootstrapOperationsForSession(session, {});
+      }
+    } catch (err) {
+      console.warn('Billing refresh failed:', err);
+    }
+    refreshBillingSettingsUI();
+    if (hasProAccess()) return true;
+    if (i < attempts - 1) await delay(delayMs);
+  }
+  return hasProAccess();
 }
 
 function refreshBillingSettingsUI() {

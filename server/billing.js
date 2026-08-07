@@ -7,8 +7,12 @@ export const TRIAL_DAYS = 14;
 
 /**
  * Whether Stripe Pro enforcement is configured on the server.
+ * Requires explicit BILLING_ENABLED / VITE_BILLING_ENABLED=true plus Stripe keys,
+ * so client soft-locks and server hard-gates stay in sync.
  */
 export function isBillingEnforced(env = process.env) {
+  const flag = String(env.BILLING_ENABLED || env.VITE_BILLING_ENABLED || '').toLowerCase();
+  if (flag !== 'true' && flag !== '1') return false;
   return Boolean(
     env.STRIPE_SECRET_KEY &&
       (env.STRIPE_PRICE_MONTHLY || env.STRIPE_PRICE_YEARLY)
@@ -24,6 +28,19 @@ export function isProEntitlement(row = {}) {
   if (row.plan_period_end) {
     const end = new Date(row.plan_period_end).getTime();
     if (Number.isFinite(end) && end < Date.now()) return false;
+  }
+  return true;
+}
+
+/**
+ * True when this Betrieb already used a Stripe subscription (no second trial).
+ * @param {{ stripe_subscription_id?: string | null, plan_status?: string | null }} operation
+ */
+export function isTrialEligible(operation = {}) {
+  if (operation?.stripe_subscription_id) return false;
+  const status = String(operation?.plan_status || 'none');
+  if (['trialing', 'active', 'past_due', 'canceled', 'unpaid', 'incomplete'].includes(status)) {
+    return false;
   }
   return true;
 }
@@ -88,4 +105,12 @@ export function getAppOrigin(env = process.env, fallback = 'https://hivelyy.netl
     env.DEPLOY_PRIME_URL ||
     fallback
   ).replace(/\/$/, '');
+}
+
+/** Safe client-facing error (avoid leaking Stripe/internal details). */
+export function publicBillingError(err, fallback) {
+  if (err?.status && err.status >= 400 && err.status < 500 && err.message) {
+    return err.message;
+  }
+  return fallback;
 }
