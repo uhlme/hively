@@ -414,6 +414,14 @@
           </div>
 
           <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Hilfe &amp; Feedback</h3>
+            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+              Etwas funktioniert nicht? Melde den Fehler kurz – wir schauen uns das an.
+            </p>
+            <button id="btn-report-bug" class="btn btn-secondary" type="button" style="width: 100%;">Fehler melden</button>
+          </div>
+
+          <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Entwickler-Werkzeuge</h3>
             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
               Füge Demo-Daten hinzu, um die App mit Beispieldaten zu testen.
@@ -425,7 +433,7 @@
           </div>
 
           <div style="text-align: center; margin-top: 40px;" class="text-muted">
-            <p style="font-size: 0.85rem;">Hively v1.0.0</p>
+            <p id="app-version-label" style="font-size: 0.85rem;">Hively</p>
             <p style="font-size: 0.75rem; margin-top: 4px;">Für die Imkerei optimierte PWA</p>
           </div>
         </section>
@@ -946,6 +954,33 @@
             </div>
             <p id="op-join-preview" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px; display: none;"></p>
             <button type="submit" class="btn btn-primary" style="width: 100%;">Beitreten</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Fehler melden -->
+      <div id="modal-bug-report" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Fehler melden</h2>
+            <button class="modal-close" data-close="modal-bug-report" type="button">&times;</button>
+          </div>
+          <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+            Beschreibe kurz, was passiert ist. Es öffnet sich dein Mail-Programm an
+            <strong>hively.support@pm.me</strong> – Diagnose-Infos (Version, Plattform) werden automatisch mitgeschickt.
+          </p>
+          <form id="form-bug-report">
+            <div class="form-group">
+              <label for="bug-report-message">Was ist schiefgelaufen?</label>
+              <textarea id="bug-report-message" class="form-control" rows="5" required placeholder="z.B. Beim Speichern einer Durchsicht erscheint ein Fehler…"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="bug-report-email">Deine E-Mail (optional, für Rückfragen)</label>
+              <input type="email" id="bug-report-email" class="form-control" placeholder="name@example.com" autocomplete="email" />
+            </div>
+            <div id="bug-report-error" class="text-danger" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
+            <div id="bug-report-success" class="text-success" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
+            <button type="submit" id="btn-bug-report-submit" class="btn btn-primary" style="width: 100%;">Per E-Mail senden</button>
           </form>
         </div>
       </div>
