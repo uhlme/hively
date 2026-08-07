@@ -39,6 +39,12 @@ There is a single service: the Vite dev server.
   - `VITE_POSTHOG_KEY` (optional) enables PostHog analytics. Absent → no tracking.
     Host defaults to EU (`VITE_POSTHOG_HOST`, default `https://eu.i.posthog.com`).
     Session replay is off unless `VITE_POSTHOG_SESSION_REPLAY=true`.
+  - Stripe Pro (optional): `VITE_BILLING_ENABLED=true` (or `BILLING_ENABLED`) +
+    `STRIPE_SECRET_KEY` + price IDs + `SUPABASE_SERVICE_ROLE_KEY` enable checkout/webhook
+    and hard-gates. Soft-locks need the same flag. Absent → no Pro gates.
+    SQL: `migration_billing_stripe.sql` + `migration_billing_hardening.sql` +
+    `migration_billing_rls_complete.sql`. Enable RLS Pro gates at go-live:
+    `update app_settings set value='true' where key='billing_gates_enabled'`.
 - Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
   still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
   Open-Meteo is unreachable; «Alle Daten löschen» also wipes the offline-AI IndexedDB.

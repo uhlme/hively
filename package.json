@@ -1,6 +1,6 @@
 {
   "name": "bee-tracker",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -29,6 +29,7 @@
     "@capacitor/ios": "^8.4.2",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.108.2",
-    "posthog-js": "^1.413.3"
+    "posthog-js": "^1.413.3",
+    "stripe": "^22.4.0"
   }
 }

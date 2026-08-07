@@ -15,8 +15,12 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
-      VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+      VITE_POSTHOG_HOST: 'https://eu.i.posthog.com'
       VITE_POSTHOG_SESSION_REPLAY: ${{ secrets.VITE_POSTHOG_SESSION_REPLAY }}
+      # Pro / native API endpoints (public URLs — baked into the Capacitor web bundle)
+      VITE_BILLING_ENABLED: 'true'
+      VITE_GEMINI_PROXY_URL: 'https://hivelyy.netlify.app/api/gemini'
+      VITE_STRIPE_API_ORIGIN: 'https://hivelyy.netlify.app'
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_KEYCHAIN_NAME: ${{ github.run_id }}.keychain
