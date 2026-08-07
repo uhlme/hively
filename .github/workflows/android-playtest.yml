@@ -1,0 +1,81 @@
+name: Android Play Internal Test
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'android-v*'
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+      VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+      VITE_POSTHOG_SESSION_REPLAY: ${{ secrets.VITE_POSTHOG_SESSION_REPLAY }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine version number from latest android-v* tag
+        run: |
+          tag=$(git describe --tags --match 'android-v*' --abbrev=0 2>/dev/null || true)
+          if [ -z "$tag" ]; then
+            echo "Kein android-v*-Tag gefunden, breche ab." >&2
+            exit 1
+          fi
+          version="${tag#android-v}"
+          echo "Version aus Tag $tag: $version"
+          echo "ANDROID_VERSION_NAME=$version" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Write keystore and Play service-account key to disk
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
+          echo "storeFile=release.keystore" > android/keystore.properties
+          echo "storePassword=$ANDROID_KEYSTORE_PASSWORD" >> android/keystore.properties
+          echo "keyAlias=$ANDROID_KEY_ALIAS" >> android/keystore.properties
+          echo "keyPassword=$ANDROID_KEY_PASSWORD" >> android/keystore.properties
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Build and upload to Play Store internal testing
+        run: bundle exec fastlane android beta
+
+      - name: Clean up signing/credential files
+        if: always()
+        run: |
+          rm -f android/release.keystore android/keystore.properties /tmp/play-service-account.json
