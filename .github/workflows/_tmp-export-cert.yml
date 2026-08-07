@@ -2,6 +2,9 @@ name: Temp - Export public signing cert
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - worktree-android-playstore-internal-test
 
 jobs:
   export:
