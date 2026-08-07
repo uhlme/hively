@@ -78,6 +78,13 @@ import {
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
 import { getHiveRecommendation } from './hiveRecommendations.js';
+import {
+  initAnalytics,
+  trackPageView,
+  trackEvent,
+  identifyUser,
+  resetAnalyticsUser
+} from './analytics.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
@@ -339,6 +346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.error('Storage-Initialisierung fehlgeschlagen:', err);
   }
+  initAnalytics();
   setupRouting();
   setupModals();
   setupForms();
@@ -367,6 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        identifyUser(session.user);
         await bootstrapOperationsForSession(session, { joinCode });
       } else if (joinCode) {
         // Remember invite until after login / registration
@@ -533,6 +542,8 @@ async function navigate(viewName) {
     refreshOperationSettingsUI();
     await renderApiariesSettings();
   }
+
+  trackPageView(viewName);
 }
 
 // --- Dynamic Rendering ---
@@ -954,6 +965,7 @@ async function renderCalendarView() {
       }
 
       await saveTaskState(month, taskId, checked);
+      trackEvent('calendar_task_toggled', { month, task_id: taskId, done: checked });
 
       const progress = container.querySelector('.calendar-month-progress');
       if (progress) {
@@ -1259,6 +1271,7 @@ async function renderHiveDetailView() {
     try {
       recommendationContent.innerHTML = '<span>Empfehlung wird geladen…</span>';
       const recommendation = await getHiveRecommendation(hive, inspections);
+      trackEvent('ai_recommendation_loaded', { ok: true });
       
       // Simple text formatting
       const formattedRecommendation = escapeHtml(recommendation)
@@ -1267,6 +1280,7 @@ async function renderHiveDetailView() {
       recommendationContent.innerHTML = `<div>${formattedRecommendation}</div>`;
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
+      trackEvent('ai_recommendation_loaded', { ok: false });
       recommendationContent.innerHTML = '<span class="text-danger">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
     }
   }
@@ -1912,6 +1926,7 @@ function setupForms() {
         if (id) hive.id = id;
 
         await saveHive(hive);
+        trackEvent(id ? 'hive_updated' : 'hive_created');
         closeModal('modal-hive');
 
         if (id) {
@@ -1934,6 +1949,7 @@ function setupForms() {
       const btn = document.getElementById('btn-delete-hive');
       await withButtonLoading(btn, async () => {
         await deleteHive(id);
+        trackEvent('hive_deleted');
         closeModal('modal-hive');
         await navigate('hives');
         await renderDashboardView();
@@ -2006,6 +2022,9 @@ function setupForms() {
           }
         }
 
+        trackEvent(id ? 'inspection_updated' : 'inspection_created', {
+          hive_count: checkedCheckboxes.length
+        });
         closeModal('modal-inspection');
 
         if (currentView === 'hive-detail') {
@@ -2073,6 +2092,10 @@ function setupForms() {
         if (id) treatment.id = id;
 
         await saveTreatment(treatment);
+        trackEvent(id ? 'treatment_updated' : 'treatment_created', {
+          hive_count: treatment.hiveIds.length,
+          product_id: productId || undefined
+        });
         closeModal('modal-treatment');
 
         if (currentView === 'hive-detail') {
@@ -2134,6 +2157,9 @@ function setupForms() {
         if (id) item.id = id;
 
         await saveFinance(item);
+        trackEvent(id ? 'expense_updated' : 'expense_created', {
+          category: item.category || undefined
+        });
         closeModal('modal-finance');
 
         if (currentView === 'finances') {
@@ -2188,6 +2214,9 @@ function setupForms() {
         if (id) harvest.id = id;
 
         await saveHoneyHarvest(harvest);
+        trackEvent(id ? 'honey_updated' : 'honey_created', {
+          type: harvest.type || undefined
+        });
         closeModal('modal-honey');
 
         if (currentView === 'finances') {
@@ -2251,6 +2280,7 @@ function setupForms() {
         if (id) item.id = id;
 
         await saveFinance(item);
+        trackEvent(id ? 'sponsorship_updated' : 'sponsorship_created');
         closeModal('modal-sponsorship');
 
         if (currentView === 'finances') {
@@ -2903,6 +2933,10 @@ function setupAuth() {
   // Listen to auth changes
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (session) {
+      identifyUser(session.user);
+      if (event === 'SIGNED_IN') {
+        trackEvent('auth_signed_in');
+      }
       userStatus.innerText = session.user.email;
       btnAuthAction.innerText = 'Logout';
 
@@ -2925,13 +2959,16 @@ function setupAuth() {
         if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
           try {
             await syncLocalToRemote();
+            trackEvent('sync_local_to_remote', { ok: true });
             alert('Daten erfolgreich synchronisiert!');
           } catch (syncErr) {
             console.error('Sync fehlgeschlagen:', syncErr);
+            trackEvent('sync_local_to_remote', { ok: false });
             alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
           }
         } else {
           localStorage.setItem('bee_tracker_sync_declined', 'true');
+          trackEvent('sync_local_to_remote_declined');
         }
       }
 
@@ -2939,6 +2976,10 @@ function setupAuth() {
       updateOperationChrome();
       applyRoleBasedUI();
     } else {
+      if (event === 'SIGNED_OUT') {
+        trackEvent('auth_signed_out');
+        resetAnalyticsUser();
+      }
       userStatus.innerText = 'Lokal';
       btnAuthAction.innerText = 'Login';
       clearActiveOperation();
@@ -2998,10 +3039,12 @@ function setupAuth() {
         if (authMode === 'login') {
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) throw error;
+          trackEvent('auth_login_submitted');
           closeModal('modal-auth');
         } else {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) throw error;
+          trackEvent('auth_signup_submitted');
           successMsg.innerText = 'Registrierung erfolgreich! Du kannst dich jetzt anmelden.';
           successMsg.style.display = 'block';
           // Kein Bestätigungsmail mehr – direkt zum Login-Tab wechseln
@@ -3123,6 +3166,7 @@ function setupVoiceAssistant() {
     updateUIForStatus('processing');
     try {
       const data = await parseAudioWithGemini(audioBlob);
+      trackEvent('ai_voice_parsed', { ok: true });
       if (!data) throw new Error('Ungültige Antwort der KI.');
 
       // Match Hive Names
@@ -3245,6 +3289,7 @@ function setupReceiptScanner() {
 
     try {
       const data = await parseReceiptWithGemini(file);
+      trackEvent('ai_receipt_parsed', { ok: true });
       if (!data) throw new Error('Keine Daten vom Beleg-Scanner empfangen.');
 
       // Populate form fields

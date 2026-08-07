@@ -65,6 +65,9 @@ On Netlify, set these under **Site settings → Environment variables**:
 | `VITE_SUPABASE_ANON_KEY` | yes | yes | yes (baked into the web bundle at build time) |
 | `GEMINI_API_KEY` | yes (dev middleware) | yes (server-only) | only if CI runs/tests the proxy — **not** needed for the iOS archive job |
 | `VITE_GEMINI_PROXY_URL` | optional (Capacitor) | no | optional — absolute proxy URL baked into the native web bundle |
+| `VITE_POSTHOG_KEY` | optional | optional | optional — Project API Key; absent → no analytics |
+| `VITE_POSTHOG_HOST` | optional | optional | defaults to `https://eu.i.posthog.com` |
+| `VITE_POSTHOG_SESSION_REPLAY` | optional | optional | `true` to enable masked session replay (default off) |
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -72,12 +75,15 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 GEMINI_API_KEY=your-gemini-api-key
 # Optional for Capacitor/iOS (defaults to https://hivelyy.netlify.app/api/gemini):
 # VITE_GEMINI_PROXY_URL=https://hivelyy.netlify.app/api/gemini
+# Optional analytics (EU host by default):
+# VITE_POSTHOG_KEY=phc_...
+# VITE_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
 `GEMINI_API_KEY` is **server-only** (Vite dev middleware + Netlify Function `/api/gemini`).
 Do **not** prefix it with `VITE_` — that would embed the key in the client bundle.
 `VITE_GEMINI_PROXY_URL` is the public proxy URL only (no secret); used by the native app because relative `/api/gemini` does not exist under `capacitor://`.
-
+`VITE_POSTHOG_KEY` is a public project key (designed for client use). Without it the app stays fully functional with analytics disabled.
 Share real values with collaborators out of band (password manager, etc.). Do not commit `.env` or paste secrets into issues/PRs.
 
 ### GitHub Actions secrets (planned TestFlight CI)

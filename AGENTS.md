@@ -36,6 +36,9 @@ There is a single service: the Vite dev server.
     are unavailable, but the rest of the app works. Never prefix it with `VITE_`.
   - `VITE_GEMINI_PROXY_URL` (optional) overrides the absolute Gemini proxy URL used by
     Capacitor/iOS builds; default is `https://hivelyy.netlify.app/api/gemini`.
+  - `VITE_POSTHOG_KEY` (optional) enables PostHog analytics. Absent → no tracking.
+    Host defaults to EU (`VITE_POSTHOG_HOST`, default `https://eu.i.posthog.com`).
+    Session replay is off unless `VITE_POSTHOG_SESSION_REPLAY=true`.
 - Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
   still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
   Open-Meteo is unreachable; «Alle Daten löschen» also wipes the offline-AI IndexedDB.
