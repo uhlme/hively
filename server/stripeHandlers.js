@@ -19,7 +19,13 @@ export { assertUserOperationHasPro, getServiceSupabase } from './proGate.js';
 
 export const STRIPE_JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
-  'Cache-Control': 'no-store'
+  'Cache-Control': 'no-store',
+  // Native App (capacitor://localhost) ruft Checkout/Portal über die absolute
+  // Produktions-URL auf — ohne CORS schlägt der Preflight in WebKit mit
+  // «Load failed» fehl. Auth bleibt über Bearer-Token Pflicht.
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
 export function stripeJson(status, body) {

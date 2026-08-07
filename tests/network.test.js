@@ -140,6 +140,7 @@ describe('fetchWithTimeout / isNetworkError', () => {
     abortErr.name = 'AbortError';
     expect(isNetworkError(abortErr)).toBe(true);
     expect(isNetworkError(new Error('Failed to fetch'))).toBe(true);
+    expect(isNetworkError(new Error('Load failed'))).toBe(true);
     expect(isNetworkError(new Error('timeout'))).toBe(true);
     expect(isNetworkError(new Error('offline'))).toBe(true);
     expect(isNetworkError(new Error('invalid api key'))).toBe(false);

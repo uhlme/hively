@@ -6,6 +6,7 @@
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
 import { getActiveOperationId, getActiveOperationMeta, isOperationOwner } from './operations.js';
+import { isNetworkError } from './network.js';
 import { isProEntitlement, TRIAL_DAYS } from '../server/billing.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
@@ -65,6 +66,12 @@ async function authHeaders() {
 /**
  * @param {'month' | 'year'} interval
  */
+function billingNetworkError(fallback) {
+  return new Error(
+    `${fallback} Bitte Internet prüfen und erneut versuchen.`
+  );
+}
+
 export async function startProCheckout(interval = 'year') {
   const operationId = getActiveOperationId();
   if (!operationId) {
@@ -74,11 +81,19 @@ export async function startProCheckout(interval = 'year') {
     throw new Error('Nur der Betriebsinhaber kann Pro aktivieren.');
   }
 
-  const response = await fetch(`${stripeApiBase()}/api/stripe/checkout`, {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({ operationId, interval })
-  });
+  let response;
+  try {
+    response = await fetch(`${stripeApiBase()}/api/stripe/checkout`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ operationId, interval })
+    });
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw billingNetworkError('Checkout konnte nicht gestartet werden.');
+    }
+    throw err;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data?.error || `Checkout fehlgeschlagen (${response.status})`);
@@ -94,11 +109,19 @@ export async function openBillingPortal() {
     throw new Error('Nur der Betriebsinhaber kann das Abo verwalten.');
   }
 
-  const response = await fetch(`${stripeApiBase()}/api/stripe/portal`, {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({ operationId })
-  });
+  let response;
+  try {
+    response = await fetch(`${stripeApiBase()}/api/stripe/portal`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ operationId })
+    });
+  } catch (err) {
+    if (isNetworkError(err)) {
+      throw billingNetworkError('Abo-Verwaltung konnte nicht geöffnet werden.');
+    }
+    throw err;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data?.error || `Portal fehlgeschlagen (${response.status})`);
