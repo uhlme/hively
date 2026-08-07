@@ -26,8 +26,7 @@ There is a single service: the Vite dev server.
 - The app is **local-first and runs fully without any secrets or login**. Domain data
   is stored in the browser's `localStorage`, so it persists across page reloads but is
   per-browser-profile. No backend is required to develop or test core flows. Without a
-  session the app seeds demo data on first load (`bee_tracker_demo_seeded`), including
-  demo apiaries and an active treatment.
+  session the app stays empty except for a default Bienenstand (`Hauptstand`).
 - Optional integrations are gated behind env vars and are **not needed** for local dev:
   - `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` enable cloud auth/sync. Absent → the app
     silently stays local-only (no login UI, no sync).
@@ -47,7 +46,7 @@ There is a single service: the Vite dev server.
     `update app_settings set value='true' where key='billing_gates_enabled'`.
 - Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
   still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
-  Open-Meteo is unreachable; «Alle Daten löschen» also wipes the offline-AI IndexedDB.
+  Open-Meteo is unreachable. Offline AI memos live in IndexedDB (`clearOfflineAiDatabase`).
 - Modals open with the CSS class `active` on `.modal-overlay` (not `open`). The header
   `#btn-quick-add` label changes by view (`+ Volk` on Kästen, `+ Kauf` on Finanzen).
 - The iOS/Capacitor path (`npm run ios:*`), `fastlane/`, and `Gemfile` require macOS + Xcode

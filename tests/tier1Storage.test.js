@@ -8,7 +8,6 @@ import {
   saveInspection,
   getInspections,
   saveTreatment,
-  getTreatments,
   getActiveTreatmentsForHive,
   deleteApiary
 } from '../src/storage.js';
@@ -19,16 +18,19 @@ describe('apiaries and treatments (local)', () => {
     await initStorage();
   });
 
-  it('seeds demo apiaries and links hives', async () => {
+  it('creates a default apiary when empty', async () => {
     const apiaries = await getApiaries();
-    expect(apiaries.length).toBeGreaterThanOrEqual(2);
-    const hives = await getHives();
-    expect(hives.every((h) => h.apiaryId)).toBe(true);
+    expect(apiaries.length).toBe(1);
+    expect(apiaries[0].name).toBe('Hauptstand');
   });
 
   it('saves structured inspection checklist', async () => {
-    const hives = await getHives();
-    const hive = hives[0];
+    const apiary = (await getApiaries())[0];
+    const hive = await saveHive({
+      name: 'Testvolk',
+      status: 'Gesund',
+      apiaryId: apiary.id
+    });
     await saveInspection({
       hiveId: hive.id,
       date: '2026-08-05',
@@ -55,8 +57,12 @@ describe('apiaries and treatments (local)', () => {
   });
 
   it('saves active treatment for hive ids', async () => {
-    const hives = await getHives();
-    const hive = hives[0];
+    const apiary = (await getApiaries())[0];
+    const hive = await saveHive({
+      name: 'Behandlungsvolk',
+      status: 'Gesund',
+      apiaryId: apiary.id
+    });
     await saveTreatment({
       hiveIds: [hive.id],
       dateStart: '2026-08-01',
@@ -76,8 +82,11 @@ describe('apiaries and treatments (local)', () => {
 
   it('clears hive apiaryId when apiary is deleted', async () => {
     const created = await saveApiary({ name: 'Temp-Stand' });
-    const hive = (await getHives())[0];
-    await saveHive({ ...hive, apiaryId: created.id });
+    const hive = await saveHive({
+      name: 'Stand-Volk',
+      status: 'Gesund',
+      apiaryId: created.id
+    });
     await deleteApiary(created.id);
     const updated = (await getHives()).find((h) => h.id === hive.id);
     expect(updated.apiaryId == null || updated.apiaryId !== created.id).toBe(true);

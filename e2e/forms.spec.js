@@ -96,14 +96,23 @@ test.describe('Auth form (local mode)', () => {
 test.describe('Honey harvest form', () => {
   test('valid harvest is saved', async ({ page }) => {
     await page.goto('/');
+
+    // Create a hive first (no demo seed)
+    await page.locator('.nav-item[data-view="hives"]').click();
+    await page.locator('#btn-quick-add').click();
+    await expect(page.locator('#modal-hive')).toHaveClass(/active/);
+    const hiveName = `E2E Honigvolk ${Date.now()}`;
+    await page.locator('#hive-form-name').fill(hiveName);
+    await page.locator('#form-hive button[type="submit"]').click();
+    await expect(page.locator('#modal-hive')).not.toHaveClass(/active/);
+
     await page.locator('.nav-item[data-view="finances"]').click();
     await page.locator('#tab-fin-honey').click();
     await page.locator('#btn-add-honey').click();
     await expect(page.locator('#modal-honey')).toHaveClass(/active/);
 
-    // Demo data seeds two hives; pick the first option with a value
     const hiveSelect = page.locator('#honey-form-hive-id');
-    await hiveSelect.selectOption({ index: 1 });
+    await hiveSelect.selectOption({ label: hiveName });
     await page.locator('#honey-form-date').fill('2026-07-15');
     await page.locator('#honey-form-amount').fill('12.5');
     await page.locator('#honey-form-type').fill('E2E Frühtracht');

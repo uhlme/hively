@@ -194,27 +194,6 @@ describe('storage local-first + sync queue', () => {
     expect(builder.select).not.toHaveBeenCalled();
   });
 
-  it('rejects malformed backup imports', async () => {
-    expect(await storage.importData('not-json')).toBe(false);
-    expect(await storage.importData(JSON.stringify({ foo: 1 }))).toBe(false);
-  });
-
-  it('exports and imports local backup data', async () => {
-    supabaseMock.auth.getSession.mockResolvedValue({ data: { session: null } });
-    mockNavigatorNetwork({ onLine: false });
-
-    await storage.saveHive({ name: 'Backup Volk', status: 'Gesund' });
-    const exported = await storage.exportData();
-    const parsed = JSON.parse(exported);
-    expect(parsed.hives).toHaveLength(1);
-
-    localStorage.clear();
-    const ok = await storage.importData(exported);
-    expect(ok).toBe(true);
-    expect(await storage.getHives()).toHaveLength(1);
-    expect((await storage.getHives())[0].name).toBe('Backup Volk');
-  });
-
   it('rejects negative finance amounts', async () => {
     await expect(storage.saveFinance({
       date: '2026-07-01',

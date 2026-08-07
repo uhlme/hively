@@ -21,9 +21,6 @@ import {
   getActiveTreatmentsForHive,
   saveTreatment,
   deleteTreatment,
-  exportData,
-  importData,
-  seedDemoData,
   syncLocalToRemote,
   getTasksState,
   saveTaskState,
@@ -46,7 +43,7 @@ import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from '.
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation, writeWeatherCache } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
-import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob, clearOfflineAiDatabase } from './offlineAI.js';
+import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
 import {
   getNetworkPrefs,
   saveNetworkPrefs,
@@ -2723,101 +2720,6 @@ function setupSettings() {
       if (input) input.value = '';
       await renderApiariesSettings();
     }, 'Speichern…');
-  });
-
-  // Export Data
-  document.getElementById('btn-export-backup').addEventListener('click', async () => {
-    const dataStr = await exportData();
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bienen_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-
-  // Trigger file dialog
-  const fileInput = document.getElementById('input-import-file');
-  document.getElementById('btn-trigger-import').addEventListener('click', () => {
-    fileInput.click();
-  });
-
-  // Handle Import file
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const success = await importData(evt.target.result);
-      if (success) {
-        alert('Daten erfolgreich importiert!');
-        await navigate('dashboard');
-      } else {
-        alert('Fehler beim Importieren der Datei. Bitte überprüfe das Format.');
-      }
-    };
-    reader.readAsText(file);
-  });
-
-  // Seed Data
-  document.getElementById('btn-seed-data').addEventListener('click', () => {
-    if (confirm('Möchtest du die Demo-Daten laden? Bestehende Daten bleiben erhalten.')) {
-      seedDemoData();
-      alert('Demo-Daten erfolgreich hinzugefügt!');
-      navigate('dashboard');
-    }
-  });
-
-  // Clear database
-  document.getElementById('btn-clear-data').addEventListener('click', async () => {
-    if (confirm('ACHTUNG: Möchtest du wirklich alle Daten unwiderruflich löschen?')) {
-      try {
-        await clearOfflineAiDatabase();
-      } catch (e) {
-        console.warn('Offline-AI IndexedDB konnte nicht vollständig gelöscht werden:', e);
-      }
-      localStorage.clear();
-      try {
-        sessionStorage.clear();
-      } catch (_) { /* ignore */ }
-      alert('Alle Daten wurden gelöscht.');
-      location.reload();
-    }
-  });
-
-  // Force Refresh
-  document.getElementById('btn-force-refresh').addEventListener('click', async () => {
-    if (confirm('Möchtest du ein Update erzwingen und die App neu laden?')) {
-      // Unregister Service Workers
-      if ('serviceWorker' in navigator) {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const registration of registrations) {
-            await registration.unregister();
-          }
-        } catch (e) {
-          console.error('Error unregistering service worker:', e);
-        }
-      }
-      // Clear cache
-      if ('caches' in window) {
-        try {
-          const keys = await caches.keys();
-          for (const key of keys) {
-            await caches.delete(key);
-          }
-        } catch (e) {
-          console.error('Error clearing caches:', e);
-        }
-      }
-      // Force reload page
-      window.location.reload(true);
-    }
   });
 }
 

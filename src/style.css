@@ -411,6 +411,153 @@ nav.bottom-nav {
   background-color: var(--bg-card-hover);
 }
 
+/* Settings view */
+.settings-intro {
+  margin: -4px 0 20px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.settings-group {
+  margin-bottom: 8px;
+}
+
+.settings-group-label {
+  margin: 0 0 8px;
+  padding: 0 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.settings-card {
+  padding: var(--space-4);
+}
+
+.settings-card:active {
+  background-color: var(--bg-card);
+}
+
+.settings-card-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-card-lead {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.settings-card-meta {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-panel-title {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-panel .btn {
+  margin-bottom: 0;
+}
+
+.settings-members {
+  margin-top: 14px;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.settings-inline-add {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.settings-inline-add .form-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-inline-add .btn {
+  width: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.settings-toggle input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.settings-toggle strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.settings-toggle-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.settings-footer {
+  text-align: center;
+  margin: 28px 0 8px;
+  color: var(--text-muted);
+}
+
+.settings-footer p {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.settings-footer #app-version-label {
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
 /* Dashboard quick actions: full-width primary + half/half secondary row */
 /* Dashboard quick actions: icon + label on one row */
 .dash-actions {

@@ -71,7 +71,7 @@
           <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </button>
         </div>
@@ -312,141 +312,130 @@
 
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
-          <h2 class="section-title">App-Einstellungen</h2>
+          <h2 class="section-title">Einstellungen</h2>
+          <p class="settings-intro">Betrieb, Stände und Offline-Verhalten – und dein Hively-Pro-Abo.</p>
 
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenbetrieb</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
-              Gemeinsamer Datenraum für mehrere Imker. Einträge gehören zum Betrieb.
-            </p>
-            <div id="operation-settings-summary" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
-              Lokal-Modus – melde dich an, um Betriebe zu nutzen.
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-open-operations" class="btn btn-secondary" type="button">Betrieb wählen / verwalten</button>
-              <button id="btn-join-operation" class="btn btn-secondary" type="button">Mit Code beitreten</button>
-            </div>
-            <div id="operation-owner-panel" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-              <h4 style="font-size: 0.9rem; margin-bottom: 8px;">Adresse & Einladung</h4>
-              <div class="form-group">
-                <label for="op-settings-name">Name</label>
-                <input type="text" id="op-settings-name" class="form-control" />
+          <div class="settings-group">
+            <h3 class="settings-group-label">Konto</h3>
+            <div class="card settings-card">
+              <h4 class="settings-card-title">Hively Pro</h4>
+              <p id="billing-plan-summary" class="settings-card-lead">
+                KI und Cloud-Sync für deinen Betrieb – 14 Tage testen.
+              </p>
+              <div class="settings-actions">
+                <button id="btn-open-pro" class="btn btn-primary" type="button">Pro aktivieren</button>
+                <button id="btn-manage-billing" class="btn btn-secondary" type="button" style="display: none;">Abo verwalten</button>
               </div>
-              <div class="form-group">
-                <label for="op-settings-address">Adresszeile</label>
-                <input type="text" id="op-settings-address" class="form-control" placeholder="Strasse Nr." />
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-group-label">Betrieb</h3>
+            <div class="card settings-card">
+              <h4 class="settings-card-title">Bienenbetrieb</h4>
+              <p class="settings-card-lead">
+                Gemeinsamer Datenraum für mehrere Imker. Einträge gehören zum Betrieb.
+              </p>
+              <div id="operation-settings-summary" class="settings-card-meta">
+                Lokal-Modus – melde dich an, um Betriebe zu nutzen.
               </div>
-              <div class="grid-2">
+              <div class="settings-actions">
+                <button id="btn-open-operations" class="btn btn-secondary" type="button">Betrieb wählen / verwalten</button>
+                <button id="btn-join-operation" class="btn btn-secondary" type="button">Mit Code beitreten</button>
+              </div>
+              <div id="operation-owner-panel" class="settings-panel" style="display: none;">
+                <h5 class="settings-panel-title">Adresse &amp; Einladung</h5>
                 <div class="form-group">
-                  <label for="op-settings-zip">PLZ</label>
-                  <input type="text" id="op-settings-zip" class="form-control" />
+                  <label for="op-settings-name">Name</label>
+                  <input type="text" id="op-settings-name" class="form-control" />
                 </div>
                 <div class="form-group">
-                  <label for="op-settings-city">Ort</label>
-                  <input type="text" id="op-settings-city" class="form-control" />
+                  <label for="op-settings-address">Adresszeile</label>
+                  <input type="text" id="op-settings-address" class="form-control" placeholder="Strasse Nr." />
+                </div>
+                <div class="grid-2">
+                  <div class="form-group">
+                    <label for="op-settings-zip">PLZ</label>
+                    <input type="text" id="op-settings-zip" class="form-control" />
+                  </div>
+                  <div class="form-group">
+                    <label for="op-settings-city">Ort</label>
+                    <input type="text" id="op-settings-city" class="form-control" />
+                  </div>
+                </div>
+                <button id="btn-save-operation" class="btn btn-primary" type="button">Betrieb speichern</button>
+                <div class="form-group" style="margin-top: 12px;">
+                  <label for="op-invite-role">Einladung als</label>
+                  <select id="op-invite-role" class="form-control">
+                    <option value="editor">Mitarbeiter (bearbeiten)</option>
+                    <option value="viewer">Betrachter / Patenschaft (nur lesen)</option>
+                  </select>
+                </div>
+                <button id="btn-create-invite" class="btn btn-secondary" type="button">Einladungscode erzeugen</button>
+                <div id="operation-invite-result" class="settings-card-meta" style="display: none;"></div>
+                <div id="operation-members-list" class="settings-members"></div>
+              </div>
+            </div>
+
+            <div class="card settings-card">
+              <h4 class="settings-card-title">Bienenstände</h4>
+              <p class="settings-card-lead">
+                Organisiere deine Völker nach Standorten (Ständen).
+              </p>
+              <div id="apiaries-list" class="settings-list">
+                <!-- Rendered via JS -->
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="apiary-name-input">Neuer Stand</label>
+                <div class="settings-inline-add">
+                  <input type="text" id="apiary-name-input" class="form-control" placeholder="z.B. Lindenweg" />
+                  <button type="button" id="btn-add-apiary" class="btn btn-primary">Hinzufügen</button>
                 </div>
               </div>
-              <button id="btn-save-operation" class="btn btn-primary" type="button" style="margin-bottom: 12px;">Betrieb speichern</button>
-              <div class="form-group" style="margin-top: 8px;">
-                <label for="op-invite-role">Einladung als</label>
-                <select id="op-invite-role" class="form-control">
-                  <option value="editor">Mitarbeiter (bearbeiten)</option>
-                  <option value="viewer">Betrachter / Patenschaft (nur lesen)</option>
-                </select>
-              </div>
-              <button id="btn-create-invite" class="btn btn-secondary" type="button">Einladungscode erzeugen</button>
-              <div id="operation-invite-result" class="text-secondary" style="font-size: 0.8rem; margin-top: 10px; display: none;"></div>
-              <div id="operation-members-list" style="margin-top: 14px;"></div>
             </div>
           </div>
 
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Bienenstände</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px;">
-              Organisiere deine Völker nach Standorten (Ständen).
-            </p>
-            <div id="apiaries-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
-              <!-- Rendered via JS -->
-            </div>
-            <div class="form-group" style="margin-bottom: 8px;">
-              <label for="apiary-name-input">Neuer Stand</label>
-              <div style="display: flex; gap: 8px;">
-                <input type="text" id="apiary-name-input" class="form-control" placeholder="z.B. Lindenweg" style="flex: 1;" />
-                <button type="button" id="btn-add-apiary" class="btn btn-primary" style="width: auto; white-space: nowrap;">Hinzufügen</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Funkloch / Offline</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-              Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
-            </p>
-            <label style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; cursor: pointer;">
-              <input type="checkbox" id="pref-field-mode" style="margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0;" />
-              <span>
-                <strong style="display: block; font-size: 0.9rem;">Funkloch-Modus</strong>
-                <span class="text-secondary" style="font-size: 0.8rem;">Bei schwachem Netz nur lokal lesen/schreiben; Sync bei besserer Verbindung oder manuell.</span>
-              </span>
-            </label>
-            <label style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; cursor: pointer;">
-              <input type="checkbox" id="pref-wifi-only-media" style="margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0;" />
-              <span>
-                <strong style="display: block; font-size: 0.9rem;">KI-Medien nur bei gutem Netz</strong>
-                <span class="text-secondary" style="font-size: 0.8rem;">Sprachnotizen und Belege werden lokal gespeichert und erst bei WLAN/4G an die KI gesendet.</span>
-              </span>
-            </label>
-            <button id="btn-sync-now" class="btn btn-primary" style="width: 100%;">Jetzt synchronisieren</button>
-            <p id="network-sync-status" class="text-secondary" style="font-size: 0.8rem; margin-top: 12px; margin-bottom: 0;"></p>
-          </div>
-          
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Datenverwaltung</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-              Sichere deine Daten regelmäßig. Sie werden lokal auf diesem Gerät gespeichert.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-export-backup" class="btn btn-secondary">Backup herunterladen (JSON)</button>
-              <button id="btn-trigger-import" class="btn btn-secondary">Backup einspielen (JSON)</button>
-              <input type="file" id="input-import-file" accept=".json" style="display: none;" />
-              <button id="btn-force-refresh" class="btn btn-secondary" style="margin-top: 6px; border-color: var(--primary); color: var(--primary);">App aktualisieren (Neu laden)</button>
+          <div class="settings-group">
+            <h3 class="settings-group-label">Feld</h3>
+            <div class="card settings-card">
+              <h4 class="settings-card-title">Funkloch / Offline</h4>
+              <p class="settings-card-lead">
+                Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
+              </p>
+              <label class="settings-toggle">
+                <input type="checkbox" id="pref-field-mode" />
+                <span>
+                  <strong>Funkloch-Modus</strong>
+                  <span class="settings-toggle-hint">Bei schwachem Netz nur lokal lesen/schreiben; Sync bei besserer Verbindung oder manuell.</span>
+                </span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" id="pref-wifi-only-media" />
+                <span>
+                  <strong>KI-Medien nur bei gutem Netz</strong>
+                  <span class="settings-toggle-hint">Sprachnotizen und Belege werden lokal gespeichert und erst bei WLAN/4G an die KI gesendet.</span>
+                </span>
+              </label>
+              <button id="btn-sync-now" class="btn btn-primary" type="button" style="width: 100%;">Jetzt synchronisieren</button>
+              <p id="network-sync-status" class="settings-card-meta" style="margin-bottom: 0;"></p>
             </div>
           </div>
 
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Hively Pro</h3>
-            <p id="billing-plan-summary" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-              KI und Cloud-Sync für deinen Betrieb – 14 Tage testen.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-open-pro" class="btn btn-primary" type="button">Pro aktivieren</button>
-              <button id="btn-manage-billing" class="btn btn-secondary" type="button" style="display: none;">Abo verwalten</button>
+          <div class="settings-group">
+            <h3 class="settings-group-label">Hilfe</h3>
+            <div class="card settings-card">
+              <h4 class="settings-card-title">Feedback</h4>
+              <p class="settings-card-lead">
+                Etwas funktioniert nicht? Melde den Fehler kurz – wir schauen uns das an.
+              </p>
+              <button id="btn-report-bug" class="btn btn-secondary" type="button" style="width: 100%;">Fehler melden</button>
             </div>
           </div>
 
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Hilfe &amp; Feedback</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-              Etwas funktioniert nicht? Melde den Fehler kurz – wir schauen uns das an.
-            </p>
-            <button id="btn-report-bug" class="btn btn-secondary" type="button" style="width: 100%;">Fehler melden</button>
-          </div>
-
-          <div class="card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Entwickler-Werkzeuge</h3>
-            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-              Füge Demo-Daten hinzu, um die App mit Beispieldaten zu testen.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <button id="btn-seed-data" class="btn btn-secondary">Demo-Daten laden</button>
-              <button id="btn-clear-data" class="btn btn-danger btn-secondary" style="border-color: var(--danger); color: var(--danger);">Alle Daten löschen</button>
-            </div>
-          </div>
-
-          <div style="text-align: center; margin-top: 40px;" class="text-muted">
-            <p id="app-version-label" style="font-size: 0.85rem;">Hively</p>
-            <p style="font-size: 0.75rem; margin-top: 4px;">Für die Imkerei optimierte PWA</p>
-          </div>
+          <footer class="settings-footer">
+            <p id="app-version-label">Hively</p>
+            <p>Für die Imkerei optimierte PWA</p>
+          </footer>
         </section>
       </main>
 
