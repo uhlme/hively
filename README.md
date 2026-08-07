@@ -12,7 +12,7 @@ A PWA (Progressive Web App) for beekeepers to manage their hives, inspections, h
 - **Finances** – Expenses, honey yields, and Bienenpatenschaften (sponsorships)
 - **Season Calendar** – Monthly checklist for beekeeping tasks
 - **Cloud Sync** – Optional synchronization via Supabase (login/registration) with offline sync queue
-- **Offline-ready** – Local data storage, offline AI media cache, JSON backup and restore
+- **Offline-ready** – Local data storage and offline AI media cache
 
 ## Requirements
 

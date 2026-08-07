@@ -81,7 +81,7 @@ export async function deleteOfflineMemo(id) {
   });
 }
 
-/** Wipe all offline AI memos (IndexedDB). */
+/** Wipe all offline AI memos (IndexedDB). Used by Settings → Lokale Daten löschen. */
 export async function clearOfflineAiDatabase() {
   const db = await getDB();
   return new Promise((resolve, reject) => {

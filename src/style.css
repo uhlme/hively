@@ -509,8 +509,8 @@ nav.bottom-nav {
 
 .settings-inline-add .btn {
   width: auto;
+  flex: 0 0 auto;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .settings-toggle {
@@ -556,6 +556,19 @@ nav.bottom-nav {
 .settings-footer #app-version-label {
   font-size: 0.85rem;
   margin-bottom: 4px;
+}
+
+.settings-btn-danger {
+  width: 100%;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.settings-btn-danger:hover,
+.settings-btn-danger:focus-visible {
+  border-color: var(--danger);
+  color: #fff;
+  background: var(--danger);
 }
 
 /* Dashboard quick actions: full-width primary + half/half secondary row */

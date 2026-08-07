@@ -43,7 +43,7 @@ import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from '.
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation, writeWeatherCache } from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
-import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob } from './offlineAI.js';
+import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob, clearOfflineAiDatabase } from './offlineAI.js';
 import {
   getNetworkPrefs,
   saveNetworkPrefs,
@@ -2455,7 +2455,7 @@ async function renderApiariesSettings() {
   });
 }
 
-// --- Backup & Settings Administration ---
+// --- Pro / Billing ---
 function openProModal(featureLabel = '') {
   const lead = document.getElementById('pro-modal-lead');
   const err = document.getElementById('pro-modal-error');
@@ -2720,6 +2720,30 @@ function setupSettings() {
       if (input) input.value = '';
       await renderApiariesSettings();
     }, 'Speichern…');
+  });
+
+  document.getElementById('btn-reset-local-data')?.addEventListener('click', async () => {
+    const confirmed = confirm(
+      'Wirklich alle lokalen Daten auf diesem Gerät löschen?\n\n' +
+        'Völker, Kontrollen, Finanzen, Sync-Warteschlange und Offline-KI werden entfernt. ' +
+        'Daten im Cloud-Betrieb bleiben erhalten.'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('btn-reset-local-data');
+    await withButtonLoading(btn, async () => {
+      try {
+        await clearOfflineAiDatabase();
+      } catch (e) {
+        console.warn('Offline-AI IndexedDB konnte nicht vollständig gelöscht werden:', e);
+      }
+      localStorage.clear();
+      try {
+        sessionStorage.clear();
+      } catch (_) { /* ignore */ }
+      alert('Lokale Daten wurden gelöscht. Die App wird neu geladen.');
+      location.reload();
+    }, 'Lösche…');
   });
 }
 

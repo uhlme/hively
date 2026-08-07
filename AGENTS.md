@@ -46,7 +46,8 @@ There is a single service: the Vite dev server.
     `update app_settings set value='true' where key='billing_gates_enabled'`.
 - Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
   still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
-  Open-Meteo is unreachable. Offline AI memos live in IndexedDB (`clearOfflineAiDatabase`).
+  Open-Meteo is unreachable. Offline AI memos live in IndexedDB; Settings → «Lokale Daten
+  löschen» clears `localStorage` and calls `clearOfflineAiDatabase`.
 - Modals open with the CSS class `active` on `.modal-overlay` (not `open`). The header
   `#btn-quick-add` label changes by view (`+ Volk` on Kästen, `+ Kauf` on Finanzen).
 - The iOS/Capacitor path (`npm run ios:*`), `fastlane/`, and `Gemfile` require macOS + Xcode

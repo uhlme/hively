@@ -870,7 +870,7 @@ export async function deleteApiary(id) {
 
 /**
  * Ensure at least one apiary exists; assign orphan hives to it.
- * Called from initStorage after demo seed (local-first).
+ * Called from initStorage in local-first mode.
  */
 export async function ensureDefaultApiary() {
   const apiaries = readLocalArray(KEYS.APIARIES);
