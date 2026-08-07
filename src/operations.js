@@ -162,31 +162,23 @@ export async function refreshActiveOperationBilling() {
 }
 
 export async function createOperation({ name, addressLine, postalCode, city }) {
-  const session = await requireSession();
+  await requireSession();
   const client = requireSupabase();
   const trimmedName = (name || '').trim();
   if (!trimmedName) throw new Error('Betriebsname ist erforderlich.');
 
-  const { data: operation, error } = await client
-    .from('operations')
-    .insert({
-      name: trimmedName,
-      address_line: (addressLine || '').trim(),
-      postal_code: (postalCode || '').trim(),
-      city: (city || '').trim(),
-      created_by: session.user.id
-    })
-    .select('*')
-    .single();
+  // Atomic RPC: inserts operation + first owner membership (avoids RLS
+  // chicken-egg on INSERT…RETURNING before membership exists).
+  const { data, error } = await client.rpc('create_operation', {
+    p_name: trimmedName,
+    p_address_line: (addressLine || '').trim(),
+    p_postal_code: (postalCode || '').trim(),
+    p_city: (city || '').trim()
+  });
 
   if (error) throw error;
-
-  const { error: memErr } = await client.from('operation_members').insert({
-    operation_id: operation.id,
-    user_id: session.user.id,
-    role: 'owner'
-  });
-  if (memErr) throw memErr;
+  const operation = Array.isArray(data) ? data[0] : data;
+  if (!operation?.id) throw new Error('Betrieb konnte nicht angelegt werden.');
 
   const mapped = {
     id: operation.id,

@@ -223,13 +223,13 @@ create policy "Owners can insert members"
       and exists (
         select 1
         from public.operations o
-        where o.id = operation_id
+        where o.id = operation_members.operation_id
           and o.created_by = auth.uid()
       )
       and not exists (
         select 1
         from public.operation_members m
-        where m.operation_id = operation_id
+        where m.operation_id = operation_members.operation_id
       )
     ) -- bootstrap: creator adds self as first owner only
   );
