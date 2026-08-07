@@ -1,6 +1,6 @@
 {
   "name": "bee-tracker",
-  "version": "0.4.0",
+  "version": "0.4.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,9 @@
     "test:e2e:ui": "playwright test --ui",
     "ios:sync": "npm run build && PATH=\"/opt/homebrew/bin:$PATH\" npx cap sync ios",
     "ios:pods": "cd ios/App && pod install",
-    "ios:open": "npm run ios:sync && npx cap open ios"
+    "ios:open": "npm run ios:sync && npx cap open ios",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npm run android:sync && npx cap open android"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.2",
@@ -24,6 +26,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.4.2",
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/ios": "^8.4.2",

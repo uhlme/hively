@@ -35,8 +35,17 @@ describe('getWeatherInsightFromGemini', () => {
     expect(text).toBe('KI-Einschätzung derzeit nicht verfügbar.');
   });
 
-  it('returns unavailable when Gemini fails', async () => {
-    callGeminiMock.mockRejectedValueOnce(new Error('down'));
+  it('surfaces the real server error message instead of a generic one', async () => {
+    callGeminiMock.mockRejectedValueOnce(new Error('Login erforderlich für KI-Anfragen.'));
+    const { getWeatherInsightFromGemini } = await import('../src/aiHelper.js');
+    const text = await getWeatherInsightFromGemini({ temperature: 10 });
+    expect(text).toBe('Login erforderlich für KI-Anfragen.');
+  });
+
+  it('falls back to the generic unavailable text when the error has no message', async () => {
+    const err = new Error();
+    err.message = '';
+    callGeminiMock.mockRejectedValueOnce(err);
     const { getWeatherInsightFromGemini } = await import('../src/aiHelper.js');
     const text = await getWeatherInsightFromGemini({ temperature: 10 });
     expect(text).toBe('KI-Einschätzung derzeit nicht verfügbar.');

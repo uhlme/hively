@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
+      - 'v*'
       - 'ios-v*'
 
 jobs:
@@ -34,14 +35,21 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Determine version number from latest ios-v* tag
+      - name: Determine version number from release tag
         run: |
-          tag=$(git describe --tags --match 'ios-v*' --abbrev=0 2>/dev/null || true)
-          if [ -z "$tag" ]; then
-            echo "Kein ios-v*-Tag gefunden, breche ab." >&2
-            exit 1
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag=$(git describe --tags --match 'v*' --match 'ios-v*' --abbrev=0 2>/dev/null || true)
           fi
-          version="${tag#ios-v}"
+          case "$tag" in
+            ios-v*) version="${tag#ios-v}" ;;
+            v*) version="${tag#v}" ;;
+            *)
+              echo "Kein gültiger Release-Tag gefunden (v* oder ios-v*), breche ab." >&2
+              exit 1
+              ;;
+          esac
           echo "Version aus Tag $tag: $version"
           echo "VERSION_NUMBER=$version" >> "$GITHUB_ENV"
 
