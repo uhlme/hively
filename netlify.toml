@@ -9,6 +9,22 @@
   to = "/.netlify/functions/gemini"
   status = 200
 
+# Stripe billing (must be before SPA fallback)
+[[redirects]]
+  from = "/api/stripe/checkout"
+  to = "/.netlify/functions/stripe-checkout"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/portal"
+  to = "/.netlify/functions/stripe-portal"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe/webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+
 # Security headers
 [[headers]]
   for = "/*"

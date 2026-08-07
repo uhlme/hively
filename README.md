@@ -68,6 +68,13 @@ On Netlify, set these under **Site settings → Environment variables**:
 | `VITE_POSTHOG_KEY` | optional | optional | optional — Project API Key; absent → no analytics |
 | `VITE_POSTHOG_HOST` | optional | optional | defaults to `https://eu.i.posthog.com` |
 | `VITE_POSTHOG_SESSION_REPLAY` | optional | optional | `true` to enable masked session replay (default off) |
+| `VITE_BILLING_ENABLED` | optional | optional | `true` shows Pro upsell / soft-locks |
+| `STRIPE_SECRET_KEY` | optional | Functions | server-only; enables Pro checkout |
+| `STRIPE_WEBHOOK_SECRET` | optional | Functions | webhook signature |
+| `STRIPE_PRICE_MONTHLY` | optional | Functions | Price ID for CHF 1.99/month |
+| `STRIPE_PRICE_YEARLY` | optional | Functions | Price ID for CHF 10/year |
+| `SUPABASE_SERVICE_ROLE_KEY` | optional | Functions | webhook writes plan on `operations` |
+| `APP_ORIGIN` | optional | Functions | Checkout success/cancel base URL |
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -84,6 +91,7 @@ GEMINI_API_KEY=your-gemini-api-key
 Do **not** prefix it with `VITE_` — that would embed the key in the client bundle.
 `VITE_GEMINI_PROXY_URL` is the public proxy URL only (no secret); used by the native app because relative `/api/gemini` does not exist under `capacitor://`.
 `VITE_POSTHOG_KEY` is a public project key (designed for client use). Without it the app stays fully functional with analytics disabled.
+Hively Pro (Stripe): create two Prices in Stripe (CHF 1.99/month, CHF 10/year, 14-day trial via Checkout), set the server env vars above, enable `VITE_BILLING_ENABLED=true`, and point a Stripe webhook to `/api/stripe/webhook` (`checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`). Apply `supabase/migration_billing_stripe.sql`. Without Stripe env, Pro gates stay off (backward compatible).
 Share real values with collaborators out of band (password manager, etc.). Do not commit `.env` or paste secrets into issues/PRs.
 
 ### GitHub Actions secrets (planned TestFlight CI)

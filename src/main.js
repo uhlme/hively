@@ -92,6 +92,15 @@ import {
   openMailto,
   rememberError
 } from './bugReport.js';
+import {
+  isBillingEnabled,
+  hasProAccess,
+  getActivePlanMeta,
+  startProCheckout,
+  openBillingPortal,
+  planStatusLabel,
+  TRIAL_DAYS
+} from './billing.js';
 
 const RADAR_CACHE_KEY = 'hively_radar_cache';
 const RADAR_FRESH_MS = 2 * 60 * 60 * 1000;
@@ -125,8 +134,10 @@ function writeRadarCache(data) {
 async function buildRadarPayload(forceLocation) {
   const weatherData = await fetchDashboardWeatherAndPollen(forceLocation);
   let insight = 'Wetterdaten geladen (ohne KI-Einschätzung – Datensparmodus).';
-  if (shouldUseBackgroundNetwork()) {
+  if (shouldUseBackgroundNetwork() && hasProAccess()) {
     insight = await getWeatherInsightFromGemini(weatherData);
+  } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
+    insight = 'KI-Einschätzung ist Teil von Hively Pro.';
   }
   return {
     ...weatherData,
@@ -362,6 +373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupForms();
   setupSettings();
   setupBugReport();
+  setupBilling();
   setupOperationsUI();
   setupAuth();
   setupVoiceAssistant();
@@ -401,6 +413,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   await navigate(currentView);
   updateOperationChrome();
   applyRoleBasedUI();
+  refreshBillingSettingsUI();
+
+  const billingParam = urlParams.get('billing');
+  if (billingParam === 'success') {
+    trackEvent('billing_checkout_returned', { result: 'success' });
+    try {
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await bootstrapOperationsForSession(session, {});
+      }
+    } catch (err) {
+      console.warn('Billing refresh failed:', err);
+    }
+    refreshBillingSettingsUI();
+    alert('Willkommen bei Hively Pro! Dein Abo wird in Kürze aktiv (Webhook).');
+  } else if (billingParam === 'cancel') {
+    trackEvent('billing_checkout_returned', { result: 'cancel' });
+  }
 });
 
 // --- Routing / View Swapping ---
@@ -1278,7 +1308,17 @@ async function renderHiveDetailView() {
   async function loadRecommendation() {
     const recommendationContent = document.getElementById('recommendation-content');
     if (!recommendationContent) return;
-    
+
+    if (!hasProAccess()) {
+      recommendationContent.innerHTML =
+        '<span class="text-secondary">KI-Empfehlungen sind Teil von Hively Pro. ' +
+        '<button type="button" class="btn btn-sm btn-secondary" id="btn-rec-upsell" style="width:auto; margin-top:8px;">Pro ansehen</button></span>';
+      document.getElementById('btn-rec-upsell')?.addEventListener('click', () => {
+        openProModal('KI-Empfehlungen');
+      });
+      return;
+    }
+
     try {
       recommendationContent.innerHTML = '<span>Empfehlung wird geladen…</span>';
       const recommendation = await getHiveRecommendation(hive, inspections);
@@ -2407,6 +2447,121 @@ async function renderApiariesSettings() {
 }
 
 // --- Backup & Settings Administration ---
+function openProModal(featureLabel = '') {
+  const lead = document.getElementById('pro-modal-lead');
+  const err = document.getElementById('pro-modal-error');
+  if (err) {
+    err.style.display = 'none';
+    err.textContent = '';
+  }
+  if (lead) {
+    lead.innerHTML = featureLabel
+      ? `<strong>${escapeHtml(featureLabel)}</strong> ist Teil von Hively Pro. ` +
+        `KI und Cloud-Sync freischalten – <strong>${TRIAL_DAYS} Tage gratis</strong>, danach monatlich oder jährlich.`
+      : `Schalte KI (Diktat, Beleg-Scan, Empfehlungen) und Cloud-Sync inkl. Team-Einladungen frei. ` +
+        `<strong>${TRIAL_DAYS} Tage gratis</strong>, danach wählbar monatlich oder jährlich.`;
+  }
+  openModal('modal-pro');
+}
+
+function requireProFeature(featureLabel) {
+  if (hasProAccess()) return true;
+  openProModal(featureLabel);
+  trackEvent('pro_upsell_shown', { feature: featureLabel || 'unknown' });
+  return false;
+}
+
+function refreshBillingSettingsUI() {
+  const summary = document.getElementById('billing-plan-summary');
+  const openBtn = document.getElementById('btn-open-pro');
+  const manageBtn = document.getElementById('btn-manage-billing');
+  if (!summary) return;
+
+  if (!isBillingEnabled()) {
+    summary.textContent = 'Billing ist in dieser Umgebung nicht aktiviert.';
+    if (openBtn) openBtn.style.display = 'none';
+    if (manageBtn) manageBtn.style.display = 'none';
+    return;
+  }
+
+  if (!supabase || !getActiveOperationId()) {
+    summary.textContent = 'Login und Betrieb anlegen, um Pro zu starten.';
+    if (openBtn) openBtn.style.display = '';
+    if (manageBtn) manageBtn.style.display = 'none';
+    return;
+  }
+
+  const plan = getActivePlanMeta();
+  const intervalLabel =
+    plan.planInterval === 'year' ? 'jährlich' : plan.planInterval === 'month' ? 'monatlich' : '';
+  if (plan.hasPro) {
+    summary.textContent = `Pro aktiv (${planStatusLabel(plan.planStatus)}${intervalLabel ? `, ${intervalLabel}` : ''}).`;
+    if (openBtn) openBtn.style.display = isOperationOwner() ? 'none' : '';
+    if (manageBtn) manageBtn.style.display = isOperationOwner() ? '' : 'none';
+  } else {
+    summary.textContent = `Aktuell Free. Pro: KI + Cloud-Sync – ${TRIAL_DAYS} Tage testen (CHF 1.99/Mt oder CHF 10/Jahr).`;
+    if (openBtn) openBtn.style.display = '';
+    if (manageBtn) {
+      manageBtn.style.display =
+        isOperationOwner() && getActiveOperationMeta()?.stripeCustomerId ? '' : 'none';
+    }
+  }
+}
+
+function setupBilling() {
+  document.getElementById('btn-open-pro')?.addEventListener('click', () => {
+    if (!supabase) {
+      alert('Pro benötigt eine Anmeldung.');
+      return;
+    }
+    if (!getActiveOperationId()) {
+      alert('Bitte zuerst einen Betrieb anlegen.');
+      openOperationsModal();
+      return;
+    }
+    if (!isOperationOwner()) {
+      alert('Nur der Betriebsinhaber kann Pro aktivieren.');
+      return;
+    }
+    openProModal();
+  });
+
+  document.getElementById('btn-manage-billing')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-manage-billing');
+    await withButtonLoading(btn, async () => {
+      try {
+        await openBillingPortal();
+      } catch (err) {
+        alert(err.message || 'Abo-Verwaltung fehlgeschlagen.');
+      }
+    }, 'Öffne…');
+  });
+
+  document.getElementById('btn-pro-checkout')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-pro-checkout');
+    const errEl = document.getElementById('pro-modal-error');
+    const selected = document.querySelector('input[name="pro-interval"]:checked');
+    const interval = selected?.value === 'month' ? 'month' : 'year';
+    if (errEl) {
+      errEl.style.display = 'none';
+      errEl.textContent = '';
+    }
+    await withButtonLoading(btn, async () => {
+      try {
+        trackEvent('billing_checkout_started', { interval });
+        await startProCheckout(interval);
+      } catch (err) {
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.textContent = err.message || 'Checkout fehlgeschlagen.';
+        }
+      }
+    }, 'Weiter zu Stripe…');
+  });
+
+  refreshBillingSettingsUI();
+}
+
 function setupBugReport() {
   const openBtn = document.getElementById('btn-report-bug');
   const form = document.getElementById('form-bug-report');
@@ -2489,6 +2644,7 @@ function setupSettings() {
   }
   if (syncBtn) {
     syncBtn.addEventListener('click', async () => {
+      if (!requireProFeature('Cloud-Sync')) return;
       if (!navigator.onLine) {
         alert('Keine Verbindung – Sync ist offline nicht möglich.');
         return;
@@ -2779,6 +2935,8 @@ async function refreshOperationSettingsUI() {
   const addr = [meta.addressLine, [meta.postalCode, meta.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   summary.innerHTML = `<strong>${escapeHtml(meta.name)}</strong><br>${escapeHtml(addr || 'Adresse noch nicht hinterlegt')}<br>Rolle: ${escapeHtml(roleLabel(meta.role))}`;
 
+  refreshBillingSettingsUI();
+
   if (ownerPanel) {
     if (meta.role === 'owner') {
       ownerPanel.style.display = 'block';
@@ -2950,6 +3108,7 @@ function setupOperationsUI() {
   });
 
   document.getElementById('btn-create-invite')?.addEventListener('click', async () => {
+    if (!requireProFeature('Team-Einladungen')) return;
     const btn = document.getElementById('btn-create-invite');
     const opId = getActiveOperationId();
     const result = document.getElementById('operation-invite-result');
@@ -3162,6 +3321,8 @@ function setupVoiceAssistant() {
       return;
     }
 
+    if (!requireProFeature('Sprachdiktat')) return;
+
     previewDiv.innerText = 'Aufnahme läuft... Mundart sprechen erlaubt!';
     previewDiv.style.display = 'block';
 
@@ -3333,6 +3494,7 @@ function setupReceiptScanner() {
 
   btnScan.addEventListener('click', () => {
     errorDiv.style.display = 'none';
+    if (!requireProFeature('Beleg-Scan')) return;
     fileInput.click();
   });
 
@@ -3437,6 +3599,13 @@ function setupReceiptScanner() {
 
 function formatGeminiError(err, defaultMessage) {
   const errMsg = err.message || err.toString() || '';
+  if (
+    errMsg.toLowerCase().includes('hively pro') ||
+    errMsg.toLowerCase().includes('pro erforderlich') ||
+    errMsg.includes('402')
+  ) {
+    return 'Diese KI-Funktion gehört zu Hively Pro. Du kannst Pro in den Einstellungen aktivieren.';
+  }
   if (errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
     return 'Die Anfragegrenze der künstlichen Intelligenz wurde vorübergehend überschritten. Bitte warte ca. 10 Sekunden und versuche es erneut.';
   }
@@ -3456,10 +3625,10 @@ function setupConnectionTracking() {
     updateConnectionStatusUI();
     console.log('[Connection] Online – prüfe Sync...');
     try {
-      if (shouldUseBackgroundNetwork()) {
+      if (shouldUseBackgroundNetwork() && hasProAccess()) {
         await processSyncQueue();
       }
-      if (shouldAutoProcessMedia()) {
+      if (shouldAutoProcessMedia() && hasProAccess()) {
         await processOfflineMemosQueue();
       }
     } catch (e) {

@@ -88,7 +88,12 @@ export function setActiveOperation(operation, role) {
     addressLine: operation.address_line ?? operation.addressLine ?? '',
     postalCode: operation.postal_code ?? operation.postalCode ?? '',
     city: operation.city ?? '',
-    role: role || 'editor'
+    role: role || 'editor',
+    plan: operation.plan || 'free',
+    planStatus: operation.planStatus || operation.plan_status || 'none',
+    planInterval: operation.planInterval || operation.plan_interval || null,
+    planPeriodEnd: operation.planPeriodEnd || operation.plan_period_end || null,
+    stripeCustomerId: operation.stripeCustomerId || operation.stripe_customer_id || null
   }));
 }
 
@@ -120,7 +125,7 @@ export async function listMyOperations() {
 
   const { data: memberships, error: memErr } = await client
     .from('operation_members')
-    .select('role, operation_id, operations ( id, name, address_line, postal_code, city, created_at, updated_at )')
+    .select('role, operation_id, operations ( id, name, address_line, postal_code, city, created_at, updated_at, plan, plan_status, plan_interval, plan_period_end, stripe_customer_id )')
     .eq('user_id', session.user.id);
 
   if (memErr) throw memErr;
@@ -135,6 +140,11 @@ export async function listMyOperations() {
       city: m.operations.city || '',
       createdAt: m.operations.created_at,
       updatedAt: m.operations.updated_at,
+      plan: m.operations.plan || 'free',
+      planStatus: m.operations.plan_status || 'none',
+      planInterval: m.operations.plan_interval || null,
+      planPeriodEnd: m.operations.plan_period_end || null,
+      stripeCustomerId: m.operations.stripe_customer_id || null,
       role: m.role
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
@@ -173,6 +183,11 @@ export async function createOperation({ name, addressLine, postalCode, city }) {
     addressLine: operation.address_line || '',
     postalCode: operation.postal_code || '',
     city: operation.city || '',
+    plan: operation.plan || 'free',
+    planStatus: operation.plan_status || 'none',
+    planInterval: operation.plan_interval || null,
+    planPeriodEnd: operation.plan_period_end || null,
+    stripeCustomerId: operation.stripe_customer_id || null,
     role: 'owner'
   };
   setActiveOperation(mapped, 'owner');
@@ -203,6 +218,11 @@ export async function updateOperation(operationId, { name, addressLine, postalCo
     addressLine: data.address_line || '',
     postalCode: data.postal_code || '',
     city: data.city || '',
+    plan: data.plan || 'free',
+    planStatus: data.plan_status || 'none',
+    planInterval: data.plan_interval || null,
+    planPeriodEnd: data.plan_period_end || null,
+    stripeCustomerId: data.stripe_customer_id || null,
     role
   };
   if (getActiveOperationId() === operationId) {

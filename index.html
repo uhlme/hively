@@ -414,6 +414,17 @@
           </div>
 
           <div class="card">
+            <h3 style="font-size: 1rem; margin-bottom: 8px;">Hively Pro</h3>
+            <p id="billing-plan-summary" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+              KI und Cloud-Sync für deinen Betrieb – 14 Tage testen.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="btn-open-pro" class="btn btn-primary" type="button">Pro aktivieren</button>
+              <button id="btn-manage-billing" class="btn btn-secondary" type="button" style="display: none;">Abo verwalten</button>
+            </div>
+          </div>
+
+          <div class="card">
             <h3 style="font-size: 1rem; margin-bottom: 8px;">Hilfe &amp; Feedback</h3>
             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
               Etwas funktioniert nicht? Melde den Fehler kurz – wir schauen uns das an.
@@ -982,6 +993,41 @@
             <div id="bug-report-success" class="text-success" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
             <button type="submit" id="btn-bug-report-submit" class="btn btn-primary" style="width: 100%;">Per E-Mail senden</button>
           </form>
+        </div>
+      </div>
+
+      <!-- MODAL: Hively Pro -->
+      <div id="modal-pro" class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Hively Pro</h2>
+            <button class="modal-close" data-close="modal-pro" type="button">&times;</button>
+          </div>
+          <p id="pro-modal-lead" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+            Schalte KI (Diktat, Beleg-Scan, Empfehlungen) und Cloud-Sync inkl. Team-Einladungen frei.
+            <strong>14 Tage gratis</strong>, danach wählbar monatlich oder jährlich.
+          </p>
+          <div class="form-group">
+            <label class="pro-plan-option">
+              <input type="radio" name="pro-interval" value="year" checked />
+              <span>
+                <strong>Jährlich – CHF 10</strong>
+                <span class="text-secondary" style="display:block; font-size:0.8rem;">Empfohlen · ca. CHF 0.83 / Monat</span>
+              </span>
+            </label>
+            <label class="pro-plan-option" style="margin-top: 10px;">
+              <input type="radio" name="pro-interval" value="month" />
+              <span>
+                <strong>Monatlich – CHF 1.99</strong>
+                <span class="text-secondary" style="display:block; font-size:0.8rem;">Flexibel kündbar</span>
+              </span>
+            </label>
+          </div>
+          <div id="pro-modal-error" class="text-danger" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
+          <button type="button" id="btn-pro-checkout" class="btn btn-primary" style="width: 100%;">14 Tage gratis starten</button>
+          <p class="text-muted" style="font-size: 0.75rem; margin-top: 12px; margin-bottom: 0;">
+            Checkout über Stripe. Nur für Betriebsinhaber nach Login.
+          </p>
         </div>
       </div>
 

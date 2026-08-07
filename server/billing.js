@@ -1,0 +1,91 @@
+/**
+ * Shared Stripe / Pro entitlement helpers (server + testable pure logic).
+ */
+
+export const PRO_STATUSES = new Set(['active', 'trialing', 'past_due']);
+export const TRIAL_DAYS = 14;
+
+/**
+ * Whether Stripe Pro enforcement is configured on the server.
+ */
+export function isBillingEnforced(env = process.env) {
+  return Boolean(
+    env.STRIPE_SECRET_KEY &&
+      (env.STRIPE_PRICE_MONTHLY || env.STRIPE_PRICE_YEARLY)
+  );
+}
+
+/**
+ * @param {{ plan?: string, plan_status?: string, plan_period_end?: string | Date | null }} row
+ */
+export function isProEntitlement(row = {}) {
+  if (!row || row.plan !== 'pro') return false;
+  if (!PRO_STATUSES.has(String(row.plan_status || ''))) return false;
+  if (row.plan_period_end) {
+    const end = new Date(row.plan_period_end).getTime();
+    if (Number.isFinite(end) && end < Date.now()) return false;
+  }
+  return true;
+}
+
+/**
+ * Map Stripe subscription → operations billing columns.
+ * @param {import('stripe').Stripe.Subscription | null | undefined} subscription
+ */
+export function mapSubscriptionToBilling(subscription) {
+  if (!subscription) {
+    return {
+      plan: 'free',
+      plan_status: 'none',
+      plan_interval: null,
+      plan_period_end: null,
+      stripe_subscription_id: null
+    };
+  }
+
+  const status = String(subscription.status || 'none');
+  const item = subscription.items?.data?.[0];
+  const interval = item?.price?.recurring?.interval || null;
+  const periodEndSec = subscription.current_period_end;
+  const planStatus = ['active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete'].includes(status)
+    ? status
+    : 'none';
+  const isPro = PRO_STATUSES.has(planStatus);
+
+  return {
+    plan: isPro ? 'pro' : 'free',
+    plan_status: planStatus === 'none' ? 'canceled' : planStatus,
+    plan_interval: interval === 'year' || interval === 'month' ? interval : null,
+    plan_period_end: periodEndSec
+      ? new Date(periodEndSec * 1000).toISOString()
+      : null,
+    stripe_subscription_id: subscription.id || null
+  };
+}
+
+/**
+ * @param {'month' | 'year'} interval
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function resolvePriceId(interval, env = process.env) {
+  if (interval === 'year') {
+    const id = env.STRIPE_PRICE_YEARLY || '';
+    if (!id) throw new Error('STRIPE_PRICE_YEARLY fehlt.');
+    return id;
+  }
+  if (interval === 'month') {
+    const id = env.STRIPE_PRICE_MONTHLY || '';
+    if (!id) throw new Error('STRIPE_PRICE_MONTHLY fehlt.');
+    return id;
+  }
+  throw new Error('Ungültiges Abo-Intervall.');
+}
+
+export function getAppOrigin(env = process.env, fallback = 'https://hivelyy.netlify.app') {
+  return (
+    env.APP_ORIGIN ||
+    env.URL ||
+    env.DEPLOY_PRIME_URL ||
+    fallback
+  ).replace(/\/$/, '');
+}

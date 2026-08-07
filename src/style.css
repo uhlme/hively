@@ -509,6 +509,23 @@ nav.bottom-nav {
 .text-secondary { color: var(--text-secondary); }
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
+
+.pro-plan-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.pro-plan-option input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
 .text-primary-color { color: var(--primary); }
 
 .stat-label {

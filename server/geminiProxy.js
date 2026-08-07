@@ -4,6 +4,8 @@
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseGeminiJson } from '../src/utils.js';
+import { assertUserOperationHasPro } from './stripeHandlers.js';
+import { isBillingEnforced } from './billing.js';
 
 const MODEL = 'gemini-2.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
@@ -368,6 +370,15 @@ export async function handleGeminiRequest(body, context = {}) {
   const headers = normalizeHeaders(context.headers);
   const auth = await authenticateRequest(headers);
   if (auth.error) return auth.error;
+
+  if (isBillingEnforced()) {
+    const operationId =
+      typeof body?.operationId === 'string' ? body.operationId.trim() : '';
+    const pro = await assertUserOperationHasPro(auth.user.id, operationId);
+    if (!pro.ok) {
+      return fail(pro.status || 402, pro.error || 'Hively Pro erforderlich.');
+    }
+  }
 
   const rateLimitError = enforceRateLimit(action, auth.user.id);
   if (rateLimitError) return rateLimitError;

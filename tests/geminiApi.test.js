@@ -12,6 +12,10 @@ vi.mock('../src/supabase.js', () => ({
   supabase: supabaseMock
 }));
 
+vi.mock('../src/operations.js', () => ({
+  getActiveOperationId: () => 'op-test-1'
+}));
+
 describe('callGemini', () => {
   beforeEach(() => {
     supabaseMock.auth.getSession.mockResolvedValue({ data: { session: null } });
@@ -41,6 +45,7 @@ describe('callGemini', () => {
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual({
       action: 'weather_insight',
+      operationId: 'op-test-1',
       weatherData: { temperature: 20 }
     });
     expect(options.headers.Authorization).toBeUndefined();

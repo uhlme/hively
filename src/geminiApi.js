@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { fetchWithTimeout } from './network.js';
 import { supabase } from './supabase.js';
+import { getActiveOperationId } from './operations.js';
 
 // In der nativen App lädt die WebView lokale Dateien (capacitor://localhost),
 // ein relativer Pfad trifft dort keinen Server — deshalb absolut auf die
@@ -36,7 +37,11 @@ export async function callGemini(action, payload = {}, timeoutMs = 60000) {
         'Content-Type': 'application/json',
         ...(authorization ? { Authorization: authorization } : {})
       },
-      body: JSON.stringify({ action, ...payload })
+      body: JSON.stringify({
+        action,
+        operationId: getActiveOperationId(),
+        ...payload
+      })
     },
     timeoutMs
   );
