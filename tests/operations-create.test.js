@@ -89,13 +89,13 @@ describe('createOperation', () => {
   it('reicht RPC-Fehler durch', async () => {
     supabaseMock.rpc.mockResolvedValue({
       data: null,
-      error: { message: 'new row violates row-level security policy for table "operations"' }
+      error: { message: 'create_operation failed' }
     });
 
     await expect(
       createOperation({ name: 'Hof Gunasiri' })
     ).rejects.toMatchObject({
-      message: 'new row violates row-level security policy for table "operations"'
+      message: 'create_operation failed'
     });
   });
 });

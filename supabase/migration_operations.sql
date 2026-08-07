@@ -183,10 +183,7 @@ drop policy if exists "Members can view their operations" on public.operations;
 create policy "Members can view their operations"
   on public.operations for select
   to authenticated
-  using (
-    public.is_operation_member(id)
-    or created_by = auth.uid()
-  );
+  using (public.is_operation_member(id));
 
 drop policy if exists "Authenticated users can create operations" on public.operations;
 create policy "Authenticated users can create operations"

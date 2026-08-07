@@ -66,17 +66,15 @@ revoke all on function public.create_operation(text, text, text, text) from publ
 grant execute on function public.create_operation(text, text, text, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- SELECT: creators may see operations they just created (bootstrap / RETURNING)
+-- SELECT: members only (create_operation is SECURITY DEFINER and returns the
+-- row without relying on invoker SELECT visibility)
 -- ---------------------------------------------------------------------------
 
 drop policy if exists "Members can view their operations" on public.operations;
 create policy "Members can view their operations"
   on public.operations for select
   to authenticated
-  using (
-    public.is_operation_member(id)
-    or created_by = auth.uid()
-  );
+  using (public.is_operation_member(id));
 
 -- ---------------------------------------------------------------------------
 -- Membership bootstrap: qualify outer operation_id correctly
