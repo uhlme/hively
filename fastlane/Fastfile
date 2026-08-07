@@ -57,3 +57,28 @@ platform :ios do
     )
   end
 end
+
+platform :android do
+  desc "Build the Android app and upload it to the Play Store internal testing track"
+  lane :beta do
+    gradle(
+      task: "bundle",
+      build_type: "Release",
+      project_dir: "android/",
+      properties: {
+        "android.injected.version.code" => (ENV["ANDROID_VERSION_CODE"] || "1").to_i,
+        "android.injected.version.name" => ENV["ANDROID_VERSION_NAME"] || "0.0.1"
+      }
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      aab: "android/app/build/outputs/bundle/release/app-release.aab",
+      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+      package_name: "ch.hively.app",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
