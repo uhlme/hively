@@ -5,6 +5,16 @@
 export const PRO_STATUSES = new Set(['active', 'trialing', 'past_due']);
 export const TRIAL_DAYS = 14;
 
+const KNOWN_PLAN_STATUSES = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'canceled',
+  'unpaid',
+  'incomplete',
+  'paused'
+]);
+
 /**
  * Whether Stripe Pro enforcement is configured on the server.
  * Requires explicit BILLING_ENABLED / VITE_BILLING_ENABLED=true plus Stripe keys,
@@ -39,10 +49,40 @@ export function isProEntitlement(row = {}) {
 export function isTrialEligible(operation = {}) {
   if (operation?.stripe_subscription_id) return false;
   const status = String(operation?.plan_status || 'none');
-  if (['trialing', 'active', 'past_due', 'canceled', 'unpaid', 'incomplete'].includes(status)) {
+  if (['trialing', 'active', 'past_due', 'canceled', 'unpaid', 'incomplete', 'paused'].includes(status)) {
     return false;
   }
   return true;
+}
+
+/**
+ * Prefer Stripe ID bindings over metadata (metadata can be tampered in Dashboard).
+ * @param {{
+ *   metadataOperationId?: string | null,
+ *   bySubscriptionId?: string | null,
+ *   byCustomerId?: string | null
+ * }} lookups
+ * @returns {{ operationId: string | null, conflict?: boolean }}
+ */
+export function pickOperationIdForSubscription(lookups = {}) {
+  const meta = lookups.metadataOperationId || null;
+  const bySub = lookups.bySubscriptionId || null;
+  const byCust = lookups.byCustomerId || null;
+
+  if (bySub) {
+    return {
+      operationId: bySub,
+      conflict: Boolean(meta && meta !== bySub)
+    };
+  }
+  if (byCust) {
+    return {
+      operationId: byCust,
+      conflict: Boolean(meta && meta !== byCust)
+    };
+  }
+  if (meta) return { operationId: meta };
+  return { operationId: null };
 }
 
 /**
@@ -64,9 +104,7 @@ export function mapSubscriptionToBilling(subscription) {
   const item = subscription.items?.data?.[0];
   const interval = item?.price?.recurring?.interval || null;
   const periodEndSec = subscription.current_period_end;
-  const planStatus = ['active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete'].includes(status)
-    ? status
-    : 'none';
+  const planStatus = KNOWN_PLAN_STATUSES.has(status) ? status : 'none';
   const isPro = PRO_STATUSES.has(planStatus);
 
   return {

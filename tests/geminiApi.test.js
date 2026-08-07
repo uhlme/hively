@@ -51,6 +51,16 @@ describe('callGemini', () => {
     expect(options.headers.Authorization).toBeUndefined();
   });
 
+  it('forces active operationId even if payload tries to override it', async () => {
+    const { callGemini } = await import('../src/geminiApi.js');
+    await callGemini('weather_insight', {
+      weatherData: { temperature: 18 },
+      operationId: 'op-other'
+    });
+    const [, options] = fetch.mock.calls[0];
+    expect(JSON.parse(options.body).operationId).toBe('op-test-1');
+  });
+
   it('forwards the Supabase access token when logged in', async () => {
     supabaseMock.auth.getSession.mockResolvedValue({
       data: { session: { access_token: 'access-token-123' } }

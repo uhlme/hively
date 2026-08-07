@@ -12,7 +12,8 @@ const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
 
 /** Public flag — set VITE_BILLING_ENABLED=true when Stripe is live. */
 export function isBillingEnabled() {
-  return String(import.meta.env.VITE_BILLING_ENABLED || '').toLowerCase() === 'true';
+  const flag = String(import.meta.env.VITE_BILLING_ENABLED || '').toLowerCase();
+  return flag === 'true' || flag === '1';
 }
 
 export { TRIAL_DAYS, isProEntitlement };

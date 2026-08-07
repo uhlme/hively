@@ -150,6 +150,17 @@ export async function listMyOperations() {
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
 
+/** Refresh plan fields for the active Betrieb without clearing the entity cache. */
+export async function refreshActiveOperationBilling() {
+  const activeId = getActiveOperationId();
+  if (!activeId || !supabase) return getActiveOperationMeta();
+  const ops = await listMyOperations();
+  const match = ops.find((op) => op.id === activeId);
+  if (!match) return getActiveOperationMeta();
+  setActiveOperation(match, match.role);
+  return getActiveOperationMeta();
+}
+
 export async function createOperation({ name, addressLine, postalCode, city }) {
   const session = await requireSession();
   const client = requireSupabase();

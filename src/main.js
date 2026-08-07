@@ -58,6 +58,7 @@ import {
 import {
   ensureActiveOperation,
   listMyOperations,
+  refreshActiveOperationBilling,
   createOperation,
   updateOperation,
   createInvite,
@@ -418,10 +419,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const billingParam = urlParams.get('billing');
   if (billingParam === 'success') {
     trackEvent('billing_checkout_returned', { result: 'success' });
-    const activated = await pollBillingAfterCheckout();
+    let activated = false;
+    if (isBillingEnabled()) {
+      activated = await pollBillingAfterCheckout();
+    } else {
+      refreshBillingSettingsUI();
+    }
     if (activated) {
       alert('Willkommen bei Hively Pro! Dein Abo ist aktiv.');
-    } else {
+    } else if (isBillingEnabled()) {
       alert(
         'Willkommen bei Hively Pro! Die Freischaltung kann noch kurz dauern – bitte Einstellungen in einer Minute aktualisieren.'
       );
@@ -2483,20 +2489,18 @@ function delay(ms) {
 
 /** After Checkout success: poll until webhook has set Pro (or give up). */
 async function pollBillingAfterCheckout({ attempts = 8, delayMs = 1500 } = {}) {
+  if (!isBillingEnabled()) return false;
   for (let i = 0; i < attempts; i++) {
     try {
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) await bootstrapOperationsForSession(session, {});
-      }
+      if (supabase) await refreshActiveOperationBilling();
     } catch (err) {
       console.warn('Billing refresh failed:', err);
     }
     refreshBillingSettingsUI();
-    if (hasProAccess()) return true;
+    if (getActivePlanMeta().hasPro) return true;
     if (i < attempts - 1) await delay(delayMs);
   }
-  return hasProAccess();
+  return getActivePlanMeta().hasPro;
 }
 
 function refreshBillingSettingsUI() {

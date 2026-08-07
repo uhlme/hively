@@ -4,6 +4,7 @@ import {
   isProEntitlement,
   isTrialEligible,
   mapSubscriptionToBilling,
+  pickOperationIdForSubscription,
   publicBillingError,
   resolvePriceId,
   TRIAL_DAYS
@@ -31,7 +32,7 @@ describe('billing helpers', () => {
     ).toBe(true);
     expect(
       isBillingEnforced({
-        BILLING_ENABLED: 'true',
+        BILLING_ENABLED: '1',
         STRIPE_SECRET_KEY: 'sk_test',
         STRIPE_PRICE_YEARLY: 'price_y'
       })
@@ -49,6 +50,7 @@ describe('billing helpers', () => {
       })
     ).toBe(true);
     expect(isProEntitlement({ plan: 'free', plan_status: 'none' })).toBe(false);
+    expect(isProEntitlement({ plan: 'free', plan_status: 'paused' })).toBe(false);
     expect(
       isProEntitlement({
         plan: 'pro',
@@ -81,12 +83,70 @@ describe('billing helpers', () => {
     });
   });
 
+  it('maps paused subscriptions to free with paused status (not canceled)', () => {
+    const mapped = mapSubscriptionToBilling({
+      id: 'sub_paused',
+      status: 'paused',
+      current_period_end: 2000000000,
+      items: { data: [{ price: { recurring: { interval: 'month' } } }] }
+    });
+    expect(mapped.plan).toBe('free');
+    expect(mapped.plan_status).toBe('paused');
+    expect(mapped.stripe_subscription_id).toBe('sub_paused');
+  });
+
+  it('maps deleted/canceled subscription payload used by webhook', () => {
+    const mapped = mapSubscriptionToBilling({
+      id: 'sub_gone',
+      status: 'canceled',
+      current_period_end: 2000000000,
+      items: { data: [] }
+    });
+    expect(mapped.plan).toBe('free');
+    expect(mapped.plan_status).toBe('canceled');
+  });
+
+  it('prefers Stripe ID bindings over metadata for operation resolve', () => {
+    expect(
+      pickOperationIdForSubscription({
+        metadataOperationId: 'op-meta',
+        bySubscriptionId: 'op-sub',
+        byCustomerId: 'op-cust'
+      })
+    ).toEqual({ operationId: 'op-sub', conflict: true });
+
+    expect(
+      pickOperationIdForSubscription({
+        metadataOperationId: 'op-meta',
+        bySubscriptionId: null,
+        byCustomerId: 'op-cust'
+      })
+    ).toEqual({ operationId: 'op-cust', conflict: true });
+
+    expect(
+      pickOperationIdForSubscription({
+        metadataOperationId: 'op-meta',
+        bySubscriptionId: null,
+        byCustomerId: null
+      })
+    ).toEqual({ operationId: 'op-meta' });
+
+    expect(
+      pickOperationIdForSubscription({
+        metadataOperationId: 'op-same',
+        bySubscriptionId: 'op-same',
+        byCustomerId: null
+      })
+    ).toEqual({ operationId: 'op-same', conflict: false });
+  });
+
   it('grants trial only to Betriebe without prior subscription', () => {
     expect(isTrialEligible({ plan_status: 'none' })).toBe(true);
     expect(isTrialEligible({})).toBe(true);
     expect(isTrialEligible({ stripe_subscription_id: 'sub_x' })).toBe(false);
     expect(isTrialEligible({ plan_status: 'canceled' })).toBe(false);
     expect(isTrialEligible({ plan_status: 'trialing' })).toBe(false);
+    expect(isTrialEligible({ plan_status: 'paused' })).toBe(false);
   });
 
   it('exposes safe public billing errors', () => {

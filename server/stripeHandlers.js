@@ -5,8 +5,10 @@ import Stripe from 'stripe';
 import {
   getAppOrigin,
   isBillingEnforced,
+  isProEntitlement,
   isTrialEligible,
   mapSubscriptionToBilling,
+  pickOperationIdForSubscription,
   publicBillingError,
   resolvePriceId,
   TRIAL_DAYS
@@ -161,6 +163,12 @@ export async function handleCreateCheckout(body, context = {}) {
     const supabase = getServiceSupabase(env);
     await assertOperationOwner(supabase, operationId, auth.user.id);
     const operation = await loadOperation(supabase, operationId);
+    if (isProEntitlement(operation)) {
+      return stripeJson(409, {
+        error: 'Dieser Betrieb hat bereits Hively Pro. Bitte das Kundenportal nutzen.',
+        code: 'already_pro'
+      });
+    }
     const stripe = getStripe(env);
     const customerId = await ensureStripeCustomer(stripe, supabase, operation, auth.user);
     const priceId = resolvePriceId(interval, env);
@@ -256,32 +264,43 @@ async function applySubscriptionToOperation(supabase, operationId, subscription,
 }
 
 async function findOperationIdForSubscription(supabase, subscription) {
-  const fromMeta = subscription?.metadata?.operation_id;
-  if (fromMeta) return fromMeta;
-
+  let bySubscriptionId = null;
   if (subscription?.id) {
     const { data } = await supabase
       .from('operations')
       .select('id')
       .eq('stripe_subscription_id', subscription.id)
       .maybeSingle();
-    if (data?.id) return data.id;
+    bySubscriptionId = data?.id || null;
   }
 
   const customerId =
     typeof subscription?.customer === 'string'
       ? subscription.customer
       : subscription?.customer?.id;
+  let byCustomerId = null;
   if (customerId) {
     const { data } = await supabase
       .from('operations')
       .select('id')
       .eq('stripe_customer_id', customerId)
       .maybeSingle();
-    if (data?.id) return data.id;
+    byCustomerId = data?.id || null;
   }
 
-  return null;
+  const picked = pickOperationIdForSubscription({
+    metadataOperationId: subscription?.metadata?.operation_id || null,
+    bySubscriptionId,
+    byCustomerId
+  });
+  if (picked.conflict) {
+    console.warn(
+      '[stripe webhook] metadata operation_id disagrees with Stripe binding; using binding',
+      subscription?.id,
+      picked.operationId
+    );
+  }
+  return picked.operationId;
 }
 
 /**
@@ -305,10 +324,31 @@ export async function handleStripeEvent(event, env = process.env) {
     const customerId =
       typeof session.customer === 'string' ? session.customer : session.customer?.id;
 
+    const { data: existingOp } = await supabase
+      .from('operations')
+      .select('id, stripe_customer_id')
+      .eq('id', operationId)
+      .maybeSingle();
+    if (!existingOp?.id) {
+      console.warn('[stripe webhook] checkout operation not found', operationId);
+      return { ok: true, skipped: true, reason: 'unknown_operation' };
+    }
+    if (
+      customerId &&
+      existingOp.stripe_customer_id &&
+      existingOp.stripe_customer_id !== customerId
+    ) {
+      console.warn(
+        '[stripe webhook] checkout customer mismatch; refusing plan update',
+        operationId
+      );
+      return { ok: true, skipped: true, reason: 'customer_mismatch' };
+    }
+
     // Never map a missing subscription to Free — that can wipe an active Pro plan.
     if (!session.subscription) {
       console.warn('[stripe webhook] checkout without subscription; only linking customer', operationId);
-      if (customerId) {
+      if (customerId && !existingOp.stripe_customer_id) {
         const { error } = await supabase
           .from('operations')
           .update({ stripe_customer_id: customerId })

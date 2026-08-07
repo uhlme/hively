@@ -39,8 +39,8 @@ export async function callGemini(action, payload = {}, timeoutMs = 60000) {
       },
       body: JSON.stringify({
         action,
-        operationId: getActiveOperationId(),
-        ...payload
+        ...payload,
+        operationId: getActiveOperationId()
       })
     },
     timeoutMs

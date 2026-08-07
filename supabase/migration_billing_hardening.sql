@@ -21,7 +21,7 @@ create policy "Authenticated can read app_settings"
   using (true);
 
 insert into public.app_settings (key, value)
-values ('billing_gates_enabled', 'true')
+values ('billing_gates_enabled', 'false')
 on conflict (key) do nothing;
 
 create or replace function public.billing_gates_enabled()
