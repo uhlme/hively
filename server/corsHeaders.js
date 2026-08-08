@@ -29,8 +29,26 @@ function configuredOrigins(env = process.env) {
     .filter(Boolean);
 }
 
-function isNetlifyDeployOrigin(origin) {
-  return /^https:\/\/([a-z0-9-]+\.)*netlify\.app$/i.test(origin);
+/**
+ * Allow production Netlify site and its deploy previews only
+ * (https://site.netlify.app and https://*--site.netlify.app) — not any *.netlify.app.
+ */
+function isAllowedNetlifyOrigin(origin, env = process.env) {
+  if (!/^https:\/\//i.test(origin)) return false;
+
+  const candidates = [env.URL, env.APP_ORIGIN, env.DEPLOY_PRIME_URL, 'https://hivelyy.netlify.app']
+    .map(stripTrailingSlash)
+    .filter(Boolean);
+
+  for (const site of candidates) {
+    if (origin === site) return true;
+    const m = site.match(/^https:\/\/([a-z0-9-]+)\.netlify\.app$/i);
+    if (!m) continue;
+    const siteName = m[1];
+    const preview = new RegExp(`^https://[a-z0-9-]+--${siteName}\\.netlify\\.app$`, 'i');
+    if (preview.test(origin)) return true;
+  }
+  return false;
 }
 
 /**
@@ -42,7 +60,8 @@ export function resolveAllowedOrigin(requestOrigin, env = process.env) {
   const origin = stripTrailingSlash(requestOrigin);
   const allowed = configuredOrigins(env);
   if (origin && allowed.includes(origin)) return origin;
-  if (origin && isNetlifyDeployOrigin(origin)) return origin;
+  if (origin && isAllowedNetlifyOrigin(origin, env)) return origin;
+  // Literal "null" — deny reflection for unknown Origins (not the JS null value).
   return allowed.find((o) => o.startsWith('https://')) || allowed[0] || 'null';
 }
 

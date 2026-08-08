@@ -291,6 +291,32 @@ describe('storage local-first + sync queue', () => {
     expect(dead).toHaveLength(1);
   });
 
+  it('retries auth/JWT and foreign-key errors instead of dead-lettering', async () => {
+    mockNavigatorNetwork({ onLine: false });
+    await storage.saveHive({ name: 'AuthRetry', status: 'Gesund' });
+
+    const err = new Error('JWT expired');
+    err.code = 'PGRST301';
+    const builder = createQueryBuilder({ error: err });
+    supabaseMock.from.mockReturnValue(builder);
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+
+    const result = await storage.processSyncQueue();
+    expect(result.deadLetter).toBe(0);
+    expect(result.pending).toBe(1);
+    expect(storage.getSyncQueueLength()).toBe(1);
+  });
+
+  it('clearCloudSessionData removes entities, outbox and tasks', () => {
+    localStorage.setItem('bee_tracker_hives', JSON.stringify([{ id: 'h1' }]));
+    localStorage.setItem('bee_tracker_sync_queue', JSON.stringify([{ id: 'q1' }]));
+    localStorage.setItem('bee_tracker_tasks', JSON.stringify({ '2026-08': {} }));
+    storage.clearCloudSessionData();
+    expect(localStorage.getItem('bee_tracker_hives')).toBeNull();
+    expect(localStorage.getItem('bee_tracker_sync_queue')).toBeNull();
+    expect(localStorage.getItem('bee_tracker_tasks')).toBeNull();
+  });
+
   it('scopes pull blocking to the active operation outbox', async () => {
     mockNavigatorNetwork({ onLine: false });
     await storage.saveHive({ name: 'Op1', status: 'Gesund' });

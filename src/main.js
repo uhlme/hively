@@ -30,7 +30,8 @@ import {
   syncNow,
   clearLocalEntityCache,
   clearCloudSessionData,
-  hasPendingSyncForOperation
+  hasPendingSyncForOperation,
+  hasLocalDomainData
 } from './storage.js';
 import {
   TREATMENT_PRODUCTS,
@@ -411,7 +412,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         identifyUser(session.user);
-        await bootstrapOperationsForSession(session, { joinCode });
+        // Same migrate-before-clear path as onAuthStateChange (never wipe first).
+        await prepareSessionWorkspace(session, { joinCode });
       } else if (joinCode) {
         // Remember invite until after login / registration
         sessionStorage.setItem('hively_pending_join', joinCode);
@@ -581,6 +583,8 @@ async function navigate(viewName) {
     }
   }
 
+  const stillCurrent = () => gen === navigateGeneration;
+
   // Render content
   if (viewName === 'dashboard') {
     await renderDashboardView();
@@ -601,12 +605,13 @@ async function navigate(viewName) {
     } catch (err) {
       console.warn('Billing-Refresh in Einstellungen fehlgeschlagen:', err);
     }
+    if (!stillCurrent()) return;
     refreshOperationSettingsUI();
     await renderApiariesSettings();
   }
 
   // Stale navigate (rapid tab switches) must not update analytics / finish late
-  if (gen !== navigateGeneration) return;
+  if (!stillCurrent()) return;
   trackPageView(viewName);
 }
 
@@ -2875,7 +2880,7 @@ async function promptLoginForInvite(joinCode) {
   openModal('modal-auth');
 }
 
-async function bootstrapOperationsForSession(session, { joinCode, clearCache = true } = {}) {
+async function bootstrapOperationsForSession(session, { joinCode } = {}) {
   if (!session) {
     clearActiveOperation();
     updateOperationChrome();
@@ -2902,36 +2907,74 @@ async function bootstrapOperationsForSession(session, { joinCode, clearCache = t
     await ensureActiveOperation();
   }
 
-  if (clearCache) clearLocalEntityCache();
+  // Never clear here — prepareSessionWorkspace owns migrate-then-clear ordering.
   updateOperationChrome();
   applyRoleBasedUI();
 }
 
-/** Offer local→cloud migration while entity keys are still intact. */
+/**
+ * Offer local→cloud migration while entity keys are still intact.
+ * @returns {'uploaded'|'declined'|'failed'|'skipped_empty'|'skipped_not_owner'|'skipped_declined_before'}
+ */
 async function maybeOfferLocalMigration() {
-  let localHives = [];
-  try {
-    localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
-  } catch {
-    localHives = [];
-  }
+  const hasLocal = hasLocalDomainData();
+  if (!hasLocal) return 'skipped_empty';
+
   const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
-  if (!(localHives.length > 0 && !hasDeclinedSync && isOperationOwner())) return;
+  if (hasDeclinedSync) return 'skipped_declined_before';
+  if (!isOperationOwner()) return 'skipped_not_owner';
 
   if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
     try {
-      await syncLocalToRemote();
+      const ok = await syncLocalToRemote();
+      if (!ok) {
+        throw new Error('Kein aktiver Betrieb oder Sync nicht möglich.');
+      }
       trackEvent('sync_local_to_remote', { ok: true });
       alert('Daten erfolgreich synchronisiert!');
+      return 'uploaded';
     } catch (syncErr) {
       console.error('Sync fehlgeschlagen:', syncErr);
       trackEvent('sync_local_to_remote', { ok: false });
       alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+      return 'failed';
     }
-  } else {
-    localStorage.setItem('bee_tracker_sync_declined', 'true');
-    trackEvent('sync_local_to_remote_declined');
   }
+
+  localStorage.setItem('bee_tracker_sync_declined', 'true');
+  trackEvent('sync_local_to_remote_declined');
+  return 'declined';
+}
+
+/** Prevent cold-start + INITIAL_SESSION from double-prompting / clearing after decline. */
+let sessionWorkspacePreparedKey = null;
+
+/**
+ * Shared session workspace setup: resolve Betrieb → migrate → clear only when safe.
+ * Used by cold start and onAuthStateChange (except TOKEN_REFRESHED).
+ */
+async function prepareSessionWorkspace(session, { joinCode } = {}) {
+  const key = session?.user?.id || null;
+  if (key && sessionWorkspacePreparedKey === key) {
+    await bootstrapOperationsForSession(session, { joinCode });
+    return;
+  }
+
+  await bootstrapOperationsForSession(session, { joinCode });
+  const outcome = await maybeOfferLocalMigration();
+
+  // Keep local data on decline/failure/non-owner. Clear only when uploaded,
+  // nothing local, or user previously declined (cloud view on later visits).
+  const mayClear =
+    outcome === 'uploaded' ||
+    outcome === 'skipped_empty' ||
+    outcome === 'skipped_declined_before';
+
+  if (mayClear && navigator.onLine && !hasPendingSyncForOperation()) {
+    clearLocalEntityCache();
+  }
+
+  sessionWorkspacePreparedKey = key;
 }
 
 async function switchToOperation(operation) {
@@ -3271,18 +3314,13 @@ function setupAuth() {
       }
 
       try {
-        const pendingJoin = sessionStorage.getItem('hively_pending_join');
-        // Resolve Betrieb first without clearing — migration needs local hive keys.
-        await bootstrapOperationsForSession(session, {
-          joinCode: pendingJoin,
-          clearCache: false
-        });
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          await maybeOfferLocalMigration();
-          // Do not wipe while outbox pending — pulls are blocked and UI would go empty.
-          if (!hasPendingSyncForOperation()) {
-            clearLocalEntityCache();
-          }
+          const pendingJoin = sessionStorage.getItem('hively_pending_join');
+          await prepareSessionWorkspace(session, { joinCode: pendingJoin });
+        } else {
+          await bootstrapOperationsForSession(session, {
+            joinCode: sessionStorage.getItem('hively_pending_join')
+          });
         }
       } catch (err) {
         console.warn('Betrieb nach Login nicht bereit:', err);
@@ -3295,6 +3333,12 @@ function setupAuth() {
       if (event === 'SIGNED_OUT') {
         trackEvent('auth_signed_out');
         resetAnalyticsUser();
+        sessionWorkspacePreparedKey = null;
+        try {
+          await clearOfflineAiDatabase();
+        } catch (e) {
+          console.warn('Offline-AI IndexedDB beim Logout nicht vollständig gelöscht:', e);
+        }
         clearCloudSessionData();
       }
       userStatus.innerText = 'Lokal';
@@ -3310,12 +3354,30 @@ function setupAuth() {
   btnAuthAction.addEventListener('click', async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (confirm('Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.')) {
-        localStorage.removeItem('bee_tracker_sync_declined');
-        clearCloudSessionData();
-        await supabase.auth.signOut();
-        location.reload();
+      if (!confirm('Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.')) {
+        return;
       }
+      const pending = getSyncQueueLength();
+      if (pending > 0) {
+        if (navigator.onLine && shouldUseBackgroundNetwork()) {
+          try {
+            await processSyncQueue();
+          } catch (e) {
+            console.warn('Logout-Sync fehlgeschlagen:', e);
+          }
+        }
+        if (getSyncQueueLength() > 0) {
+          if (!confirm(
+            `${getSyncQueueLength()} Änderung(en) sind noch nicht synchronisiert und gehen beim Abmelden verloren. Trotzdem abmelden?`
+          )) {
+            return;
+          }
+        }
+      }
+      localStorage.removeItem('bee_tracker_sync_declined');
+      // Clear only after SIGNED_OUT (avoids wipe if signOut fails).
+      await supabase.auth.signOut();
+      location.reload();
     } else {
       openModal('modal-auth');
     }

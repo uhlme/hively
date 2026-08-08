@@ -7,8 +7,8 @@ describe('corsHeaders allowlist', () => {
     expect(resolveAllowedOrigin('http://localhost:5173')).toBe('http://localhost:5173');
   });
 
-  it('allows APP_ORIGIN and Netlify deploy hosts', () => {
-    const env = { APP_ORIGIN: 'https://hivelyy.netlify.app' };
+  it('allows APP_ORIGIN / site URL and matching deploy previews only', () => {
+    const env = { APP_ORIGIN: 'https://hivelyy.netlify.app', URL: 'https://hivelyy.netlify.app' };
     expect(resolveAllowedOrigin('https://hivelyy.netlify.app', env)).toBe(
       'https://hivelyy.netlify.app'
     );
@@ -17,11 +17,15 @@ describe('corsHeaders allowlist', () => {
     );
   });
 
-  it('does not reflect arbitrary origins', () => {
+  it('does not reflect arbitrary origins or foreign Netlify sites', () => {
     const env = { APP_ORIGIN: 'https://hivelyy.netlify.app' };
-    const resolved = resolveAllowedOrigin('https://evil.example', env);
-    expect(resolved).toBe('https://hivelyy.netlify.app');
-    expect(resolved).not.toBe('https://evil.example');
+    expect(resolveAllowedOrigin('https://evil.example', env)).toBe('https://hivelyy.netlify.app');
+    expect(resolveAllowedOrigin('https://evil.netlify.app', env)).toBe(
+      'https://hivelyy.netlify.app'
+    );
+    expect(resolveAllowedOrigin('https://deploy-preview-1--other.netlify.app', env)).toBe(
+      'https://hivelyy.netlify.app'
+    );
   });
 
   it('sets Vary: Origin on JSON CORS headers', () => {

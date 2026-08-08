@@ -59,6 +59,19 @@ export function clearCloudSessionData() {
   clearLocalEntityCache();
   localStorage.removeItem(KEYS.SYNC_QUEUE);
   localStorage.removeItem(KEYS.SYNC_DEAD_LETTER);
+  localStorage.removeItem(KEYS.TASKS);
+}
+
+/** True when local domain entities exist (used before Local→Cloud migration). */
+export function hasLocalDomainData() {
+  return (
+    readLocalArray(KEYS.HIVES).length > 0 ||
+    readLocalArray(KEYS.INSPECTIONS).length > 0 ||
+    readLocalArray(KEYS.FINANCES).length > 0 ||
+    readLocalArray(KEYS.HONEY).length > 0 ||
+    readLocalArray(KEYS.APIARIES).length > 0 ||
+    readLocalArray(KEYS.TREATMENTS).length > 0
+  );
 }
 
 async function useRemote() {
@@ -409,28 +422,63 @@ function addToSyncQueue(action, type, payload) {
   console.log(`[Sync Queue] Added ${action} on ${type} (${recordId}). Total pending: ${queue.length}`);
 }
 
+const SYNC_DEAD_LETTER_MAX = 100;
+
+/**
+ * Permanent = safe to drop from retry loop (RLS/check/duplicate).
+ * Auth (PGRST301) and FK (23503) stay retryable — token refresh / parent order.
+ */
 function isPermanentSyncError(err) {
-  const code = String(err?.code || err?.status || '');
+  const code = String(err?.code || '');
+  const status = String(err?.status || '');
   const msg = String(err?.message || err || '').toLowerCase();
-  if (['42501', '23503', '23505', '23514', 'PGRST301', '42501'].includes(code)) return true;
-  if (msg.includes('row-level security') || msg.includes('permission denied')) return true;
-  if (msg.includes('violates foreign key') || msg.includes('violates check constraint')) return true;
-  if (msg.includes('duplicate key') || msg.includes('not null')) return true;
+  if (code === 'PGRST301' || status === '401' || msg.includes('jwt')) return false;
+  if (code === '23503' || msg.includes('violates foreign key')) return false;
+  if (code === '42501' || msg.includes('row-level security') || msg.includes('permission denied')) {
+    return true;
+  }
+  if (code === '23514' || msg.includes('violates check constraint')) return true;
+  if (code === '23505' || msg.includes('duplicate key')) return true;
+  if (msg.includes('null value in column') || msg.includes('not-null')) return true;
   return false;
 }
 
+/** @returns {boolean} false if persist failed — caller must keep items in outbox */
 function appendDeadLetter(items) {
-  if (!items.length) return;
+  if (!items.length) return true;
   const existing = readLocalArray(KEYS.SYNC_DEAD_LETTER);
-  const next = [...existing, ...items.map((item) => ({
-    ...item,
-    deadLetteredAt: Date.now()
-  }))].slice(-100);
+  const next = [
+    ...existing,
+    ...items.map((item) => ({
+      ...item,
+      deadLetteredAt: Date.now()
+    }))
+  ].slice(-SYNC_DEAD_LETTER_MAX);
   try {
     safeSetItem(KEYS.SYNC_DEAD_LETTER, JSON.stringify(next));
+    return true;
   } catch (err) {
     console.error('[Sync Queue] Failed to persist dead letter:', err);
+    return false;
   }
+}
+
+/** Preferred table order so parents sync before children (reduces FK retries). */
+const SYNC_TYPE_ORDER = [
+  'apiaries',
+  'hives',
+  'inspections',
+  'honey_harvests',
+  'treatments',
+  'finances'
+];
+
+function orderedSyncTypes(byType) {
+  const keys = Object.keys(byType);
+  return [
+    ...SYNC_TYPE_ORDER.filter((t) => keys.includes(t)),
+    ...keys.filter((t) => !SYNC_TYPE_ORDER.includes(t))
+  ];
 }
 
 function mapPayloadToDB(type, payload, userId, operationId) {
@@ -578,46 +626,44 @@ async function processSyncQueueInner() {
   const updatesById = new Map();
   const deadLetter = [];
   let synced = 0;
-  let networkFailures = 0;
+  let transportFailures = 0;
 
   const markSynced = (items) => {
     for (const item of items) processedIds.add(item.id);
   };
 
-  const markRetry = (items, err, countAsNetwork) => {
-    if (countAsNetwork) networkFailures += 1;
+  const markBackoff = (items, err) => {
+    for (const item of items) {
+      const attempts = (item.attemptCount || 0) + 1;
+      updatesById.set(item.id, {
+        ...item,
+        attemptCount: attempts,
+        lastError: String(err?.message || err || ''),
+        nextRetryAt: nextRetryAt(now, attempts)
+      });
+    }
+  };
+
+  const markFailure = (items, err) => {
     if (isPermanentSyncError(err)) {
       for (const item of items) {
-        processedIds.add(item.id);
         deadLetter.push({
           ...item,
           lastError: String(err.message || err),
           attemptCount: (item.attemptCount || 0) + 1
         });
       }
-      console.error('[Sync Queue] Permanent error — dead-lettered:', err.message || err);
+      console.error('[Sync Queue] Permanent error — candidate for dead letter:', err.message || err);
       return;
     }
-    for (const item of items) {
-      const attempts = (item.attemptCount || 0) + 1;
-      updatesById.set(item.id, {
-        ...item,
-        attemptCount: attempts,
-        lastError: String(err.message || err),
-        nextRetryAt: nextRetryAt(now, attempts)
-      });
-    }
+    transportFailures += 1;
+    markBackoff(items, err);
   };
 
-  for (const [type, items] of Object.entries(byType)) {
-    if (networkFailures >= 2) {
-      for (const item of items) {
-        updatesById.set(item.id, {
-          ...item,
-          attemptCount: (item.attemptCount || 0) + 1,
-          nextRetryAt: nextRetryAt(now, item.attemptCount || 0)
-        });
-      }
+  for (const type of orderedSyncTypes(byType)) {
+    const items = byType[type];
+    if (transportFailures >= 2) {
+      markBackoff(items, new Error('deferred after repeated network failures'));
       continue;
     }
 
@@ -625,26 +671,52 @@ async function processSyncQueueInner() {
     const deletes = items.filter(i => i.action === 'delete');
 
     if (upserts.length > 0) {
-      try {
-        const rows = upserts
-          .map(i => mapPayloadToDB(
+      const mapped = upserts
+        .map((i) => ({
+          item: i,
+          row: mapPayloadToDB(
             type,
             i.payload,
             userId,
             (i.payload && i.payload.operationId) || i.operationId || activeOp
-          ))
-          .filter(Boolean);
-        const { error } = await supabase.from(type).upsert(rows);
-        if (error) throw error;
-        synced += upserts.length;
-        markSynced(upserts);
-      } catch (err) {
-        console.error(`[Sync Queue] Batch upsert failed for ${type}:`, err);
-        markRetry(upserts, err, true);
+          )
+        }))
+        .filter((m) => m.row);
+      const skipped = upserts.filter((i) => !mapped.some((m) => m.item.id === i.id));
+      if (skipped.length) {
+        markBackoff(skipped, new Error('payload konnte nicht gemappt werden'));
+      }
+      if (mapped.length > 0) {
+        try {
+          const { error } = await supabase.from(type).upsert(mapped.map((m) => m.row));
+          if (error) throw error;
+          synced += mapped.length;
+          markSynced(mapped.map((m) => m.item));
+        } catch (err) {
+          console.error(`[Sync Queue] Batch upsert failed for ${type}:`, err);
+          if (isPermanentSyncError(err) && mapped.length > 1) {
+            // Avoid dead-lettering good rows — retry per item
+            for (const { item, row } of mapped) {
+              try {
+                const { error } = await supabase.from(type).upsert(row);
+                if (error) throw error;
+                synced += 1;
+                markSynced([item]);
+              } catch (rowErr) {
+                markFailure([item], rowErr);
+              }
+            }
+          } else {
+            markFailure(
+              mapped.map((m) => m.item),
+              err
+            );
+          }
+        }
       }
     }
 
-    if (deletes.length > 0 && networkFailures < 2) {
+    if (deletes.length > 0 && transportFailures < 2) {
       try {
         const ids = deletes.map(i => i.payload);
         const { error } = await supabase.from(type).delete().in('id', ids);
@@ -653,12 +725,32 @@ async function processSyncQueueInner() {
         markSynced(deletes);
       } catch (err) {
         console.error(`[Sync Queue] Batch delete failed for ${type}:`, err);
-        markRetry(deletes, err, true);
+        if (isPermanentSyncError(err) && deletes.length > 1) {
+          for (const item of deletes) {
+            try {
+              const { error } = await supabase.from(type).delete().eq('id', item.payload);
+              if (error) throw error;
+              synced += 1;
+              markSynced([item]);
+            } catch (rowErr) {
+              markFailure([item], rowErr);
+            }
+          }
+        } else {
+          markFailure(deletes, err);
+        }
       }
     }
   }
 
-  appendDeadLetter(deadLetter);
+  // Only drop dead-lettered IDs from the outbox after persist succeeds
+  if (deadLetter.length > 0) {
+    if (appendDeadLetter(deadLetter)) {
+      for (const item of deadLetter) processedIds.add(item.id);
+    } else {
+      markBackoff(deadLetter, new Error('dead letter persist failed'));
+    }
+  }
 
   // Merge: drop successfully synced IDs; apply backoff updates; keep items added mid-run.
   const current = readLocalArray(KEYS.SYNC_QUEUE);
@@ -723,6 +815,22 @@ async function syncOrQueue(action, type, payload, remoteCall) {
     }
   } else {
     addToSyncQueue(action, type, payload);
+  }
+}
+
+/** Batch remote write; on failure enqueue each payload (avoids N sequential HTTP calls). */
+async function syncOrQueueMany(action, type, payloads, remoteBatchCall) {
+  if (!payloads.length) return;
+  if (!(await useRemote())) return;
+  if (navigator.onLine && shouldUseBackgroundNetwork()) {
+    try {
+      await remoteBatchCall();
+    } catch (err) {
+      console.warn(`Failed to batch ${action} ${type} remotely, queueing:`, err);
+      for (const payload of payloads) addToSyncQueue(action, type, payload);
+    }
+  } else {
+    for (const payload of payloads) addToSyncQueue(action, type, payload);
   }
 }
 
@@ -805,15 +913,19 @@ export async function deleteHive(id) {
     if (error) throw error;
   });
 
-  for (const tid of treatmentDeletes) {
-    await syncOrQueue('delete', 'treatments', tid, async () => {
-      const { error } = await supabase.from('treatments').delete().eq('id', tid);
-      if (error) throw error;
-    });
-  }
-  for (const t of treatmentUpserts) {
-    await syncOrQueue('upsert', 'treatments', t, () => remoteUpsert('treatments', t));
-  }
+  await syncOrQueueMany('delete', 'treatments', treatmentDeletes, async () => {
+    const { error } = await supabase.from('treatments').delete().in('id', treatmentDeletes);
+    if (error) throw error;
+  });
+  await syncOrQueueMany('upsert', 'treatments', treatmentUpserts, async () => {
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const rows = treatmentUpserts
+      .map((t) => mapPayloadToDB('treatments', t, remote.userId, t.operationId || remote.operationId))
+      .filter(Boolean);
+    const { error } = await supabase.from('treatments').upsert(rows);
+    if (error) throw error;
+  });
 }
 
 // --- Inspections CRUD ---
@@ -997,9 +1109,15 @@ export async function deleteApiary(id) {
     if (error) throw error;
   });
 
-  for (const hive of changedHives) {
-    await syncOrQueue('upsert', 'hives', hive, () => remoteUpsert('hives', hive));
-  }
+  await syncOrQueueMany('upsert', 'hives', changedHives, async () => {
+    const remote = await getRemoteContext();
+    if (!remote) throw new Error('Kein aktiver Betrieb');
+    const rows = changedHives
+      .map((h) => mapPayloadToDB('hives', h, remote.userId, h.operationId || remote.operationId))
+      .filter(Boolean);
+    const { error } = await supabase.from('hives').upsert(rows);
+    if (error) throw error;
+  });
 }
 
 /**
