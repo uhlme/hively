@@ -100,7 +100,7 @@ import {
   getActivePlanMeta,
   startProCheckout,
   openBillingPortal,
-  planStatusLabel,
+  formatBillingPlanSummary,
   setupNativeBillingLifecycle,
   consumeNativeBillingLaunchUrl,
   consumeBillingCheckoutPending,
@@ -2664,14 +2664,11 @@ function refreshBillingSettingsUI() {
   }
 
   const plan = getActivePlanMeta();
-  const intervalLabel =
-    plan.planInterval === 'year' ? 'jährlich' : plan.planInterval === 'month' ? 'monatlich' : '';
+  summary.textContent = formatBillingPlanSummary(plan);
   if (plan.hasPro) {
-    summary.textContent = `Pro aktiv (${planStatusLabel(plan.planStatus)}${intervalLabel ? `, ${intervalLabel}` : ''}).`;
     if (openBtn) openBtn.style.display = isOperationOwner() ? 'none' : '';
     if (manageBtn) manageBtn.style.display = isOperationOwner() ? '' : 'none';
   } else {
-    summary.textContent = `Aktuell Free. Pro: KI + Cloud-Sync – ${TRIAL_DAYS} Tage testen (CHF 1.99/Mt oder CHF 10/Jahr).`;
     if (openBtn) openBtn.style.display = '';
     if (manageBtn) {
       manageBtn.style.display =

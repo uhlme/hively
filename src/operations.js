@@ -93,6 +93,9 @@ export function setActiveOperation(operation, role) {
     planStatus: operation.planStatus || operation.plan_status || 'none',
     planInterval: operation.planInterval || operation.plan_interval || null,
     planPeriodEnd: operation.planPeriodEnd || operation.plan_period_end || null,
+    planCancelAtPeriodEnd: Boolean(
+      operation.planCancelAtPeriodEnd ?? operation.plan_cancel_at_period_end
+    ),
     stripeCustomerId: operation.stripeCustomerId || operation.stripe_customer_id || null
   }));
 }
@@ -125,7 +128,7 @@ export async function listMyOperations() {
 
   const { data: memberships, error: memErr } = await client
     .from('operation_members')
-    .select('role, operation_id, operations ( id, name, address_line, postal_code, city, created_at, updated_at, plan, plan_status, plan_interval, plan_period_end, stripe_customer_id )')
+    .select('role, operation_id, operations ( id, name, address_line, postal_code, city, created_at, updated_at, plan, plan_status, plan_interval, plan_period_end, plan_cancel_at_period_end, stripe_customer_id )')
     .eq('user_id', session.user.id);
 
   if (memErr) throw memErr;
@@ -144,6 +147,7 @@ export async function listMyOperations() {
       planStatus: m.operations.plan_status || 'none',
       planInterval: m.operations.plan_interval || null,
       planPeriodEnd: m.operations.plan_period_end || null,
+      planCancelAtPeriodEnd: Boolean(m.operations.plan_cancel_at_period_end),
       stripeCustomerId: m.operations.stripe_customer_id || null,
       role: m.role
     }))
@@ -190,6 +194,7 @@ export async function createOperation({ name, addressLine, postalCode, city }) {
     planStatus: operation.plan_status || 'none',
     planInterval: operation.plan_interval || null,
     planPeriodEnd: operation.plan_period_end || null,
+    planCancelAtPeriodEnd: Boolean(operation.plan_cancel_at_period_end),
     stripeCustomerId: operation.stripe_customer_id || null,
     role: 'owner'
   };
@@ -225,6 +230,7 @@ export async function updateOperation(operationId, { name, addressLine, postalCo
     planStatus: data.plan_status || 'none',
     planInterval: data.plan_interval || null,
     planPeriodEnd: data.plan_period_end || null,
+    planCancelAtPeriodEnd: Boolean(data.plan_cancel_at_period_end),
     stripeCustomerId: data.stripe_customer_id || null,
     role
   };

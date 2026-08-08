@@ -5,6 +5,7 @@ import {
   isBillingEnforced,
   isProEntitlement,
   isTrialEligible,
+  formatBillingPlanSummary,
   mapSubscriptionToBilling,
   pickOperationIdForSubscription,
   publicBillingError,
@@ -67,12 +68,27 @@ describe('billing helpers', () => {
       id: 'sub_1',
       status: 'trialing',
       current_period_end: 2000000000,
+      cancel_at_period_end: false,
       items: { data: [{ price: { recurring: { interval: 'year' } } }] }
     });
     expect(mapped.plan).toBe('pro');
     expect(mapped.plan_status).toBe('trialing');
     expect(mapped.plan_interval).toBe('year');
+    expect(mapped.plan_cancel_at_period_end).toBe(false);
     expect(mapped.stripe_subscription_id).toBe('sub_1');
+  });
+
+  it('maps cancel_at_period_end from Stripe subscriptions', () => {
+    const mapped = mapSubscriptionToBilling({
+      id: 'sub_cancel',
+      status: 'active',
+      current_period_end: 2000000000,
+      cancel_at_period_end: true,
+      items: { data: [{ price: { recurring: { interval: 'month' } } }] }
+    });
+    expect(mapped.plan).toBe('pro');
+    expect(mapped.plan_status).toBe('active');
+    expect(mapped.plan_cancel_at_period_end).toBe(true);
   });
 
   it('maps null subscription to free without throwing', () => {
@@ -81,6 +97,7 @@ describe('billing helpers', () => {
       plan_status: 'none',
       plan_interval: null,
       plan_period_end: null,
+      plan_cancel_at_period_end: false,
       stripe_subscription_id: null
     });
   });
@@ -149,6 +166,49 @@ describe('billing helpers', () => {
     expect(isTrialEligible({ plan_status: 'canceled' })).toBe(false);
     expect(isTrialEligible({ plan_status: 'trialing' })).toBe(false);
     expect(isTrialEligible({ plan_status: 'paused' })).toBe(false);
+  });
+
+  it('formats Settings subscription status copy', () => {
+    const end = '2030-08-22T15:03:08.000Z';
+    expect(
+      formatBillingPlanSummary({
+        plan: 'pro',
+        planStatus: 'trialing',
+        planInterval: 'year',
+        planPeriodEnd: end,
+        hasPro: true
+      })
+    ).toMatch(/Testphase/);
+    expect(
+      formatBillingPlanSummary({
+        plan: 'pro',
+        planStatus: 'active',
+        planInterval: 'year',
+        planPeriodEnd: end,
+        planCancelAtPeriodEnd: true,
+        hasPro: true
+      })
+    ).toMatch(/gekündigt/i);
+    expect(
+      formatBillingPlanSummary({
+        plan: 'pro',
+        planStatus: 'active',
+        planInterval: 'month',
+        planPeriodEnd: end,
+        hasPro: true
+      })
+    ).toMatch(/verlängert sich/);
+    expect(
+      formatBillingPlanSummary({
+        plan: 'free',
+        planStatus: 'canceled',
+        planPeriodEnd: end,
+        hasPro: false
+      })
+    ).toMatch(/gekündigt/i);
+    expect(formatBillingPlanSummary({ plan: 'free', planStatus: 'none', hasPro: false })).toMatch(
+      /Aktuell Free/
+    );
   });
 
   it('exposes safe public billing errors', () => {

@@ -104,7 +104,7 @@ async function loadOperation(supabase, operationId) {
   const { data, error } = await supabase
     .from('operations')
     .select(
-      'id, name, created_by, plan, plan_status, plan_interval, plan_period_end, stripe_customer_id, stripe_subscription_id'
+      'id, name, created_by, plan, plan_status, plan_interval, plan_period_end, plan_cancel_at_period_end, stripe_customer_id, stripe_subscription_id'
     )
     .eq('id', operationId)
     .maybeSingle();
