@@ -98,6 +98,7 @@ import {
   openBillingPortal,
   planStatusLabel,
   setupNativeBillingLifecycle,
+  consumeNativeBillingLaunchUrl,
   TRIAL_DAYS
 } from './billing.js';
 
@@ -378,10 +379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupVoiceAssistant();
   setupReceiptScanner();
   setupConnectionTracking();
-  setupNativeBillingLifecycle({
+  const nativeBillingHandlers = {
     onBillingReturn: (result) => handleBillingReturn(result, { fromDeepLink: true }),
     onAppResume: () => refreshBillingOnResume()
-  }).catch((err) => console.warn('Native Billing-Lifecycle fehlgeschlagen:', err));
+  };
+  setupNativeBillingLifecycle(nativeBillingHandlers).catch((err) =>
+    console.warn('Native Billing-Lifecycle fehlgeschlagen:', err)
+  );
 
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
@@ -418,8 +422,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyRoleBasedUI();
   refreshBillingSettingsUI();
 
+  // Cold-start deep link (after bootstrap — appUrlOpen alone misses launch-by-URL)
+  let handledNativeLaunchBilling = false;
+  try {
+    const launchParsed = await consumeNativeBillingLaunchUrl(nativeBillingHandlers);
+    handledNativeLaunchBilling = Boolean(launchParsed?.billing);
+  } catch (err) {
+    console.warn('Native Launch-URL für Billing fehlgeschlagen:', err);
+  }
+
   const billingParam = urlParams.get('billing');
-  if (billingParam === 'success' || billingParam === 'cancel') {
+  if (!handledNativeLaunchBilling && (billingParam === 'success' || billingParam === 'cancel')) {
     await handleBillingReturn(billingParam, { fromDeepLink: false });
   }
 });

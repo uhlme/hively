@@ -8,7 +8,8 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('@capacitor/app', () => ({
   App: {
-    addListener: vi.fn(async () => ({ remove: vi.fn() }))
+    addListener: vi.fn(async () => ({ remove: vi.fn() })),
+    getLaunchUrl: vi.fn(async () => undefined)
   }
 }));
 
@@ -28,13 +29,21 @@ vi.mock('../src/operations.js', () => ({
 }));
 
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { openBillingUrl, parseBillingReturnUrl } from '../src/billing.js';
+import {
+  openBillingUrl,
+  parseBillingReturnUrl,
+  consumeNativeBillingLaunchUrl
+} from '../src/billing.js';
 
 describe('billing client helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Capacitor.isNativePlatform.mockReturnValue(false);
+    App.getLaunchUrl.mockResolvedValue(undefined);
+    App.addListener.mockResolvedValue({ remove: vi.fn() });
+    Browser.addListener.mockResolvedValue({ remove: vi.fn() });
   });
 
   it('parses Stripe return deep links and query strings', () => {
@@ -62,8 +71,6 @@ describe('billing client helpers', () => {
   });
 
   it('navigates the page on web', async () => {
-    const hrefSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({ href: '' });
-    // jsdom location.href assignment can be tricky — stub via delete/define
     const assign = vi.fn();
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -72,6 +79,21 @@ describe('billing client helpers', () => {
     await openBillingUrl('https://checkout.stripe.com/c/pay/cs_test');
     expect(Browser.open).not.toHaveBeenCalled();
     expect(assign).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test');
-    hrefSpy.mockRestore();
+  });
+
+  it('handles cold-start launch URLs for billing return', async () => {
+    Capacitor.isNativePlatform.mockReturnValue(true);
+    App.getLaunchUrl.mockResolvedValue({
+      url: 'ch.hively.app://billing?view=settings&billing=success'
+    });
+    const onBillingReturn = vi.fn(async () => {});
+    const onAppResume = vi.fn(async () => {});
+
+    const parsed = await consumeNativeBillingLaunchUrl({ onBillingReturn, onAppResume });
+
+    expect(parsed).toEqual({ billing: 'success', view: 'settings' });
+    expect(onBillingReturn).toHaveBeenCalledWith('success');
+    expect(Browser.close).toHaveBeenCalled();
+    expect(onAppResume).not.toHaveBeenCalled();
   });
 });

@@ -190,6 +190,46 @@ export function parseBillingReturnUrl(urlOrSearch) {
 }
 
 /**
+ * Handle a deep-link / launch URL for billing return.
+ * @param {string} url
+ * @param {{
+ *   onBillingReturn?: (result: 'success' | 'cancel') => void | Promise<void>,
+ *   onAppResume?: () => void | Promise<void>
+ * }} handlers
+ */
+export async function handleNativeBillingOpenUrl(url, handlers = {}) {
+  const parsed = parseBillingReturnUrl(url);
+  await closeBillingBrowser();
+  if (parsed.billing && handlers.onBillingReturn) {
+    await handlers.onBillingReturn(parsed.billing);
+    return parsed;
+  }
+  if (handlers.onAppResume) {
+    await handlers.onAppResume();
+  }
+  return parsed;
+}
+
+/**
+ * Cold-start deep link (appUrlOpen does not fire when the app is launched by URL).
+ * Call after auth/Betrieb bootstrap so billing refresh has a session.
+ * @param {{
+ *   onBillingReturn?: (result: 'success' | 'cancel') => void | Promise<void>,
+ *   onAppResume?: () => void | Promise<void>
+ * }} handlers
+ */
+export async function consumeNativeBillingLaunchUrl(handlers = {}) {
+  if (!Capacitor.isNativePlatform()) return null;
+  try {
+    const launch = await App.getLaunchUrl();
+    if (!launch?.url) return null;
+    return handleNativeBillingOpenUrl(launch.url, handlers);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Wire Capacitor deep-link + resume hooks for Pro entitlement refresh.
  * @param {{
  *   onBillingReturn: (result: 'success' | 'cancel') => void | Promise<void>,
@@ -202,13 +242,7 @@ export async function setupNativeBillingLifecycle(handlers = {}) {
   const unsubscribers = [];
 
   const appUrlSub = await App.addListener('appUrlOpen', async ({ url }) => {
-    const parsed = parseBillingReturnUrl(url);
-    await closeBillingBrowser();
-    if (parsed.billing && handlers.onBillingReturn) {
-      await handlers.onBillingReturn(parsed.billing);
-    } else if (handlers.onAppResume) {
-      await handlers.onAppResume();
-    }
+    await handleNativeBillingOpenUrl(url, handlers);
   });
   unsubscribers.push(() => appUrlSub.remove());
 
