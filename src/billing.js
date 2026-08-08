@@ -63,15 +63,15 @@ async function authHeaders() {
   return headers;
 }
 
-/**
- * @param {'month' | 'year'} interval
- */
 function billingNetworkError(fallback) {
   return new Error(
     `${fallback} Bitte Internet prüfen und erneut versuchen.`
   );
 }
 
+/**
+ * @param {'month' | 'year'} interval
+ */
 export async function startProCheckout(interval = 'year') {
   const operationId = getActiveOperationId();
   if (!operationId) {
