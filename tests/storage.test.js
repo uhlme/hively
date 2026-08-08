@@ -305,6 +305,19 @@ describe('storage local-first + sync queue', () => {
     expect(result.deadLetter).toBe(0);
     expect(result.pending).toBe(1);
     expect(storage.getSyncQueueLength()).toBe(1);
+
+    localStorage.clear();
+    localStorage.setItem('hively_active_operation_id', 'op-test-1');
+    localStorage.setItem('hively_active_operation_role', 'owner');
+    mockNavigatorNetwork({ onLine: false });
+    await storage.saveHive({ name: 'FkRetry', status: 'Gesund' });
+    const fkErr = new Error('violates foreign key constraint');
+    fkErr.code = '23503';
+    supabaseMock.from.mockReturnValue(createQueryBuilder({ error: fkErr }));
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+    const fkResult = await storage.processSyncQueue();
+    expect(fkResult.deadLetter).toBe(0);
+    expect(fkResult.pending).toBe(1);
   });
 
   it('clearCloudSessionData removes entities, outbox and tasks', () => {

@@ -2948,6 +2948,7 @@ async function maybeOfferLocalMigration() {
 
 /** Prevent cold-start + INITIAL_SESSION from double-prompting / clearing after decline. */
 let sessionWorkspacePreparedKey = null;
+let sessionWorkspaceInFlight = null;
 
 /**
  * Shared session workspace setup: resolve Betrieb → migrate → clear only when safe.
@@ -2959,22 +2960,32 @@ async function prepareSessionWorkspace(session, { joinCode } = {}) {
     await bootstrapOperationsForSession(session, { joinCode });
     return;
   }
-
-  await bootstrapOperationsForSession(session, { joinCode });
-  const outcome = await maybeOfferLocalMigration();
-
-  // Keep local data on decline/failure/non-owner. Clear only when uploaded,
-  // nothing local, or user previously declined (cloud view on later visits).
-  const mayClear =
-    outcome === 'uploaded' ||
-    outcome === 'skipped_empty' ||
-    outcome === 'skipped_declined_before';
-
-  if (mayClear && navigator.onLine && !hasPendingSyncForOperation()) {
-    clearLocalEntityCache();
+  if (sessionWorkspaceInFlight) {
+    await sessionWorkspaceInFlight;
+    await bootstrapOperationsForSession(session, { joinCode });
+    return;
   }
 
-  sessionWorkspacePreparedKey = key;
+  sessionWorkspaceInFlight = (async () => {
+    await bootstrapOperationsForSession(session, { joinCode });
+    const outcome = await maybeOfferLocalMigration();
+
+    // Keep local data on decline / prior decline / failure / non-owner.
+    // Clear only after successful upload or when there was nothing local to preserve.
+    const mayClear = outcome === 'uploaded' || outcome === 'skipped_empty';
+
+    if (mayClear && navigator.onLine && !hasPendingSyncForOperation()) {
+      clearLocalEntityCache();
+    }
+
+    sessionWorkspacePreparedKey = key;
+  })();
+
+  try {
+    await sessionWorkspaceInFlight;
+  } finally {
+    sessionWorkspaceInFlight = null;
+  }
 }
 
 async function switchToOperation(operation) {
@@ -3376,7 +3387,11 @@ function setupAuth() {
       }
       localStorage.removeItem('bee_tracker_sync_declined');
       // Clear only after SIGNED_OUT (avoids wipe if signOut fails).
-      await supabase.auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        alert('Abmelden fehlgeschlagen: ' + (signOutError.message || signOutError));
+        return;
+      }
       location.reload();
     } else {
       openModal('modal-auth');
