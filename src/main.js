@@ -3934,14 +3934,19 @@ async function renderOfflineMemos() {
     else if (navigator.onLine) actionLabel = 'Wartet auf WLAN';
 
     return `
-      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15);">
-        <div>
+      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(0,0,0,0.15);">
+        <div style="min-width: 0;">
           <div style="font-weight: 600; font-size: 0.9rem;">${typeLabel}</div>
           <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
         </div>
-        <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${escapeHtml(memo.id)}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
-          ${actionLabel}
-        </button>
+        <div style="display: flex; flex-shrink: 0; gap: 6px; align-items: center;">
+          <button type="button" class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${escapeHtml(memo.id)}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+            ${actionLabel}
+          </button>
+          <button type="button" class="btn btn-sm btn-danger btn-discard-offline-memo" data-id="${escapeHtml(memo.id)}" data-type="${escapeHtml(memo.type || 'voice')}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+            Verwerfen
+          </button>
+        </div>
       </div>
     `;
   }).join('');
@@ -3961,6 +3966,28 @@ async function renderOfflineMemos() {
         btn.disabled = false;
         btn.innerText = 'Wiederholen';
         alert('Verarbeitung fehlgeschlagen: ' + err.message);
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-discard-offline-memo').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const type = btn.getAttribute('data-type') || 'voice';
+      if (!id) return;
+      const confirmMsg =
+        type === 'receipt'
+          ? 'Diesen Offline-Beleg wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.'
+          : 'Dieses Offline-Diktat wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.';
+      if (!confirm(confirmMsg)) return;
+      btn.disabled = true;
+      try {
+        await deleteOfflineMemo(id);
+        trackEvent('offline_memo_discarded', { type });
+        await renderOfflineMemos();
+      } catch (err) {
+        btn.disabled = false;
+        alert('Verwerfen fehlgeschlagen: ' + (err?.message || err));
       }
     });
   });
