@@ -28,7 +28,10 @@ import {
   getSyncQueueLength,
   getLastSyncSummary,
   syncNow,
-  clearLocalEntityCache
+  clearLocalEntityCache,
+  clearCloudSessionData,
+  hasPendingSyncForOperation,
+  hasLocalDomainData
 } from './storage.js';
 import {
   TREATMENT_PRODUCTS,
@@ -409,7 +412,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         identifyUser(session.user);
-        await bootstrapOperationsForSession(session, { joinCode });
+        // Same migrate-before-clear path as onAuthStateChange (never wipe first).
+        await prepareSessionWorkspace(session, { joinCode });
       } else if (joinCode) {
         // Remember invite until after login / registration
         sessionStorage.setItem('hively_pending_join', joinCode);
@@ -533,7 +537,10 @@ function setupRouting() {
   });
 }
 
+let navigateGeneration = 0;
+
 async function navigate(viewName) {
+  const gen = ++navigateGeneration;
   currentView = viewName;
 
   // Toggle active tab in bottom nav
@@ -558,21 +565,25 @@ async function navigate(viewName) {
 
   // Header button sync
   const quickAddBtn = document.getElementById('btn-quick-add');
-  if (viewName === 'hives') {
-    quickAddBtn.classList.remove('hidden');
-    quickAddBtn.innerText = '+ Volk';
-  } else if (viewName === 'finances') {
-    quickAddBtn.classList.remove('hidden');
-    if (currentFinanceTab === 'expenses') {
-      quickAddBtn.innerText = '+ Kauf';
-    } else if (currentFinanceTab === 'honey') {
-      quickAddBtn.innerText = '+ Ernte';
+  if (quickAddBtn) {
+    if (viewName === 'hives') {
+      quickAddBtn.classList.remove('hidden');
+      quickAddBtn.innerText = '+ Volk';
+    } else if (viewName === 'finances') {
+      quickAddBtn.classList.remove('hidden');
+      if (currentFinanceTab === 'expenses') {
+        quickAddBtn.innerText = '+ Kauf';
+      } else if (currentFinanceTab === 'honey') {
+        quickAddBtn.innerText = '+ Ernte';
+      } else {
+        quickAddBtn.innerText = '+ Paten.';
+      }
     } else {
-      quickAddBtn.innerText = '+ Paten.';
+      quickAddBtn.classList.add('hidden');
     }
-  } else {
-    quickAddBtn.classList.add('hidden');
   }
+
+  const stillCurrent = () => gen === navigateGeneration;
 
   // Render content
   if (viewName === 'dashboard') {
@@ -594,10 +605,13 @@ async function navigate(viewName) {
     } catch (err) {
       console.warn('Billing-Refresh in Einstellungen fehlgeschlagen:', err);
     }
+    if (!stillCurrent()) return;
     refreshOperationSettingsUI();
     await renderApiariesSettings();
   }
 
+  // Stale navigate (rapid tab switches) must not update analytics / finish late
+  if (!stillCurrent()) return;
   trackPageView(viewName);
 }
 
@@ -2893,9 +2907,85 @@ async function bootstrapOperationsForSession(session, { joinCode } = {}) {
     await ensureActiveOperation();
   }
 
-  clearLocalEntityCache();
+  // Never clear here — prepareSessionWorkspace owns migrate-then-clear ordering.
   updateOperationChrome();
   applyRoleBasedUI();
+}
+
+/**
+ * Offer local→cloud migration while entity keys are still intact.
+ * @returns {'uploaded'|'declined'|'failed'|'skipped_empty'|'skipped_not_owner'|'skipped_declined_before'}
+ */
+async function maybeOfferLocalMigration() {
+  const hasLocal = hasLocalDomainData();
+  if (!hasLocal) return 'skipped_empty';
+
+  const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
+  if (hasDeclinedSync) return 'skipped_declined_before';
+  if (!isOperationOwner()) return 'skipped_not_owner';
+
+  if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
+    try {
+      const ok = await syncLocalToRemote();
+      if (!ok) {
+        throw new Error('Kein aktiver Betrieb oder Sync nicht möglich.');
+      }
+      trackEvent('sync_local_to_remote', { ok: true });
+      alert('Daten erfolgreich synchronisiert!');
+      return 'uploaded';
+    } catch (syncErr) {
+      console.error('Sync fehlgeschlagen:', syncErr);
+      trackEvent('sync_local_to_remote', { ok: false });
+      alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+      return 'failed';
+    }
+  }
+
+  localStorage.setItem('bee_tracker_sync_declined', 'true');
+  trackEvent('sync_local_to_remote_declined');
+  return 'declined';
+}
+
+/** Prevent cold-start + INITIAL_SESSION from double-prompting / clearing after decline. */
+let sessionWorkspacePreparedKey = null;
+let sessionWorkspaceInFlight = null;
+
+/**
+ * Shared session workspace setup: resolve Betrieb → migrate → clear only when safe.
+ * Used by cold start and onAuthStateChange (except TOKEN_REFRESHED).
+ */
+async function prepareSessionWorkspace(session, { joinCode } = {}) {
+  const key = session?.user?.id || null;
+  if (key && sessionWorkspacePreparedKey === key) {
+    await bootstrapOperationsForSession(session, { joinCode });
+    return;
+  }
+  if (sessionWorkspaceInFlight) {
+    await sessionWorkspaceInFlight;
+    await bootstrapOperationsForSession(session, { joinCode });
+    return;
+  }
+
+  sessionWorkspaceInFlight = (async () => {
+    await bootstrapOperationsForSession(session, { joinCode });
+    const outcome = await maybeOfferLocalMigration();
+
+    // Keep local data on decline / prior decline / failure / non-owner.
+    // Clear only after successful upload or when there was nothing local to preserve.
+    const mayClear = outcome === 'uploaded' || outcome === 'skipped_empty';
+
+    if (mayClear && navigator.onLine && !hasPendingSyncForOperation()) {
+      clearLocalEntityCache();
+    }
+
+    sessionWorkspacePreparedKey = key;
+  })();
+
+  try {
+    await sessionWorkspaceInFlight;
+  } finally {
+    sessionWorkspaceInFlight = null;
+  }
 }
 
 async function switchToOperation(operation) {
@@ -3229,36 +3319,22 @@ function setupAuth() {
       userStatus.innerText = session.user.email;
       btnAuthAction.innerText = 'Logout';
 
-      try {
-        const pendingJoin = sessionStorage.getItem('hively_pending_join');
-        await bootstrapOperationsForSession(session, { joinCode: pendingJoin });
-      } catch (err) {
-        console.warn('Betrieb nach Login nicht bereit:', err);
+      // Token refresh must not wipe entity caches or re-run migration/bootstrap.
+      if (event === 'TOKEN_REFRESHED') {
+        return;
       }
 
-      // Check if there is local data to sync (into active Betrieb)
-      let localHives = [];
       try {
-        localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
-      } catch {
-        localHives = [];
-      }
-      const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
-      if (localHives.length > 0 && !hasDeclinedSync && isOperationOwner()) {
-        if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
-          try {
-            await syncLocalToRemote();
-            trackEvent('sync_local_to_remote', { ok: true });
-            alert('Daten erfolgreich synchronisiert!');
-          } catch (syncErr) {
-            console.error('Sync fehlgeschlagen:', syncErr);
-            trackEvent('sync_local_to_remote', { ok: false });
-            alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
-          }
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          const pendingJoin = sessionStorage.getItem('hively_pending_join');
+          await prepareSessionWorkspace(session, { joinCode: pendingJoin });
         } else {
-          localStorage.setItem('bee_tracker_sync_declined', 'true');
-          trackEvent('sync_local_to_remote_declined');
+          await bootstrapOperationsForSession(session, {
+            joinCode: sessionStorage.getItem('hively_pending_join')
+          });
         }
+      } catch (err) {
+        console.warn('Betrieb nach Login nicht bereit:', err);
       }
 
       await navigate(currentView);
@@ -3268,6 +3344,13 @@ function setupAuth() {
       if (event === 'SIGNED_OUT') {
         trackEvent('auth_signed_out');
         resetAnalyticsUser();
+        sessionWorkspacePreparedKey = null;
+        try {
+          await clearOfflineAiDatabase();
+        } catch (e) {
+          console.warn('Offline-AI IndexedDB beim Logout nicht vollständig gelöscht:', e);
+        }
+        clearCloudSessionData();
       }
       userStatus.innerText = 'Lokal';
       btnAuthAction.innerText = 'Login';
@@ -3282,11 +3365,34 @@ function setupAuth() {
   btnAuthAction.addEventListener('click', async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (confirm('Möchtest du dich abmelden?')) {
-        localStorage.removeItem('bee_tracker_sync_declined');
-        await supabase.auth.signOut();
-        location.reload(); // Reload to reset storage state
+      if (!confirm('Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.')) {
+        return;
       }
+      const pending = getSyncQueueLength();
+      if (pending > 0) {
+        if (navigator.onLine && shouldUseBackgroundNetwork()) {
+          try {
+            await processSyncQueue();
+          } catch (e) {
+            console.warn('Logout-Sync fehlgeschlagen:', e);
+          }
+        }
+        if (getSyncQueueLength() > 0) {
+          if (!confirm(
+            `${getSyncQueueLength()} Änderung(en) sind noch nicht synchronisiert und gehen beim Abmelden verloren. Trotzdem abmelden?`
+          )) {
+            return;
+          }
+        }
+      }
+      localStorage.removeItem('bee_tracker_sync_declined');
+      // Clear only after SIGNED_OUT (avoids wipe if signOut fails).
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        alert('Abmelden fehlgeschlagen: ' + (signOutError.message || signOutError));
+        return;
+      }
+      location.reload();
     } else {
       openModal('modal-auth');
     }
@@ -3383,17 +3489,22 @@ function setupVoiceAssistant() {
     previewDiv.innerText = 'Aufnahme läuft... Mundart sprechen erlaubt!';
     previewDiv.style.display = 'block';
 
-    startAudioRecording({
-      onError: (err) => {
-        errorDiv.innerText = err;
-        errorDiv.style.display = 'block';
-        resetUI();
-      },
-      onStatusChange: (status) => {
-        currentStatus = status;
-        updateUIForStatus(status);
-      }
-    });
+    btnRecord.disabled = true;
+    try {
+      await startAudioRecording({
+        onError: (err) => {
+          errorDiv.innerText = err;
+          errorDiv.style.display = 'block';
+          resetUI();
+        },
+        onStatusChange: (status) => {
+          currentStatus = status;
+          updateUIForStatus(status);
+        }
+      });
+    } finally {
+      btnRecord.disabled = false;
+    }
   });
 
   function resetUI() {
@@ -3682,7 +3793,9 @@ function setupConnectionTracking() {
     updateConnectionStatusUI();
     console.log('[Connection] Online – prüfe Sync...');
     try {
-      if (shouldUseBackgroundNetwork() && hasProAccess()) {
+      // Outbox flush for all sessions (RLS/Pro gates enforce server-side).
+      // Align with initial sync — do not require client hasProAccess().
+      if (shouldUseBackgroundNetwork()) {
         await processSyncQueue();
       }
       if (shouldAutoProcessMedia() && hasProAccess()) {

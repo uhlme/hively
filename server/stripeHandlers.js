@@ -14,28 +14,21 @@ import {
   TRIAL_DAYS
 } from './billing.js';
 import { getServiceSupabase } from './proGate.js';
+import { buildCorsJsonHeaders } from './corsHeaders.js';
 
 export { assertUserOperationHasPro, getServiceSupabase } from './proGate.js';
 
-export const STRIPE_JSON_HEADERS = {
-  'Content-Type': 'application/json; charset=utf-8',
-  'Cache-Control': 'no-store',
-  // Native App (capacitor://localhost) ruft Checkout/Portal über die absolute
-  // Produktions-URL auf — ohne CORS schlägt der Preflight in WebKit mit
-  // «Load failed» fehl. Auth bleibt über Bearer-Token Pflicht.
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-};
+/** Default CORS headers; prefer stripeLambdaResponse(..., origin). */
+export const STRIPE_JSON_HEADERS = buildCorsJsonHeaders('');
 
 export function stripeJson(status, body) {
   return { status, body };
 }
 
-export function stripeLambdaResponse(statusCode, body, extraHeaders = {}) {
+export function stripeLambdaResponse(statusCode, body, requestOrigin = '', extraHeaders = {}) {
   return {
     statusCode,
-    headers: { ...STRIPE_JSON_HEADERS, ...extraHeaders },
+    headers: { ...buildCorsJsonHeaders(requestOrigin), ...extraHeaders },
     body: body == null || body === '' ? '' : JSON.stringify(body)
   };
 }

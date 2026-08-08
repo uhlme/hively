@@ -40,7 +40,8 @@ export async function startAudioRecording({ onError, onStatusChange }) {
 
     mediaRecorder.start();
   } catch (err) {
-    console.error('getUserMedia error:', err);
+    console.error('getUserMedia / MediaRecorder error:', err);
+    cleanup();
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
       onError('Mikrofon-Zugriff wurde verweigert. Bitte erlauben Sie den Mikrofon-Zugriff.');
     } else {
