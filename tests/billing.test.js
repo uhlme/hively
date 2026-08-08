@@ -174,9 +174,17 @@ describe('billing helpers', () => {
     expect(web.cancel).toContain('billing=cancel');
     expect(web.portalReturn).toBe('https://hivelyy.netlify.app/?view=settings');
 
-    const native = getBillingReturnUrls({}, { native: true });
-    expect(native.success).toBe('ch.hively.app://billing?view=settings&billing=success');
-    expect(native.cancel).toBe('ch.hively.app://billing?view=settings&billing=cancel');
-    expect(native.portalReturn).toBe('ch.hively.app://billing?view=settings');
+    // Native must stay on HTTPS — SFSafariViewController cannot open custom schemes.
+    const native = getBillingReturnUrls(
+      { APP_ORIGIN: 'https://hivelyy.netlify.app' },
+      { native: true }
+    );
+    expect(native.success).toBe(
+      'https://hivelyy.netlify.app/billing-return.html?view=settings&billing=success&native=1'
+    );
+    expect(native.cancel).toContain('/billing-return.html?');
+    expect(native.cancel).toContain('billing=cancel');
+    expect(native.portalReturn).toContain('/billing-return.html?');
+    expect(native.portalReturn).toContain('native=1');
   });
 });

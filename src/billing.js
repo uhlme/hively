@@ -12,6 +12,7 @@ import { isNetworkError } from './network.js';
 import { isProEntitlement, TRIAL_DAYS } from '../server/billing.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
+const PENDING_CHECKOUT_KEY = 'hively_billing_checkout_pending';
 
 /** Public flag — set VITE_BILLING_ENABLED=true when Stripe is live. */
 export function isBillingEnabled() {
@@ -57,6 +58,42 @@ function stripeApiBase() {
 
 function billingReturnTarget() {
   return Capacitor.isNativePlatform() ? 'native' : 'web';
+}
+
+/** Mark that native Checkout/Portal was opened — used when the Browser sheet closes. */
+export function markBillingCheckoutPending(kind = 'checkout') {
+  try {
+    sessionStorage.setItem(
+      PENDING_CHECKOUT_KEY,
+      JSON.stringify({ kind, at: Date.now() })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearBillingCheckoutPending() {
+  try {
+    sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * @returns {'checkout' | 'portal' | null}
+ */
+export function consumeBillingCheckoutPending({ maxAgeMs = 30 * 60 * 1000 } = {}) {
+  try {
+    const raw = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+    const parsed = JSON.parse(raw);
+    if (!parsed?.at || Date.now() - parsed.at > maxAgeMs) return null;
+    return parsed.kind === 'portal' ? 'portal' : 'checkout';
+  } catch {
+    return null;
+  }
 }
 
 async function authHeaders() {
@@ -133,6 +170,7 @@ export async function startProCheckout(interval = 'year') {
     throw new Error(data?.error || `Checkout fehlgeschlagen (${response.status})`);
   }
   if (!data?.url) throw new Error('Keine Checkout-URL erhalten.');
+  markBillingCheckoutPending('checkout');
   await openBillingUrl(data.url);
 }
 
@@ -164,6 +202,7 @@ export async function openBillingPortal() {
     throw new Error(data?.error || `Portal fehlgeschlagen (${response.status})`);
   }
   if (!data?.url) throw new Error('Keine Portal-URL erhalten.');
+  markBillingCheckoutPending('portal');
   await openBillingUrl(data.url);
 }
 
@@ -254,7 +293,11 @@ export async function setupNativeBillingLifecycle(handlers = {}) {
   unsubscribers.push(() => stateSub.remove());
 
   const browserSub = await Browser.addListener('browserFinished', async () => {
-    if (handlers.onAppResume) {
+    // Prefer pending-checkout handling (HTTPS return page + user closed sheet)
+    // over a soft resume refresh when we just came back from Stripe.
+    if (handlers.onBrowserFinished) {
+      await handlers.onBrowserFinished();
+    } else if (handlers.onAppResume) {
       await handlers.onAppResume();
     }
   });

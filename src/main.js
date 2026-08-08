@@ -99,6 +99,8 @@ import {
   planStatusLabel,
   setupNativeBillingLifecycle,
   consumeNativeBillingLaunchUrl,
+  consumeBillingCheckoutPending,
+  clearBillingCheckoutPending,
   TRIAL_DAYS
 } from './billing.js';
 
@@ -381,7 +383,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupConnectionTracking();
   const nativeBillingHandlers = {
     onBillingReturn: (result) => handleBillingReturn(result, { fromDeepLink: true }),
-    onAppResume: () => refreshBillingOnResume()
+    onAppResume: () => refreshBillingOnResume(),
+    onBrowserFinished: () => handleNativeBrowserFinished()
   };
   setupNativeBillingLifecycle(nativeBillingHandlers).catch((err) =>
     console.warn('Native Billing-Lifecycle fehlgeschlagen:', err)
@@ -2522,6 +2525,24 @@ async function refreshBillingOnResume() {
 }
 
 /**
+ * After Capacitor Browser closes: if Checkout was pending, run the full
+ * success poll (HTTPS return page cannot use custom-scheme as Stripe URL).
+ */
+async function handleNativeBrowserFinished() {
+  const pending = consumeBillingCheckoutPending();
+  if (pending === 'checkout') {
+    await handleBillingReturn('success', { fromDeepLink: true });
+    return;
+  }
+  if (pending === 'portal') {
+    await refreshBillingOnResume();
+    if (currentView !== 'settings') await navigate('settings');
+    return;
+  }
+  await refreshBillingOnResume();
+}
+
+/**
  * Handle Stripe Checkout return (web query or native deep link).
  * @param {'success' | 'cancel'} result
  * @param {{ fromDeepLink?: boolean }} [options]
@@ -2530,6 +2551,7 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
   if (result !== 'success' && result !== 'cancel') return;
   if (billingReturnInFlight) return;
   billingReturnInFlight = true;
+  clearBillingCheckoutPending();
   try {
     trackEvent('billing_checkout_returned', {
       result,
