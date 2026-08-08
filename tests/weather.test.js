@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCachedLocation, saveCachedLocation } from '../src/weather.js';
+import {
+  conditionFromCode,
+  getCachedLocation,
+  saveCachedLocation,
+  weatherIconKind,
+  weatherIconSvg
+} from '../src/weather.js';
 
 vi.mock('@capacitor/geolocation', () => ({
   Geolocation: { getCurrentPosition: vi.fn() }
@@ -8,6 +14,30 @@ vi.mock('@capacitor/geolocation', () => ({
 vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => false }
 }));
+
+describe('weather icons', () => {
+  it('maps WMO codes to labels and icon kinds', () => {
+    expect(conditionFromCode(0)).toEqual({ label: 'Sonnig', icon: 'sun' });
+    expect(conditionFromCode(3)).toEqual({ label: 'Bedeckt', icon: 'cloudy' });
+    expect(conditionFromCode(95)).toEqual({ label: 'Gewitter', icon: 'thunderstorm' });
+    expect(conditionFromCode(999)).toEqual({ label: 'Unbekannt', icon: 'unknown' });
+  });
+
+  it('resolves icon kind from code or German condition text', () => {
+    expect(weatherIconKind(61)).toBe('rain');
+    expect(weatherIconKind('Leichter Regen')).toBe('rain');
+    expect(weatherIconKind('Sonnig')).toBe('sun');
+    expect(weatherIconKind('')).toBe('unknown');
+  });
+
+  it('returns SVG markup without emoji characters', () => {
+    const svg = weatherIconSvg(0);
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('viewBox="0 0 24 24"');
+    expect(svg).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u);
+    expect(weatherIconSvg('partly-cloudy')).toContain('<circle');
+  });
+});
 
 describe('weather location cache', () => {
   it('round-trips lat/lon through localStorage', () => {

@@ -44,7 +44,13 @@ import {
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
-import { fetchCurrentWeather, fetchDashboardWeatherAndPollen, getCachedLocation, writeWeatherCache } from './weather.js';
+import {
+  fetchCurrentWeather,
+  fetchDashboardWeatherAndPollen,
+  getCachedLocation,
+  weatherIconSvg,
+  writeWeatherCache
+} from './weather.js';
 import { getWeatherInsightFromGemini } from './aiHelper.js';
 import { saveOfflineMemo, getOfflineMemos, deleteOfflineMemo, blobToBase64, base64ToBlob, clearOfflineAiDatabase } from './offlineAI.js';
 import {
@@ -129,7 +135,8 @@ function writeRadarCache(data) {
     writeWeatherCache({
       temperature: data.temperature,
       conditionText: data.conditionText,
-      conditionEmoji: data.conditionEmoji,
+      conditionIcon: data.conditionIcon,
+      code: data.code,
       latitude: data.latitude,
       longitude: data.longitude,
       timestamp: data.timestamp || Date.now()
@@ -818,7 +825,7 @@ async function loadDashboardRadar() {
   const elCond = document.getElementById('radar-condition');
   const elWind = document.getElementById('radar-wind');
   const elPollen = document.getElementById('radar-pollen');
-  const elEmoji = document.getElementById('radar-weather-emoji');
+  const elIcon = document.getElementById('radar-weather-icon');
   const elInsight = document.getElementById('radar-insight');
 
   if (!radarContent) return;
@@ -831,7 +838,12 @@ async function loadDashboardRadar() {
 
     elTemp.innerText = data.temperature;
     elCond.innerText = data.conditionText;
-    if (elEmoji) elEmoji.innerText = data.conditionEmoji;
+    if (elIcon) {
+      // Fixed SVG paths from weather.js — not user content.
+      elIcon.innerHTML = weatherIconSvg(data.code ?? data.conditionIcon ?? data.conditionText, {
+        size: 28
+      });
+    }
     elWind.innerText = data.windSpeed;
     elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
     const ageHint = stale ? ' (Cache)' : '';
