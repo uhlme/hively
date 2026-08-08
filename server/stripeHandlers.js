@@ -3,7 +3,7 @@
  */
 import Stripe from 'stripe';
 import {
-  getAppOrigin,
+  getBillingReturnUrls,
   isBillingEnforced,
   isProEntitlement,
   isTrialEligible,
@@ -161,6 +161,7 @@ export async function handleCreateCheckout(body, context = {}) {
 
   const operationId = String(body?.operationId || '').trim();
   const interval = body?.interval === 'year' ? 'year' : 'month';
+  const returnNative = body?.returnTarget === 'native';
   if (!operationId) {
     return stripeJson(400, { error: 'operationId fehlt.' });
   }
@@ -178,7 +179,7 @@ export async function handleCreateCheckout(body, context = {}) {
     const stripe = getStripe(env);
     const customerId = await ensureStripeCustomer(stripe, supabase, operation, auth.user);
     const priceId = resolvePriceId(interval, env);
-    const origin = getAppOrigin(env);
+    const returns = getBillingReturnUrls(env, { native: returnNative });
 
     const subscriptionData = {
       metadata: {
@@ -195,8 +196,8 @@ export async function handleCreateCheckout(body, context = {}) {
       mode: 'subscription',
       customer: customerId,
       client_reference_id: operationId,
-      success_url: `${origin}/?view=settings&billing=success`,
-      cancel_url: `${origin}/?view=settings&billing=cancel`,
+      success_url: returns.success,
+      cancel_url: returns.cancel,
       allow_promotion_codes: true,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: subscriptionData,
@@ -230,6 +231,7 @@ export async function handleCreatePortal(body, context = {}) {
   if (auth.error) return auth.error;
 
   const operationId = String(body?.operationId || '').trim();
+  const returnNative = body?.returnTarget === 'native';
   if (!operationId) {
     return stripeJson(400, { error: 'operationId fehlt.' });
   }
@@ -243,10 +245,10 @@ export async function handleCreatePortal(body, context = {}) {
     }
 
     const stripe = getStripe(env);
-    const origin = getAppOrigin(env);
+    const returns = getBillingReturnUrls(env, { native: returnNative });
     const portal = await stripe.billingPortal.sessions.create({
       customer: operation.stripe_customer_id,
-      return_url: `${origin}/?view=settings`
+      return_url: returns.portalReturn
     });
 
     return stripeJson(200, { url: portal.url });

@@ -3,6 +3,8 @@
  * Hard enforcement lives on the server (Gemini proxy + Stripe webhooks).
  */
 
+import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
 import { getActiveOperationId, getActiveOperationMeta, isOperationOwner } from './operations.js';
@@ -53,6 +55,10 @@ function stripeApiBase() {
   return '';
 }
 
+function billingReturnTarget() {
+  return Capacitor.isNativePlatform() ? 'native' : 'web';
+}
+
 async function authHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (!supabase) return headers;
@@ -67,6 +73,30 @@ function billingNetworkError(fallback) {
   return new Error(
     `${fallback} Bitte Internet prüfen und erneut versuchen.`
   );
+}
+
+/**
+ * Open Stripe Checkout / Portal without navigating the Capacitor WebView away.
+ * Web keeps a full-page redirect; native uses SFSafariViewController / Custom Tabs.
+ * @param {string} url
+ */
+export async function openBillingUrl(url) {
+  if (!url) throw new Error('Keine URL erhalten.');
+  if (Capacitor.isNativePlatform()) {
+    await Browser.open({ url, presentationStyle: 'fullscreen' });
+    return;
+  }
+  window.location.href = url;
+}
+
+/** Close the in-app browser after a deep-link return (no-op on web). */
+export async function closeBillingBrowser() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await Browser.close();
+  } catch {
+    /* already closed */
+  }
 }
 
 /**
@@ -86,7 +116,11 @@ export async function startProCheckout(interval = 'year') {
     response = await fetch(`${stripeApiBase()}/api/stripe/checkout`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ operationId, interval })
+      body: JSON.stringify({
+        operationId,
+        interval,
+        returnTarget: billingReturnTarget()
+      })
     });
   } catch (err) {
     if (isNetworkError(err)) {
@@ -99,7 +133,7 @@ export async function startProCheckout(interval = 'year') {
     throw new Error(data?.error || `Checkout fehlgeschlagen (${response.status})`);
   }
   if (!data?.url) throw new Error('Keine Checkout-URL erhalten.');
-  window.location.href = data.url;
+  await openBillingUrl(data.url);
 }
 
 export async function openBillingPortal() {
@@ -114,7 +148,10 @@ export async function openBillingPortal() {
     response = await fetch(`${stripeApiBase()}/api/stripe/portal`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ operationId })
+      body: JSON.stringify({
+        operationId,
+        returnTarget: billingReturnTarget()
+      })
     });
   } catch (err) {
     if (isNetworkError(err)) {
@@ -127,7 +164,77 @@ export async function openBillingPortal() {
     throw new Error(data?.error || `Portal fehlgeschlagen (${response.status})`);
   }
   if (!data?.url) throw new Error('Keine Portal-URL erhalten.');
-  window.location.href = data.url;
+  await openBillingUrl(data.url);
+}
+
+/**
+ * Parse Stripe return deep links / query params.
+ * @param {string} urlOrSearch
+ * @returns {{ billing: 'success' | 'cancel' | null, view: string | null }}
+ */
+export function parseBillingReturnUrl(urlOrSearch) {
+  try {
+    const raw = String(urlOrSearch || '');
+    const url = raw.includes('://')
+      ? new URL(raw)
+      : new URL(raw.startsWith('?') ? `https://local.invalid/${raw}` : `https://local.invalid/${raw}`);
+    const billing = url.searchParams.get('billing');
+    const view = url.searchParams.get('view');
+    return {
+      billing: billing === 'success' || billing === 'cancel' ? billing : null,
+      view: view || null
+    };
+  } catch {
+    return { billing: null, view: null };
+  }
+}
+
+/**
+ * Wire Capacitor deep-link + resume hooks for Pro entitlement refresh.
+ * @param {{
+ *   onBillingReturn: (result: 'success' | 'cancel') => void | Promise<void>,
+ *   onAppResume: () => void | Promise<void>
+ * }} handlers
+ */
+export async function setupNativeBillingLifecycle(handlers = {}) {
+  if (!Capacitor.isNativePlatform()) return () => {};
+
+  const unsubscribers = [];
+
+  const appUrlSub = await App.addListener('appUrlOpen', async ({ url }) => {
+    const parsed = parseBillingReturnUrl(url);
+    await closeBillingBrowser();
+    if (parsed.billing && handlers.onBillingReturn) {
+      await handlers.onBillingReturn(parsed.billing);
+    } else if (handlers.onAppResume) {
+      await handlers.onAppResume();
+    }
+  });
+  unsubscribers.push(() => appUrlSub.remove());
+
+  const stateSub = await App.addListener('appStateChange', async ({ isActive }) => {
+    if (isActive && handlers.onAppResume) {
+      await handlers.onAppResume();
+    }
+  });
+  unsubscribers.push(() => stateSub.remove());
+
+  const browserSub = await Browser.addListener('browserFinished', async () => {
+    if (handlers.onAppResume) {
+      await handlers.onAppResume();
+    }
+  });
+  unsubscribers.push(() => browserSub.remove());
+
+  return () => {
+    for (const off of unsubscribers) {
+      try {
+        off();
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 }
 
 export function planStatusLabel(status) {
