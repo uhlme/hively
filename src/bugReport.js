@@ -5,7 +5,7 @@
 
 import { version as PACKAGE_VERSION } from '../package.json';
 
-export const SUPPORT_EMAIL = 'hively.support@pm.me';
+export const SUPPORT_EMAIL = 'hively.support@proton.me';
 export const APP_VERSION = PACKAGE_VERSION || '0.0.0';
 
 const MAX_MESSAGE_CHARS = 4000;
