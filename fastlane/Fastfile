@@ -76,9 +76,11 @@ platform :android do
       aab: "android/app/build/outputs/bundle/release/app-release.aab",
       json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
       package_name: "ch.hively.app",
+      release_status: "draft",
       skip_upload_metadata: true,
       skip_upload_images: true,
-      skip_upload_screenshots: true
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
     )
   end
 end
