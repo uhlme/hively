@@ -272,7 +272,8 @@ export async function consumeNativeBillingLaunchUrl(handlers = {}) {
  * Wire Capacitor deep-link + resume hooks for Pro entitlement refresh.
  * @param {{
  *   onBillingReturn: (result: 'success' | 'cancel') => void | Promise<void>,
- *   onAppResume: () => void | Promise<void>
+ *   onAppResume: () => void | Promise<void>,
+ *   onBrowserFinished?: () => void | Promise<void>
  * }} handlers
  */
 export async function setupNativeBillingLifecycle(handlers = {}) {
