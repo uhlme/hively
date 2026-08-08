@@ -42,8 +42,10 @@ There is a single service: the Vite dev server.
     `STRIPE_SECRET_KEY` + price IDs + `SUPABASE_SERVICE_ROLE_KEY` enable checkout/webhook
     and hard-gates. Soft-locks need the same flag. Absent → no Pro gates.
     SQL: `migration_billing_stripe.sql` + `migration_billing_hardening.sql` +
-    `migration_billing_rls_complete.sql`. Enable RLS Pro gates at go-live:
-    `update app_settings set value='true' where key='billing_gates_enabled'`.
+    `migration_billing_rls_complete.sql` + `migration_billing_cancel_at_period_end.sql`
+    + `migration_api_rate_limits.sql`. Enable RLS Pro gates at go-live:
+    `migration_billing_gates_go_live.sql` (or set `billing_gates_enabled=true`).
+    Legal pages: `/privacy/`, `/impressum/`, `/agb/`, `/delete-account/` from `public/`.
 - Native Capacitor: Service Worker is **not** registered (assets ship in the IPA). Web PWA
   still registers `/sw.js`. Inspection weather falls back to a 7-day local cache when
   Open-Meteo is unreachable. Offline AI memos live in IndexedDB; Settings → «Lokale Daten

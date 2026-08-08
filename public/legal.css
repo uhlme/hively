@@ -1,0 +1,87 @@
+:root { color-scheme: light dark; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+  line-height: 1.6;
+  color: #1a1a1a;
+  background: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  body { color: #e8e8e8; background: #111; }
+  a { color: #7db8ff; }
+  hr { border-color: #333; }
+  .contact, .box { border-color: #333 !important; background: #1a1a1a !important; }
+  .step-num { background: #3a2e17 !important; color: #e3a83f !important; }
+  code { background: #3a2e17; color: #e3a83f; }
+  th, td { border-color: #333; }
+}
+h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+h2 { font-size: 1.2rem; margin-top: 2.25rem; }
+.updated { color: #777; font-size: 0.9rem; margin-bottom: 2rem; }
+.nav-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.95rem;
+  vertical-align: top;
+}
+th { font-weight: 600; }
+ul, ol { padding-left: 1.25rem; }
+.contact, .box {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+.box { background: #FBF7EE; }
+.steps { list-style: none; padding: 0; margin: 1rem 0; }
+.steps li {
+  display: flex;
+  gap: 0.9rem;
+  margin-bottom: 1.1rem;
+  align-items: baseline;
+}
+.step-num {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: #F0DFB8;
+  color: #B8791E;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+code {
+  background: #F0DFB8;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.btn {
+  display: inline-block;
+  background: #B8791E;
+  color: #fff !important;
+  text-decoration: none;
+  padding: 0.7rem 1.3rem;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+.note { font-size: 0.9rem; color: #666; }
+@media (prefers-color-scheme: dark) {
+  .note { color: #aaa; }
+  .box { background: #1a1a1a; }
+}

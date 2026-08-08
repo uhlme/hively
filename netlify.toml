@@ -35,6 +35,27 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(self), geolocation=(self)"
 
+# Legal pages (static files under public/) — force trailing slash before SPA fallback
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy/"
+  status = 301
+
+[[redirects]]
+  from = "/impressum"
+  to = "/impressum/"
+  status = 301
+
+[[redirects]]
+  from = "/agb"
+  to = "/agb/"
+  status = 301
+
+[[redirects]]
+  from = "/delete-account"
+  to = "/delete-account/"
+  status = 301
+
 # Redirects are useful for PWAs / SPAs to ensure client-side routing fallback
 [[redirects]]
   from = "/*"
