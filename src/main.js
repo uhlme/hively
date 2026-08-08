@@ -3953,15 +3953,19 @@ async function renderOfflineMemos() {
     btn.disabled = !navigator.onLine;
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
-      btn.disabled = true;
-      btn.innerText = 'Verarbeite...';
+      if (!id) return;
+      setOfflineMemoRowBusy(id, true, { processLabel: 'Verarbeite...' });
       try {
         await processSingleOfflineMemo(id);
         await renderOfflineMemos();
         await renderDashboardView();
       } catch (err) {
-        btn.disabled = false;
-        btn.innerText = 'Wiederholen';
+        setOfflineMemoRowBusy(id, false, { processLabel: 'Wiederholen' });
+        // Discard during processing is expected — no alert.
+        if (/verworfen/i.test(String(err?.message || ''))) {
+          await renderOfflineMemos();
+          return;
+        }
         alert('Verarbeitung fehlgeschlagen: ' + err.message);
       }
     });
@@ -3977,17 +3981,35 @@ async function renderOfflineMemos() {
           ? 'Diesen Offline-Beleg wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.'
           : 'Dieses Offline-Diktat wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.';
       if (!confirm(confirmMsg)) return;
-      btn.disabled = true;
+      setOfflineMemoRowBusy(id, true);
       try {
         await deleteOfflineMemo(id);
         trackEvent('offline_memo_discarded', { type });
         await renderOfflineMemos();
       } catch (err) {
-        btn.disabled = false;
+        setOfflineMemoRowBusy(id, false);
         alert('Verwerfen fehlgeschlagen: ' + (err?.message || err));
       }
     });
   });
+}
+
+/** Disable process + discard for one offline memo row while an action runs. */
+function setOfflineMemoRowBusy(id, busy, { processLabel } = {}) {
+  document.querySelectorAll('.btn-process-offline-memo, .btn-discard-offline-memo').forEach((btn) => {
+    if (btn.getAttribute('data-id') !== id) return;
+    btn.disabled = busy || (btn.classList.contains('btn-process-offline-memo') && !navigator.onLine);
+    if (processLabel && btn.classList.contains('btn-process-offline-memo')) {
+      btn.innerText = processLabel;
+    }
+  });
+}
+
+async function assertOfflineMemoStillExists(id) {
+  const memos = await getOfflineMemos();
+  if (!memos.some((m) => m.id === id)) {
+    throw new Error('Offline-Eintrag wurde verworfen.');
+  }
 }
 
 async function processSingleOfflineMemo(id) {
@@ -4010,6 +4032,9 @@ async function processSingleOfflineMemo(id) {
       throw new Error('Es konnte kein passendes Volk für das Diktat gefunden werden.');
     }
 
+    // Abort if the user discarded the memo while Gemini was running.
+    await assertOfflineMemoStillExists(id);
+
     // 3. Create inspections
     const date = new Date(memo.timestamp).toISOString().split('T')[0];
     for (const hiveId of targetHiveIds) {
@@ -4030,6 +4055,8 @@ async function processSingleOfflineMemo(id) {
     const data = await parseReceiptWithGemini(file);
     if (!data) throw new Error('Keine Beleg-Daten von Gemini erkannt.');
 
+    await assertOfflineMemoStillExists(id);
+
     // 2. Save finance item
     const finance = {
       date: data.date || new Date(memo.timestamp).toISOString().split('T')[0],
@@ -4041,8 +4068,9 @@ async function processSingleOfflineMemo(id) {
     await saveFinance(finance);
   }
 
-  // 4. Delete memo from IndexedDB on success
-  await deleteOfflineMemo(id);
+  // 4. Delete memo from IndexedDB on success (no-op if already discarded)
+  const stillThere = (await getOfflineMemos()).some((m) => m.id === id);
+  if (stillThere) await deleteOfflineMemo(id);
 }
 
 async function processOfflineMemosQueue() {

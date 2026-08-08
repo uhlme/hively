@@ -328,24 +328,3 @@ export async function setupNativeBillingLifecycle(handlers = {}) {
     }
   };
 }
-
-export function planStatusLabel(status) {
-  switch (status) {
-    case 'trialing':
-      return 'Testphase';
-    case 'active':
-      return 'Aktiv';
-    case 'past_due':
-      return 'Zahlung ausstehend';
-    case 'canceled':
-      return 'Gekündigt';
-    case 'unpaid':
-      return 'Unbezahlt';
-    case 'paused':
-      return 'Pausiert';
-    case 'incomplete':
-      return 'Unvollständig';
-    default:
-      return 'Free';
-  }
-}

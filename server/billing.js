@@ -148,7 +148,7 @@ function planIntervalLabel(interval) {
  *   plan_cancel_at_period_end?: boolean,
  *   hasPro?: boolean
  * }} plan
- * @param {{ trialDays?: number, now?: number }} [opts]
+ * @param {{ trialDays?: number }} [opts]
  */
 export function formatBillingPlanSummary(plan = {}, opts = {}) {
   const trialDays = opts.trialDays ?? TRIAL_DAYS;
@@ -171,16 +171,18 @@ export function formatBillingPlanSummary(plan = {}, opts = {}) {
 
   if (hasPro) {
     const bits = [];
-    if (status === 'trialing') {
+    if (cancelAtPeriodEnd) {
+      if (status === 'trialing') bits.push('Pro Testphase (gekündigt)');
+      else if (status === 'past_due') bits.push('Pro gekündigt – Zahlung ausstehend');
+      else bits.push('Pro gekündigt');
+      if (endLabel) bits.push(`Zugang bleibt bis ${endLabel}`);
+      else bits.push('endet nach der laufenden Periode');
+    } else if (status === 'trialing') {
       bits.push('Pro Testphase');
       if (endLabel) bits.push(`endet am ${endLabel}`);
     } else if (status === 'past_due') {
       bits.push('Pro – Zahlung ausstehend');
       if (endLabel) bits.push(`Zugang bis ${endLabel}`);
-    } else if (cancelAtPeriodEnd) {
-      bits.push('Pro gekündigt');
-      if (endLabel) bits.push(`Zugang bleibt bis ${endLabel}`);
-      else bits.push('endet nach der laufenden Periode');
     } else {
       bits.push('Pro aktiv');
       if (intervalLabel) bits.push(intervalLabel);

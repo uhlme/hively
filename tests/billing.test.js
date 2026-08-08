@@ -192,6 +192,23 @@ describe('billing helpers', () => {
     expect(
       formatBillingPlanSummary({
         plan: 'pro',
+        planStatus: 'trialing',
+        planInterval: 'year',
+        planPeriodEnd: end,
+        planCancelAtPeriodEnd: true,
+        hasPro: true
+      })
+    ).toMatch(/Testphase \(gekündigt\)/);
+    expect(
+      formatBillingPlanSummary({
+        plan: 'free',
+        planStatus: 'paused',
+        hasPro: false
+      })
+    ).toMatch(/pausiert/i);
+    expect(
+      formatBillingPlanSummary({
+        plan: 'pro',
         planStatus: 'active',
         planInterval: 'month',
         planPeriodEnd: end,
