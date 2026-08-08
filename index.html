@@ -122,13 +122,14 @@
 
             <div id="radar-content" style="display: none; flex-direction: column; gap: 12px;">
               <div class="radar-metrics">
+                <div id="radar-weather-icon" class="radar-weather-icon" aria-hidden="true"></div>
                 <div>
                   <div class="radar-temp"><span id="radar-temp">--</span>°</div>
-                  <div id="radar-condition" style="font-size: 0.85rem; color: var(--text-secondary);">--</div>
+                  <div id="radar-condition" class="radar-condition">--</div>
                 </div>
-                <div style="margin-left: auto; text-align: right; font-size: 0.85rem;">
-                  <div style="color: var(--text-secondary);">Wind: <span id="radar-wind" style="color: var(--text-primary);">--</span> km/h</div>
-                  <div style="color: var(--text-secondary);">Pollen: <span id="radar-pollen" style="color: var(--text-primary); font-weight: 500;">--</span></div>
+                <div class="radar-side-metrics">
+                  <div class="radar-side-row">Wind: <span id="radar-wind">--</span> km/h</div>
+                  <div class="radar-side-row">Pollen: <span id="radar-pollen">--</span></div>
                 </div>
               </div>
 

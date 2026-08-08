@@ -1746,12 +1746,31 @@ button {
 
 .radar-metrics {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   background: var(--bg-primary);
   padding: 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
+}
+
+.radar-weather-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: var(--primary);
+}
+
+.radar-weather-icon svg {
+  display: block;
+  width: 28px;
+  height: 28px;
 }
 
 .radar-temp {
@@ -1760,6 +1779,28 @@ button {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono), var(--font-family);
+}
+
+.radar-condition {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.radar-side-metrics {
+  margin-left: auto;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.radar-side-metrics #radar-wind,
+.radar-side-metrics #radar-pollen {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.radar-side-row + .radar-side-row {
+  margin-top: 2px;
 }
 
 .radar-insight {
