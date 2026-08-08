@@ -100,7 +100,7 @@ import {
   getActivePlanMeta,
   startProCheckout,
   openBillingPortal,
-  planStatusLabel,
+  formatBillingPlanSummary,
   setupNativeBillingLifecycle,
   consumeNativeBillingLaunchUrl,
   consumeBillingCheckoutPending,
@@ -2664,14 +2664,11 @@ function refreshBillingSettingsUI() {
   }
 
   const plan = getActivePlanMeta();
-  const intervalLabel =
-    plan.planInterval === 'year' ? 'jährlich' : plan.planInterval === 'month' ? 'monatlich' : '';
+  summary.textContent = formatBillingPlanSummary(plan);
   if (plan.hasPro) {
-    summary.textContent = `Pro aktiv (${planStatusLabel(plan.planStatus)}${intervalLabel ? `, ${intervalLabel}` : ''}).`;
     if (openBtn) openBtn.style.display = isOperationOwner() ? 'none' : '';
     if (manageBtn) manageBtn.style.display = isOperationOwner() ? '' : 'none';
   } else {
-    summary.textContent = `Aktuell Free. Pro: KI + Cloud-Sync – ${TRIAL_DAYS} Tage testen (CHF 1.99/Mt oder CHF 10/Jahr).`;
     if (openBtn) openBtn.style.display = '';
     if (manageBtn) {
       manageBtn.style.display =
@@ -3934,14 +3931,19 @@ async function renderOfflineMemos() {
     else if (navigator.onLine) actionLabel = 'Wartet auf WLAN';
 
     return `
-      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15);">
-        <div>
+      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(0,0,0,0.15);">
+        <div style="min-width: 0;">
           <div style="font-weight: 600; font-size: 0.9rem;">${typeLabel}</div>
           <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
         </div>
-        <button class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${escapeHtml(memo.id)}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
-          ${actionLabel}
-        </button>
+        <div style="display: flex; flex-shrink: 0; gap: 6px; align-items: center;">
+          <button type="button" class="btn btn-sm btn-primary btn-process-offline-memo" data-id="${escapeHtml(memo.id)}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+            ${actionLabel}
+          </button>
+          <button type="button" class="btn btn-sm btn-danger btn-discard-offline-memo" data-id="${escapeHtml(memo.id)}" data-type="${escapeHtml(memo.type || 'voice')}" style="width: auto; padding: 4px 10px; min-height: 28px; font-size: 0.75rem;">
+            Verwerfen
+          </button>
+        </div>
       </div>
     `;
   }).join('');
@@ -3951,19 +3953,63 @@ async function renderOfflineMemos() {
     btn.disabled = !navigator.onLine;
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
-      btn.disabled = true;
-      btn.innerText = 'Verarbeite...';
+      if (!id) return;
+      setOfflineMemoRowBusy(id, true, { processLabel: 'Verarbeite...' });
       try {
         await processSingleOfflineMemo(id);
         await renderOfflineMemos();
         await renderDashboardView();
       } catch (err) {
-        btn.disabled = false;
-        btn.innerText = 'Wiederholen';
+        setOfflineMemoRowBusy(id, false, { processLabel: 'Wiederholen' });
+        // Discard during processing is expected — no alert.
+        if (/verworfen/i.test(String(err?.message || ''))) {
+          await renderOfflineMemos();
+          return;
+        }
         alert('Verarbeitung fehlgeschlagen: ' + err.message);
       }
     });
   });
+
+  document.querySelectorAll('.btn-discard-offline-memo').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      const type = btn.getAttribute('data-type') || 'voice';
+      if (!id) return;
+      const confirmMsg =
+        type === 'receipt'
+          ? 'Diesen Offline-Beleg wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.'
+          : 'Dieses Offline-Diktat wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.';
+      if (!confirm(confirmMsg)) return;
+      setOfflineMemoRowBusy(id, true);
+      try {
+        await deleteOfflineMemo(id);
+        trackEvent('offline_memo_discarded', { type });
+        await renderOfflineMemos();
+      } catch (err) {
+        setOfflineMemoRowBusy(id, false);
+        alert('Verwerfen fehlgeschlagen: ' + (err?.message || err));
+      }
+    });
+  });
+}
+
+/** Disable process + discard for one offline memo row while an action runs. */
+function setOfflineMemoRowBusy(id, busy, { processLabel } = {}) {
+  document.querySelectorAll('.btn-process-offline-memo, .btn-discard-offline-memo').forEach((btn) => {
+    if (btn.getAttribute('data-id') !== id) return;
+    btn.disabled = busy || (btn.classList.contains('btn-process-offline-memo') && !navigator.onLine);
+    if (processLabel && btn.classList.contains('btn-process-offline-memo')) {
+      btn.innerText = processLabel;
+    }
+  });
+}
+
+async function assertOfflineMemoStillExists(id) {
+  const memos = await getOfflineMemos();
+  if (!memos.some((m) => m.id === id)) {
+    throw new Error('Offline-Eintrag wurde verworfen.');
+  }
 }
 
 async function processSingleOfflineMemo(id) {
@@ -3986,6 +4032,9 @@ async function processSingleOfflineMemo(id) {
       throw new Error('Es konnte kein passendes Volk für das Diktat gefunden werden.');
     }
 
+    // Abort if the user discarded the memo while Gemini was running.
+    await assertOfflineMemoStillExists(id);
+
     // 3. Create inspections
     const date = new Date(memo.timestamp).toISOString().split('T')[0];
     for (const hiveId of targetHiveIds) {
@@ -4006,6 +4055,8 @@ async function processSingleOfflineMemo(id) {
     const data = await parseReceiptWithGemini(file);
     if (!data) throw new Error('Keine Beleg-Daten von Gemini erkannt.');
 
+    await assertOfflineMemoStillExists(id);
+
     // 2. Save finance item
     const finance = {
       date: data.date || new Date(memo.timestamp).toISOString().split('T')[0],
@@ -4017,8 +4068,9 @@ async function processSingleOfflineMemo(id) {
     await saveFinance(finance);
   }
 
-  // 4. Delete memo from IndexedDB on success
-  await deleteOfflineMemo(id);
+  // 4. Delete memo from IndexedDB on success (no-op if already discarded)
+  const stillThere = (await getOfflineMemos()).some((m) => m.id === id);
+  if (stillThere) await deleteOfflineMemo(id);
 }
 
 async function processOfflineMemosQueue() {

@@ -96,6 +96,7 @@ export function mapSubscriptionToBilling(subscription) {
       plan_status: 'none',
       plan_interval: null,
       plan_period_end: null,
+      plan_cancel_at_period_end: false,
       stripe_subscription_id: null
     };
   }
@@ -114,8 +115,95 @@ export function mapSubscriptionToBilling(subscription) {
     plan_period_end: periodEndSec
       ? new Date(periodEndSec * 1000).toISOString()
       : null,
+    plan_cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
     stripe_subscription_id: subscription.id || null
   };
+}
+
+/** Format plan_period_end for Swiss/German UI copy. */
+export function formatPlanPeriodEnd(iso, locale = 'de-CH') {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return null;
+  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function planIntervalLabel(interval) {
+  if (interval === 'year') return 'jährlich';
+  if (interval === 'month') return 'monatlich';
+  return '';
+}
+
+/**
+ * Human-readable Pro/Free status for Settings.
+ * @param {{
+ *   plan?: string,
+ *   planStatus?: string,
+ *   plan_status?: string,
+ *   planInterval?: string | null,
+ *   plan_interval?: string | null,
+ *   planPeriodEnd?: string | null,
+ *   plan_period_end?: string | null,
+ *   planCancelAtPeriodEnd?: boolean,
+ *   plan_cancel_at_period_end?: boolean,
+ *   hasPro?: boolean
+ * }} plan
+ * @param {{ trialDays?: number }} [opts]
+ */
+export function formatBillingPlanSummary(plan = {}, opts = {}) {
+  const trialDays = opts.trialDays ?? TRIAL_DAYS;
+  const status = String(plan.planStatus || plan.plan_status || 'none');
+  const interval = plan.planInterval || plan.plan_interval || null;
+  const periodEnd = plan.planPeriodEnd || plan.plan_period_end || null;
+  const cancelAtPeriodEnd = Boolean(
+    plan.planCancelAtPeriodEnd ?? plan.plan_cancel_at_period_end
+  );
+  const intervalLabel = planIntervalLabel(interval);
+  const endLabel = formatPlanPeriodEnd(periodEnd);
+  const hasPro =
+    typeof plan.hasPro === 'boolean'
+      ? plan.hasPro
+      : isProEntitlement({
+          plan: plan.plan,
+          plan_status: status,
+          plan_period_end: periodEnd
+        });
+
+  if (hasPro) {
+    const bits = [];
+    if (cancelAtPeriodEnd) {
+      if (status === 'trialing') bits.push('Pro Testphase (gekündigt)');
+      else if (status === 'past_due') bits.push('Pro gekündigt – Zahlung ausstehend');
+      else bits.push('Pro gekündigt');
+      if (endLabel) bits.push(`Zugang bleibt bis ${endLabel}`);
+      else bits.push('endet nach der laufenden Periode');
+    } else if (status === 'trialing') {
+      bits.push('Pro Testphase');
+      if (endLabel) bits.push(`endet am ${endLabel}`);
+    } else if (status === 'past_due') {
+      bits.push('Pro – Zahlung ausstehend');
+      if (endLabel) bits.push(`Zugang bis ${endLabel}`);
+    } else {
+      bits.push('Pro aktiv');
+      if (intervalLabel) bits.push(intervalLabel);
+      if (endLabel) bits.push(`verlängert sich am ${endLabel}`);
+    }
+    return `${bits.join(' · ')}.`;
+  }
+
+  if (status === 'canceled') {
+    return endLabel
+      ? `Free – Abo gekündigt (lief bis ${endLabel}).`
+      : 'Free – Abo wurde gekündigt.';
+  }
+  if (status === 'paused') {
+    return 'Free – Abo pausiert. Über «Abo verwalten» fortsetzen.';
+  }
+  if (status === 'unpaid' || status === 'incomplete') {
+    return 'Free – Zahlung unvollständig. Bitte Abo im Kundenportal prüfen.';
+  }
+
+  return `Aktuell Free. Pro: KI + Cloud-Sync – ${trialDays} Tage testen (CHF 1.99/Mt oder CHF 10/Jahr).`;
 }
 
 /**

@@ -9,7 +9,11 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
 import { getActiveOperationId, getActiveOperationMeta, isOperationOwner } from './operations.js';
 import { isNetworkError } from './network.js';
-import { isProEntitlement, TRIAL_DAYS } from '../server/billing.js';
+import {
+  formatBillingPlanSummary,
+  isProEntitlement,
+  TRIAL_DAYS
+} from '../server/billing.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
 const PENDING_CHECKOUT_KEY = 'hively_billing_checkout_pending';
@@ -20,12 +24,19 @@ export function isBillingEnabled() {
   return flag === 'true' || flag === '1';
 }
 
-export { TRIAL_DAYS, isProEntitlement };
+export { TRIAL_DAYS, isProEntitlement, formatBillingPlanSummary };
 
 export function getActivePlanMeta() {
   const meta = getActiveOperationMeta();
   if (!meta) {
-    return { plan: 'free', planStatus: 'none', planInterval: null, planPeriodEnd: null, hasPro: false };
+    return {
+      plan: 'free',
+      planStatus: 'none',
+      planInterval: null,
+      planPeriodEnd: null,
+      planCancelAtPeriodEnd: false,
+      hasPro: false
+    };
   }
   const row = {
     plan: meta.plan || 'free',
@@ -37,6 +48,9 @@ export function getActivePlanMeta() {
     planStatus: row.plan_status,
     planInterval: meta.planInterval || meta.plan_interval || null,
     planPeriodEnd: row.plan_period_end,
+    planCancelAtPeriodEnd: Boolean(
+      meta.planCancelAtPeriodEnd ?? meta.plan_cancel_at_period_end
+    ),
     hasPro: isProEntitlement(row)
   };
 }
@@ -313,21 +327,4 @@ export async function setupNativeBillingLifecycle(handlers = {}) {
       }
     }
   };
-}
-
-export function planStatusLabel(status) {
-  switch (status) {
-    case 'trialing':
-      return 'Testphase';
-    case 'active':
-      return 'Aktiv';
-    case 'past_due':
-      return 'Zahlung ausstehend';
-    case 'canceled':
-      return 'Gekündigt';
-    case 'unpaid':
-      return 'Unbezahlt';
-    default:
-      return 'Free';
-  }
 }
