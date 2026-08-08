@@ -2558,6 +2558,9 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
       surface: fromDeepLink ? 'native' : 'web'
     });
 
+    // Pro-Modal bleibt sonst über dem Return-Flow offen (native Browser-Close).
+    closeModal('modal-pro');
+
     if (result === 'success') {
       let activated = false;
       if (isBillingEnabled()) {
@@ -2584,7 +2587,9 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
       }
     }
 
-    if (currentView !== 'settings') {
+    if (result === 'success') {
+      await navigate('dashboard');
+    } else if (currentView !== 'settings') {
       await navigate('settings');
     } else {
       refreshBillingSettingsUI();
