@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hively – zurück zur App</title>
+  <style>
+    :root {
+      --bg: #1a1510;
+      --text: #f6efe4;
+      --muted: #c4b8a8;
+      --accent: #e08a3c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #3a2a18 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      text-align: center;
+    }
+    main { max-width: 22rem; }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 1rem;
+    }
+    .hint {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.65rem 1rem;
+      border: 1px solid rgba(224, 138, 60, 0.45);
+      border-radius: 0.65rem;
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 id="title">Hively</h1>
+    <p id="message">Einen Moment…</p>
+    <p class="hint">Fenster schliessen (✕), um zur App zurückzukehren.</p>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var billing = params.get('billing');
+      var view = params.get('view') || 'settings';
+      var title = document.getElementById('title');
+      var message = document.getElementById('message');
+
+      if (billing === 'success') {
+        title.textContent = 'Pro aktiviert';
+        message.textContent = 'Dein Abo ist eingerichtet. Schliess dieses Fenster, um in Hively fortzufahren.';
+      } else if (billing === 'cancel') {
+        title.textContent = 'Checkout abgebrochen';
+        message.textContent = 'Kein Abo gestartet. Schliess dieses Fenster, um zur App zurückzukehren.';
+      } else {
+        title.textContent = 'Zurück zur App';
+        message.textContent = 'Schliess dieses Fenster, um in Hively fortzufahren.';
+      }
+
+      // SFSafariViewController cannot load custom-scheme URLs as Stripe success_url.
+      // From an HTTPS page, bouncing into the app scheme usually works.
+      var scheme = 'ch.hively.app';
+      var deep =
+        scheme + '://billing?view=' + encodeURIComponent(view) +
+        (billing ? '&billing=' + encodeURIComponent(billing) : '');
+
+      // Small delay so the message paints before leaving the WebView.
+      setTimeout(function () {
+        try {
+          window.location.href = deep;
+        } catch (e) {
+          /* user can close manually */
+        }
+      }, 250);
+    })();
+  </script>
+</body>
+</html>

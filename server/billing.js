@@ -152,21 +152,24 @@ export function getNativeAppUrlScheme(env = process.env) {
 
 /**
  * Stripe Checkout / Portal return URLs.
- * Native uses the app URL scheme so Stripe redirects back into Capacitor
- * instead of the public website.
+ *
+ * Native must use HTTPS: SFSafariViewController cannot open custom-scheme
+ * success_urls (shows «server can't be found»). The hosted return page then
+ * bounces into ch.hively.app:// and asks the user to close the sheet.
+ *
  * @param {NodeJS.ProcessEnv} [env]
  * @param {{ native?: boolean }} [options]
  */
 export function getBillingReturnUrls(env = process.env, { native = false } = {}) {
+  const origin = getAppOrigin(env);
   if (native) {
-    const scheme = getNativeAppUrlScheme(env);
+    // Static page under /public — works inside Capacitor Browser (HTTPS).
     return {
-      success: `${scheme}://billing?view=settings&billing=success`,
-      cancel: `${scheme}://billing?view=settings&billing=cancel`,
-      portalReturn: `${scheme}://billing?view=settings`
+      success: `${origin}/billing-return.html?view=settings&billing=success&native=1`,
+      cancel: `${origin}/billing-return.html?view=settings&billing=cancel&native=1`,
+      portalReturn: `${origin}/billing-return.html?view=settings&native=1`
     };
   }
-  const origin = getAppOrigin(env);
   return {
     success: `${origin}/?view=settings&billing=success`,
     cancel: `${origin}/?view=settings&billing=cancel`,
