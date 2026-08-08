@@ -92,9 +92,10 @@ GEMINI_API_KEY=your-gemini-api-key
 Do **not** prefix it with `VITE_` — that would embed the key in the client bundle.
 `VITE_GEMINI_PROXY_URL` is the public proxy URL only (no secret); used by the native app because relative `/api/gemini` does not exist under `capacitor://`.
 `VITE_POSTHOG_KEY` is a public project key (designed for client use). Without it the app stays fully functional with analytics disabled.
-Hively Pro (Stripe): create two Prices in Stripe (CHF 1.99/month, CHF 10/year; 14-day trial on first Checkout only), set Stripe secrets + `VITE_BILLING_ENABLED=true` (or `BILLING_ENABLED=true`), and point a Stripe webhook to `/api/stripe/webhook` (`checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`). Apply `supabase/migration_billing_stripe.sql`, `migration_billing_hardening.sql`, `migration_billing_rls_complete.sql`, and `migration_billing_cancel_at_period_end.sql`. Then enable DB Pro gates for go-live:
-`update public.app_settings set value = 'true' where key = 'billing_gates_enabled';`
+Hively Pro (Stripe): create two Prices in Stripe (CHF 1.99/month, CHF 10/year; 14-day trial on first Checkout only), set Stripe secrets + `VITE_BILLING_ENABLED=true` (or `BILLING_ENABLED=true`), and point a Stripe webhook to `/api/stripe/webhook` (`checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`). Apply `supabase/migration_billing_stripe.sql`, `migration_billing_hardening.sql`, `migration_billing_rls_complete.sql`, `migration_billing_cancel_at_period_end.sql`, and `migration_api_rate_limits.sql`. Then enable DB Pro gates for go-live (`migration_billing_gates_go_live.sql` or:
+`update public.app_settings set value = 'true' where key = 'billing_gates_enabled';`).
 Without the billing flag + Stripe keys, Pro gates stay off (backward compatible).
+Legal pages ship from `public/` (`/privacy/`, `/impressum/`, `/agb/`, `/delete-account/`) and must stay outside the SPA catch-all.
 Share real values with collaborators out of band (password manager, etc.). Do not commit `.env` or paste secrets into issues/PRs.
 
 ### GitHub Actions secrets (planned TestFlight CI)

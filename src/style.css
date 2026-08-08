@@ -558,6 +558,26 @@ nav.bottom-nav {
   margin-bottom: 4px;
 }
 
+.settings-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 0.4rem;
+  margin-top: 10px !important;
+  line-height: 1.4;
+}
+
+.settings-legal-links a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.settings-legal-links a:hover,
+.settings-legal-links a:focus-visible {
+  color: var(--primary);
+}
+
 .settings-btn-danger {
   width: 100%;
   border-color: var(--danger);
