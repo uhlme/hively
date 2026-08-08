@@ -17,10 +17,18 @@ vi.mock('@capacitor/core', () => ({
 
 describe('weather icons', () => {
   it('maps WMO codes to labels and icon kinds', () => {
-    expect(conditionFromCode(0)).toEqual({ label: 'Sonnig', icon: 'sun' });
-    expect(conditionFromCode(3)).toEqual({ label: 'Bedeckt', icon: 'cloudy' });
-    expect(conditionFromCode(95)).toEqual({ label: 'Gewitter', icon: 'thunderstorm' });
-    expect(conditionFromCode(999)).toEqual({ label: 'Unbekannt', icon: 'unknown' });
+    expect(conditionFromCode(0)).toEqual({ label: 'Sonnig', icon: 'sun', labelKey: 'weather.sunny' });
+    expect(conditionFromCode(3)).toEqual({ label: 'Bedeckt', icon: 'cloudy', labelKey: 'weather.cloudy' });
+    expect(conditionFromCode(95)).toEqual({
+      label: 'Gewitter',
+      icon: 'thunderstorm',
+      labelKey: 'weather.thunderstorm'
+    });
+    expect(conditionFromCode(999)).toEqual({
+      label: 'Unbekannt',
+      icon: 'unknown',
+      labelKey: 'weather.unknown'
+    });
   });
 
   it('resolves icon kind from code or German condition text', () => {

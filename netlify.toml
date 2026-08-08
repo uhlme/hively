@@ -56,6 +56,67 @@
   to = "/delete-account/"
   status = 301
 
+# Localized legal pages — force trailing slash before SPA fallback
+[[redirects]]
+  from = "/fr/privacy"
+  to = "/fr/privacy/"
+  status = 301
+
+[[redirects]]
+  from = "/fr/impressum"
+  to = "/fr/impressum/"
+  status = 301
+
+[[redirects]]
+  from = "/fr/agb"
+  to = "/fr/agb/"
+  status = 301
+
+[[redirects]]
+  from = "/fr/delete-account"
+  to = "/fr/delete-account/"
+  status = 301
+
+[[redirects]]
+  from = "/it/privacy"
+  to = "/it/privacy/"
+  status = 301
+
+[[redirects]]
+  from = "/it/impressum"
+  to = "/it/impressum/"
+  status = 301
+
+[[redirects]]
+  from = "/it/agb"
+  to = "/it/agb/"
+  status = 301
+
+[[redirects]]
+  from = "/it/delete-account"
+  to = "/it/delete-account/"
+  status = 301
+
+[[redirects]]
+  from = "/en/privacy"
+  to = "/en/privacy/"
+  status = 301
+
+[[redirects]]
+  from = "/en/impressum"
+  to = "/en/impressum/"
+  status = 301
+
+[[redirects]]
+  from = "/en/agb"
+  to = "/en/agb/"
+  status = 301
+
+[[redirects]]
+  from = "/en/delete-account"
+  to = "/en/delete-account/"
+  status = 301
+
 # Redirects are useful for PWAs / SPAs to ensure client-side routing fallback
 [[redirects]]
   from = "/*"

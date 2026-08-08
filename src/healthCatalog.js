@@ -1,45 +1,78 @@
 /**
  * Health / treatment catalog helpers for Tier-1 inspections & Varroa treatments.
- * Swiss (CH) product presets and German UI labels.
+ * Product ids are stable; UI labels come from i18n.
  */
+import { t } from './i18n/index.js';
 
 export const TREATMENT_PRODUCTS = [
   {
     id: 'formic_60',
-    label: 'Ameisensäure 60%',
+    labelKey: 'treatments.products.formic_60',
+    /** @deprecated use getTreatmentProductLabel(id) */
+    get label() {
+      return getTreatmentProductLabel(this.id);
+    },
     defaultDurationDays: 7,
     phiDays: 0,
     disease: 'varroa'
   },
   {
     id: 'oxalic_trickle',
-    label: 'Oxalsäure träufeln',
+    labelKey: 'treatments.products.oxalic_trickle',
+    get label() {
+      return getTreatmentProductLabel(this.id);
+    },
     defaultDurationDays: 1,
     phiDays: 0,
     disease: 'varroa'
   },
   {
     id: 'oxalic_sublim',
-    label: 'Oxalsäure verdampfen',
+    labelKey: 'treatments.products.oxalic_sublim',
+    get label() {
+      return getTreatmentProductLabel(this.id);
+    },
     defaultDurationDays: 1,
     phiDays: 0,
     disease: 'varroa'
   },
   {
     id: 'thymol',
-    label: 'Thymol / Apiguard-ähnlich',
+    labelKey: 'treatments.products.thymol',
+    get label() {
+      return getTreatmentProductLabel(this.id);
+    },
     defaultDurationDays: 14,
     phiDays: 0,
     disease: 'varroa'
   },
   {
     id: 'other',
-    label: 'Sonstiges',
+    labelKey: 'treatments.products.other',
+    get label() {
+      return getTreatmentProductLabel(this.id);
+    },
     defaultDurationDays: null,
     phiDays: null,
     disease: 'varroa'
   }
 ];
+
+const FALLBACK_PRODUCT_LABELS = {
+  formic_60: 'Ameisensäure 60%',
+  oxalic_trickle: 'Oxalsäure träufeln',
+  oxalic_sublim: 'Oxalsäure verdampfen',
+  thymol: 'Thymol / Apiguard-ähnlich',
+  other: 'Sonstiges'
+};
+
+export function getTreatmentProductLabel(id) {
+  if (!id) return t('treatments.fallbackLabel');
+  const key = `treatments.products.${id}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return FALLBACK_PRODUCT_LABELS[id] || t('treatments.fallbackLabel');
+}
 
 export function getTreatmentProduct(id) {
   if (!id) return null;
@@ -66,46 +99,109 @@ export function computeHarvestBlockedUntil(dateStart, dateEnd, phiDays) {
   return d.toISOString().split('T')[0];
 }
 
+export function getVarroaLevelLabel(level) {
+  const map = {
+    low: 'inspections.levels.varroaLow',
+    mid: 'inspections.levels.varroaMid',
+    high: 'inspections.levels.varroaHigh',
+    na: 'inspections.levels.varroaNa'
+  };
+  return map[level] ? t(map[level]) : '';
+}
+
+export function getQueenSeenLabel(level) {
+  const map = {
+    yes: 'inspections.levels.queenYes',
+    no: 'inspections.levels.queenNo',
+    unsure: 'inspections.levels.queenUnsure',
+    na: 'inspections.levels.queenNa'
+  };
+  return map[level] ? t(map[level]) : '';
+}
+
+export function getStrengthLabel(level) {
+  const map = {
+    weak: 'inspections.levels.strengthWeak',
+    mid: 'inspections.levels.strengthMid',
+    strong: 'inspections.levels.strengthStrong',
+    na: 'inspections.levels.strengthNa'
+  };
+  return map[level] ? t(map[level]) : '';
+}
+
+/** @deprecated use getVarroaLevelLabel */
 export const VARROA_LEVEL_LABELS = {
-  low: 'niedrig',
-  mid: 'mittel',
-  high: 'hoch',
-  na: 'n.b.'
+  get low() {
+    return getVarroaLevelLabel('low');
+  },
+  get mid() {
+    return getVarroaLevelLabel('mid');
+  },
+  get high() {
+    return getVarroaLevelLabel('high');
+  },
+  get na() {
+    return getVarroaLevelLabel('na');
+  }
 };
 
+/** @deprecated use getQueenSeenLabel */
 export const QUEEN_SEEN_LABELS = {
-  yes: 'gesehen',
-  no: 'nicht gesehen',
-  unsure: 'unsicher',
-  na: 'n.b.'
+  get yes() {
+    return getQueenSeenLabel('yes');
+  },
+  get no() {
+    return getQueenSeenLabel('no');
+  },
+  get unsure() {
+    return getQueenSeenLabel('unsure');
+  },
+  get na() {
+    return getQueenSeenLabel('na');
+  }
 };
 
+/** @deprecated use getStrengthLabel */
 export const STRENGTH_LABELS = {
-  weak: 'schwach',
-  mid: 'mittel',
-  strong: 'stark',
-  na: 'n.b.'
+  get weak() {
+    return getStrengthLabel('weak');
+  },
+  get mid() {
+    return getStrengthLabel('mid');
+  },
+  get strong() {
+    return getStrengthLabel('strong');
+  },
+  get na() {
+    return getStrengthLabel('na');
+  }
 };
 
 /**
- * Short German brood_status string for the legacy inspection.broodStatus field.
+ * Short brood_status string for the legacy inspection.broodStatus field.
  */
 export function summarizeChecklist(checklist) {
   if (!checklist || typeof checklist !== 'object') return '';
 
   const parts = [];
-  if (checklist.eggs) parts.push('Stifte');
-  if (checklist.openBrood) parts.push('offene Brut');
-  if (checklist.cappedBrood) parts.push('verdeckelte Brut');
+  if (checklist.eggs) parts.push(t('inspections.summary.eggs'));
+  if (checklist.openBrood) parts.push(t('inspections.summary.openBrood'));
+  if (checklist.cappedBrood) parts.push(t('inspections.summary.cappedBrood'));
 
   if (parts.length === 0) {
-    if (checklist.queenCells) return 'Weiselzellen vorhanden';
-    if (checklist.playCups) return 'Spielnäpfchen vorhanden';
+    if (checklist.queenCells) return t('inspections.summary.queenCells');
+    if (checklist.playCups) return t('inspections.summary.playCups');
     return '';
   }
-  if (parts.length === 1) return `${parts[0]} vorhanden`;
-  if (parts.length === 2) return `${parts[0]} und ${parts[1]} vorhanden`;
-  return `${parts[0]}, ${parts[1]} und ${parts[2]} vorhanden`;
+  if (parts.length === 1) return t('inspections.summary.presentOne', { a: parts[0] });
+  if (parts.length === 2) {
+    return t('inspections.summary.presentTwo', { a: parts[0], b: parts[1] });
+  }
+  return t('inspections.summary.presentThree', {
+    a: parts[0],
+    b: parts[1],
+    c: parts[2]
+  });
 }
 
 /**
@@ -118,19 +214,22 @@ export function formatChecklistChips(inspection) {
 
   const chips = [];
 
-  if (c.queenSeen && QUEEN_SEEN_LABELS[c.queenSeen]) {
-    chips.push(`Königin: ${QUEEN_SEEN_LABELS[c.queenSeen]}`);
+  if (c.queenSeen) {
+    const value = getQueenSeenLabel(c.queenSeen);
+    if (value) chips.push(t('inspections.chips.queen', { value }));
   }
-  if (c.eggs) chips.push('Stifte');
-  if (c.openBrood) chips.push('offene Brut');
-  if (c.cappedBrood) chips.push('verdeckelte Brut');
-  if (c.playCups) chips.push('Spielnäpfchen');
-  if (c.queenCells) chips.push('Weiselzellen');
-  if (c.strength && STRENGTH_LABELS[c.strength]) {
-    chips.push(`Stärke: ${STRENGTH_LABELS[c.strength]}`);
+  if (c.eggs) chips.push(t('inspections.chips.eggs'));
+  if (c.openBrood) chips.push(t('inspections.chips.openBrood'));
+  if (c.cappedBrood) chips.push(t('inspections.chips.cappedBrood'));
+  if (c.playCups) chips.push(t('inspections.chips.playCups'));
+  if (c.queenCells) chips.push(t('inspections.chips.queenCells'));
+  if (c.strength) {
+    const value = getStrengthLabel(c.strength);
+    if (value) chips.push(t('inspections.chips.strength', { value }));
   }
-  if (c.varroaLevel && VARROA_LEVEL_LABELS[c.varroaLevel]) {
-    chips.push(`Varroa: ${VARROA_LEVEL_LABELS[c.varroaLevel]}`);
+  if (c.varroaLevel) {
+    const value = getVarroaLevelLabel(c.varroaLevel);
+    if (value) chips.push(t('inspections.chips.varroa', { value }));
   }
 
   return chips;

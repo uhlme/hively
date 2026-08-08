@@ -70,7 +70,13 @@
     "progress": "{done}/{total}",
     "connection": "{conn}",
     "labelValue": "{label}: {value}",
-    "and": "{a}, {b} and {c}"
+    "and": "{a}, {b} and {c}",
+    "deleting": "Deleting…",
+    "saving": "Saving…",
+    "noHives": "No hives",
+    "unknownHive": "Deleted hive",
+    "treatment": "Treatment",
+    "deletingLong": "Deleting…"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -118,7 +124,7 @@
     "actionHoney": "Honey harvest",
     "actionHoneySub": "Book yield",
     "recentActivities": "Recent activity",
-    "noActivities": "No activity yet.",
+    "noActivities": "No activities yet.",
     "until": "until {date}",
     "treatmentOnHive": "{name} · {label}"
   },
@@ -158,7 +164,19 @@
     },
     "nHives": "{n} colonies",
     "queenYearColor": "{year} ({label})",
-    "viewerReadonly": "As a viewer you can only look at colonies."
+    "viewerReadonly": "As a viewer you can only look at colonies.",
+    "emptyTitle": "No hives yet",
+    "emptyTitleReadonly": "No hives",
+    "emptyApiaryShort": "No hives at this apiary.",
+    "queenLine": "Queen {label} ({year}, {color})",
+    "queenColors": {
+      "white": "White",
+      "yellow": "Yellow",
+      "red": "Red",
+      "green": "Green",
+      "blue": "Blue"
+    },
+    "createdAt": "Recorded on"
   },
   "inspections": {
     "title": "Log inspection",
@@ -203,7 +221,43 @@
     "weatherRetry": "Reload",
     "needHiveFirst": "Please create a colony first before logging inspections.",
     "viewerReadonly": "As a viewer you can only look at inspections.",
-    "selectHive": "Please select at least one colony."
+    "selectHive": "Please select at least one colony.",
+    "empty": "No inspections recorded.",
+    "offlineMemoNotes": "Inspection via offline voice memo.",
+    "levels": {
+      "varroaLow": "low",
+      "varroaMid": "medium",
+      "varroaHigh": "high",
+      "varroaNa": "n/a",
+      "queenYes": "seen",
+      "queenNo": "not seen",
+      "queenUnsure": "unsure",
+      "queenNa": "n/a",
+      "strengthWeak": "weak",
+      "strengthMid": "medium",
+      "strengthStrong": "strong",
+      "strengthNa": "n/a"
+    },
+    "chips": {
+      "queen": "Queen: {value}",
+      "eggs": "Eggs",
+      "openBrood": "open brood",
+      "cappedBrood": "capped brood",
+      "playCups": "play cups",
+      "queenCells": "queen cells",
+      "strength": "Strength: {value}",
+      "varroa": "Varroa: {value}"
+    },
+    "summary": {
+      "eggs": "Eggs",
+      "openBrood": "open brood",
+      "cappedBrood": "capped brood",
+      "presentOne": "{a} present",
+      "presentTwo": "{a} and {b} present",
+      "presentThree": "{a}, {b} and {c} present",
+      "queenCells": "Queen cells present",
+      "playCups": "Play cups present"
+    }
   },
   "treatments": {
     "title": "Log treatment",
@@ -224,7 +278,20 @@
     "viewerReadonly": "As a viewer you can only look at treatments.",
     "selectHive": "Please select at least one colony.",
     "phiHint": "Mind PHI / withdrawal period: {label}",
-    "empty": "No treatments."
+    "empty": "No treatments.",
+    "badge": "Treatment",
+    "honeyFreeFrom": " · Honey clear from {date}",
+    "since": "Since {date}",
+    "phiHintFull": "Wait / honey: cleared from {date} (PHI {days} days).",
+    "phiHintNone": "No PHI on file – check waiting time manually.",
+    "fallbackLabel": "Treatment",
+    "products": {
+      "formic_60": "Formic acid 60%",
+      "oxalic_trickle": "Oxalic acid (trickle)",
+      "oxalic_sublim": "Oxalic acid (vaporize)",
+      "thymol": "Thymol / Apiguard-like",
+      "other": "Other"
+    }
   },
   "finances": {
     "title": "Finances",
@@ -256,16 +323,22 @@
     "remarksPlaceholder": "e.g. certificate handed over, honey share agreed…",
     "needHiveHoney": "Please create a colony first before booking a harvest.",
     "needHiveSponsorship": "Please create a colony first before booking a sponsorship.",
-    "emptyExpenses": "No expenses yet.",
-    "emptyHoney": "No harvests yet.",
-    "emptySponsorships": "No sponsorships yet.",
+    "emptyExpenses": "No purchases recorded.",
+    "emptyHoney": "No honey harvests recorded.",
+    "emptySponsorships": "No sponsorships recorded.",
     "categories": {
       "hardware": "Hardware / hives",
       "feed": "Feed",
       "bees": "Bees / queens",
       "equipment": "Equipment / tools",
-      "other": "Other"
-    }
+      "other": "Other",
+      "sponsorship": "Sponsorship"
+    },
+    "typePrefix": "Type: {type}",
+    "hivePrefix": "Hive: {name}",
+    "defaultHoneyType": "Spring honey",
+    "sponsorshipDesc": "Sponsorship: {name}",
+    "offlineReceipt": "Offline receipt scan"
   },
   "calendar": {
     "title": "Season calendar",
@@ -463,7 +536,12 @@
         "approxDate": "all of December",
         "guide": "Clear snow from the entrance. Watch for damage from outside. No curious openings or noisy work at the stand."
       }
-    }
+    },
+    "heading": "Beekeeping tasks in {month}",
+    "progressHint": "{done} of {total} done · Tap a step for the guide",
+    "guideOpen": "Guide",
+    "guideClose": "Close",
+    "emptyMonth": "No tasks for this month."
   },
   "settings": {
     "title": "Settings",
@@ -551,7 +629,8 @@
     "yearly": "Yearly · CHF 10",
     "checkoutFailed": "Checkout failed.",
     "portalFailed": "Could not open the customer portal.",
-    "separator": " · "
+    "separator": " · ",
+    "manageFailed": "Could not open subscription management."
   },
   "auth": {
     "titleLogin": "Sign in to Hively",
@@ -568,7 +647,10 @@
     "signupSuccess": "Account created. Please confirm email if required.",
     "loginFailed": "Sign-in failed.",
     "signupFailed": "Registration failed.",
-    "signOutFailed": "Sign-out failed: {name}"
+    "signOutFailed": "Sign-out failed: {name}",
+    "confirmLogoutLong": "Sign out? Local cloud data on this device will be removed.",
+    "inviteLoginAlert": "You were invited to {name}.\n\nPlease sign in or register with the Login button — you will then be added to the operation automatically.",
+    "inviteFallbackName": "an operation"
   },
   "errors": {
     "saveHive": "Error saving colony: {name}",
@@ -624,10 +706,21 @@
     "recommendationUnavailable": "Recommendation unavailable right now.",
     "weatherUnavailable": "Weather insight unavailable right now.",
     "upsellInsight": "AI insight is part of Hively Pro.",
-    "featureVoice": "Dictation",
+    "featureVoice": "Voice dictation",
     "featureReceipt": "Receipt scan",
     "featureInsight": "AI insight",
-    "featureRecommendation": "Recommendations"
+    "featureRecommendation": "AI recommendations",
+    "receiptCaptured": "Receipt captured!",
+    "receiptAnalyzing": "Analyzing…",
+    "receiptBtnProcessing": "Reading receipt…",
+    "receiptError": "Error analyzing the receipt.",
+    "receiptOfflineFallback": "Analysis failed – receipt saved locally for later.",
+    "noReceiptData": "No data received from the receipt scanner.",
+    "noReceiptDataGemini": "No receipt data recognized.",
+    "recommendationPro": "AI recommendations are part of Hively Pro.",
+    "recommendationLoadError": "Failed to load recommendation. Please try again later.",
+    "featureCloudSync": "Cloud sync",
+    "featureTeamInvites": "Team invites"
   },
   "weather": {
     "sunny": "Sunny",
@@ -679,5 +772,22 @@
     "locateDenied": "Location access denied.",
     "locateFailed": "Could not determine location.",
     "stale": "Cached weather data"
+  },
+  "confirms": {
+    "deleteExpense": "Delete this purchase?",
+    "deleteHoney": "Delete this harvest record?",
+    "deleteSponsorship": "Delete this sponsorship?",
+    "deleteInspection": "Really delete this inspection?",
+    "deleteTreatment": "Really delete this treatment?",
+    "deleteFinance": "Really delete this purchase?",
+    "deleteHoneyEntry": "Really delete this honey harvest?",
+    "deleteSponsorshipEntry": "Really delete this sponsorship?",
+    "deleteHive": "Permanently delete this hive and all its inspections?",
+    "deleteApiary": "Delete apiary? Assigned hives keep their entry without a site.",
+    "clearLocal": "Really clear all local data on this device? Cloud data in the operation stays. The app will reload.",
+    "logout": "Sign out? Local cloud data on this device will be removed.",
+    "logoutLocalMode": "You are in local mode. Signing out removes local cloud cache. Continue?",
+    "transferLocal": "Transfer your existing local bee data into the active operation?",
+    "logoutPendingSync": "{n} change(s) are not synced yet and will be lost on sign-out. Sign out anyway?"
   }
 }

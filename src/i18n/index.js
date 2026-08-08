@@ -2,10 +2,10 @@
  * Lightweight i18n for Hively (de / fr / it / en).
  * Nested keys: t('settings.title'); interpolation: t('x', { n: 2 }) → "{n}" replaced.
  */
-import de from './locales/de.json';
-import fr from './locales/fr.json';
-import it from './locales/it.json';
-import en from './locales/en.json';
+import de from './locales/de.json' with { type: 'json' };
+import fr from './locales/fr.json' with { type: 'json' };
+import it from './locales/it.json' with { type: 'json' };
+import en from './locales/en.json' with { type: 'json' };
 
 export const SUPPORTED_LOCALES = ['de', 'fr', 'it', 'en'];
 export const DEFAULT_LOCALE = 'de';

@@ -39,12 +39,20 @@ import {
   computeHarvestBlockedUntil,
   VARROA_LEVEL_LABELS,
   summarizeChecklist,
-  formatChecklistChips
+  formatChecklistChips,
+  getTreatmentProductLabel
 } from './healthCatalog.js';
+import {
+  financeCategoryLabel,
+  financeCategorySelectValue,
+  financeCategoryStorageValue,
+  normalizeFinanceCategoryId
+} from './financeCategories.js';
 import { supabase } from './supabase.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import {
+  conditionFromCode,
   fetchCurrentWeather,
   fetchDashboardWeatherAndPollen,
   getCachedLocation,
@@ -84,7 +92,18 @@ import {
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
-import { PRO_UPSELL_INSIGHT, isProUpsellInsight } from './radarInsight.js';
+import { getProUpsellInsight, isProUpsellInsight } from './radarInsight.js';
+import {
+  applyDomI18n,
+  formatDate,
+  getLocale,
+  getLocaleTag,
+  initI18n,
+  legalUrl,
+  onLocaleChange,
+  setLocale,
+  t
+} from './i18n/index.js';
 import { getHiveRecommendation } from './hiveRecommendations.js';
 import {
   initAnalytics,
@@ -106,7 +125,7 @@ import {
   getActivePlanMeta,
   startProCheckout,
   openBillingPortal,
-  formatBillingPlanSummary,
+  formatLocalizedBillingSummary,
   setupNativeBillingLifecycle,
   consumeNativeBillingLaunchUrl,
   consumeBillingCheckoutPending,
@@ -150,7 +169,7 @@ async function buildRadarPayload(forceLocation) {
   if (shouldUseBackgroundNetwork() && hasProAccess()) {
     insight = await getWeatherInsightFromGemini(weatherData);
   } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
-    insight = PRO_UPSELL_INSIGHT;
+    insight = getProUpsellInsight();
   }
   return {
     ...weatherData,
@@ -193,21 +212,14 @@ const QUEEN_COLORS = {
   5: 'blue', 0: 'blue'
 };
 
-const QUEEN_COLOR_NAMES = {
-  white: 'Weiß',
-  yellow: 'Gelb',
-  red: 'Rot',
-  green: 'Grün',
-  blue: 'Blau'
-};
-
 function getQueenColorInfo(year) {
   const lastDigit = year ? year.toString().slice(-1) : '';
   const color = QUEEN_COLORS[lastDigit] || 'white';
+  const colorKey = `hives.queenColors.${color}`;
   return {
     color,
     className: `queen-${color}`,
-    name: QUEEN_COLOR_NAMES[color] || 'Weiß'
+    name: t(colorKey)
   };
 }
 
@@ -264,7 +276,7 @@ async function populateApiarySelect(selectEl, selectedId = null) {
   if (!selectEl) return;
   const apiaries = await getApiaries();
   const opts = [
-    `<option value="">— Kein Stand —</option>`,
+    `<option value="">${escapeHtml(t('hives.apiaryNone'))}</option>`,
     ...apiaries.map(
       (a) =>
         `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`
@@ -299,11 +311,11 @@ function updateTreatmentPhiHint() {
   }
   const blocked = computeHarvestBlockedUntil(dateStart, dateEnd, product.phiDays);
   if (blocked != null) {
-    hint.textContent = `Wartezeit / Honig: freigegeben ab ${formatDateString(blocked)} (PHI ${product.phiDays} Tage).`;
+    hint.textContent = t('treatments.phiHintFull', { date: formatDateString(blocked), days: product.phiDays });
   } else if (product.phiDays == null) {
-    hint.textContent = 'Kein PHI hinterlegt – Wartezeit manuell prüfen.';
+    hint.textContent = t('treatments.phiHintNone');
   } else {
-    hint.textContent = `Produkt: ${product.label} (PHI ${product.phiDays} Tage).`;
+    hint.textContent = t('treatments.phiHint', { label: `${getTreatmentProductLabel(product.id)} (PHI ${product.phiDays})` });
   }
 }
 
@@ -339,10 +351,7 @@ function setFinanceTab(tab) {
 }
 
 function formatDateString(isoString) {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  if (isNaN(d.getTime())) return isoString;
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return formatDate(isoString);
 }
 
 // --- Viewport Height (Safari + PWA safe) ---
@@ -390,6 +399,7 @@ function bindAppHeight() {
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
+  initI18n();
   try {
     await initStorage();
   } catch (err) {
@@ -398,7 +408,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAnalytics();
   installGlobalErrorHandlers({ onError: rememberError });
   const versionLabel = document.getElementById('app-version-label');
-  if (versionLabel) versionLabel.textContent = `Hively v${APP_VERSION}`;
+  if (versionLabel) versionLabel.textContent = t('common.version', { version: APP_VERSION });
+  setupLocaleControls();
   setupRouting();
   setupModals();
   setupForms();
@@ -410,6 +421,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupVoiceAssistant();
   setupReceiptScanner();
   setupConnectionTracking();
+  onLocaleChange(async () => {
+    applyDomI18n(document);
+    updateLegalLinks();
+    if (versionLabel) versionLabel.textContent = t('common.version', { version: APP_VERSION });
+    refreshBillingSettingsUI();
+    try {
+      await navigate(currentView);
+    } catch (err) {
+      console.warn('Re-render nach Sprachwechsel fehlgeschlagen:', err);
+    }
+  });
   const nativeBillingHandlers = {
     onBillingReturn: (result) => handleBillingReturn(result, { fromDeepLink: true }),
     onAppResume: () => refreshBillingOnResume(),
@@ -708,7 +730,7 @@ async function renderDashboardView() {
 
   const recentList = document.getElementById('dashboard-recent-activities');
   if (activities.length === 0) {
-    recentList.innerHTML = `<p class="text-muted text-center" style="padding: 20px;">Keine Aktivitäten vorhanden.</p>`;
+    recentList.innerHTML = `<p class="text-muted text-center" style="padding: 20px;">${escapeHtml(t('dashboard.noActivities'))}</p>`;
   } else {
     recentList.innerHTML = activities.slice(0, 5).map((act, index) => `
       <div class="card recent-activity-card" data-index="${index}" style="padding: 12px; margin-bottom: 10px; cursor: pointer;" role="button" tabindex="0">
@@ -772,26 +794,26 @@ async function renderDashboardTreatments(hives) {
 
   card.style.display = '';
   const canEdit = canEditActiveOp();
-  list.innerHTML = treatments.map((t) => {
-    const hiveNames = (t.hiveIds || [])
+  list.innerHTML = treatments.map((tx) => {
+    const hiveNames = (tx.hiveIds || [])
       .map((id) => hives.find((h) => h.id === id)?.name)
       .filter(Boolean)
-      .join(', ') || 'Keine Völker';
-    const product = t.productLabel || getTreatmentProduct(t.productId)?.label || 'Behandlung';
-    const blocked = t.harvestBlockedUntil
-      ? ` · Honig frei ab ${formatDateString(t.harvestBlockedUntil)}`
+      .join(', ') || t('common.noHives');
+    const product = getTreatmentProductLabel(tx.productId) || tx.productLabel || t('treatments.fallbackLabel');
+    const blocked = tx.harvestBlockedUntil
+      ? t('treatments.honeyFreeFrom', { date: formatDateString(tx.harvestBlockedUntil) })
       : '';
     return `
-      <div class="dashboard-treatment-item" data-id="${escapeHtml(t.id)}" style="padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; cursor: ${canEdit ? 'pointer' : 'default'};" ${canEdit ? 'role="button" tabindex="0"' : ''}>
+      <div class="dashboard-treatment-item" data-id="${escapeHtml(tx.id)}" style="padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; cursor: ${canEdit ? 'pointer' : 'default'};" ${canEdit ? 'role="button" tabindex="0"' : ''}>
         <div style="display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;">
           <div>
             <div style="font-weight: 600; font-size: 0.95rem;">${escapeHtml(product)}</div>
             <div class="text-secondary" style="font-size: 0.8rem; margin-top: 4px;">${escapeHtml(hiveNames)}</div>
             <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">
-              Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}
+              ${escapeHtml(t('treatments.since', { date: formatDateString(tx.dateStart) }))}${escapeHtml(blocked)}
             </div>
           </div>
-          <span class="treatment-badge">Aktiv</span>
+          <span class="treatment-badge">${escapeHtml(t('common.active'))}</span>
         </div>
       </div>
     `;
@@ -837,7 +859,12 @@ async function loadDashboardRadar() {
     radarContent.style.opacity = '1';
 
     elTemp.innerText = data.temperature;
-    elCond.innerText = data.conditionText;
+    if (elCond) {
+      const cond = data.code != null ? conditionFromCode(data.code) : null;
+      elCond.innerText = cond?.labelKey
+        ? t(cond.labelKey)
+        : data.conditionText || t('weather.unknown');
+    }
     if (elIcon) {
       // Fixed SVG paths from weather.js — not user content.
       elIcon.innerHTML = weatherIconSvg(data.code ?? data.conditionIcon ?? data.conditionText, {
@@ -845,8 +872,15 @@ async function loadDashboardRadar() {
       });
     }
     elWind.innerText = data.windSpeed;
-    elPollen.innerText = data.dominantPollen ? `${data.dominantPollen.name} (${data.dominantPollen.value})` : 'Keine';
-    const ageHint = stale ? ' (Cache)' : '';
+    if (data.dominantPollen) {
+      const pollenName = data.dominantPollen.nameKey
+        ? t(data.dominantPollen.nameKey)
+        : data.dominantPollen.name;
+      elPollen.innerText = `${pollenName} (${data.dominantPollen.value})`;
+    } else {
+      elPollen.innerText = t('radar.pollenNone');
+    }
+    const ageHint = stale ? ` (${t('radar.stale')})` : '';
     elInsight.innerText = (data.insight || '') + ageHint;
   }
 
@@ -977,7 +1011,7 @@ function renderGuideStepsHtml(steps = []) {
 
   return `
     <div class="calendar-guide-steps">
-      <h4 class="calendar-guide-heading">Kurzablauf</h4>
+      <h4 class="calendar-guide-heading">${escapeHtml(t('calendar.guideOpen'))}</h4>
       <ol class="calendar-guide-step-list">
         ${items}
       </ol>
@@ -1013,22 +1047,37 @@ async function renderCalendarView() {
   const canEdit = canEditActiveOp();
 
   if (tasksForMonth.length === 0) {
-    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Aufgaben für diesen Monat hinterlegt.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">${escapeHtml(t('calendar.emptyMonth'))}</p></div>`;
     return;
   }
 
-  const monthName = CALENDAR_MONTH_NAMES[parseInt(selectedMonth, 10) - 1];
+  const monthName = t(`calendar.months.${selectedMonth}`) || CALENDAR_MONTH_NAMES[parseInt(selectedMonth, 10) - 1];
   const doneCount = tasksForMonth.filter((task, index) => isTaskDone(monthState, task, index)).length;
+  const localizeTask = (task) => {
+    const titleKey = `calendar.tasks.${task.id}.title`;
+    const dateKey = `calendar.tasks.${task.id}.approxDate`;
+    const guideKey = `calendar.tasks.${task.id}.guide`;
+    const title = t(titleKey);
+    const approxDate = t(dateKey);
+    const guide = t(guideKey);
+    return {
+      ...task,
+      title: title !== titleKey ? title : task.title,
+      approxDate: approxDate !== dateKey ? approxDate : task.approxDate,
+      guide: guide !== guideKey ? guide : task.guide
+    };
+  };
 
   let html = `
     <div class="calendar-month-header">
-      <h3>Imker-Aufgaben im ${escapeHtml(monthName)}</h3>
-      <p class="text-secondary calendar-month-progress">${doneCount} von ${tasksForMonth.length} erledigt · Tippe auf einen Schritt für die Anleitung</p>
+      <h3>${escapeHtml(t('calendar.heading', { month: monthName }))}</h3>
+      <p class="text-secondary calendar-month-progress">${escapeHtml(t('calendar.progressHint', { done: doneCount, total: tasksForMonth.length }))}</p>
     </div>
     <div class="calendar-task-list">
   `;
 
   tasksForMonth.forEach((task, index) => {
+    const locTask = localizeTask(task);
     const done = isTaskDone(monthState, task, index);
     const checked = done ? 'checked' : '';
     const disabledAttr = canEdit ? '' : 'disabled';
@@ -1037,17 +1086,17 @@ async function renderCalendarView() {
         <div class="calendar-task-main">
           <label class="calendar-task-check">
             <input type="checkbox" class="task-checkbox" data-month="${escapeHtml(selectedMonth)}" data-task-id="${escapeHtml(task.id)}" data-task-index="${index}" ${checked} ${disabledAttr} />
-            <span class="calendar-task-title">${escapeHtml(task.title)}</span>
+            <span class="calendar-task-title">${escapeHtml(locTask.title)}</span>
           </label>
           <button type="button" class="calendar-task-toggle" aria-expanded="false" aria-controls="guide-${escapeHtml(task.id)}" data-guide-toggle="${escapeHtml(task.id)}">
-            Anleitung
+            ${escapeHtml(t('calendar.guideOpen'))}
           </button>
         </div>
         <div class="calendar-task-meta">
-          <span class="calendar-task-date" title="Richttermin">${escapeHtml(task.approxDate)}</span>
+          <span class="calendar-task-date" title="${escapeHtml(t('calendar.approxDateTitle'))}">${escapeHtml(locTask.approxDate)}</span>
         </div>
         <div id="guide-${escapeHtml(task.id)}" class="calendar-task-guide hidden" hidden>
-          <p class="calendar-task-guide-text">${formatGuideHtml(task.guide)}</p>
+          <p class="calendar-task-guide-text">${formatGuideHtml(locTask.guide)}</p>
           ${renderGuideStepsHtml(task.guideSteps || [])}
         </div>
       </article>
@@ -1076,7 +1125,7 @@ async function renderCalendarView() {
       if (progress) {
         const total = tasksForMonth.length;
         const doneNow = container.querySelectorAll('.task-checkbox:checked').length;
-        progress.textContent = `${doneNow} von ${total} erledigt · Tippe auf einen Schritt für die Anleitung`;
+        progress.textContent = t('calendar.progressHint', { done: doneNow, total });
       }
     });
   });
@@ -1093,13 +1142,13 @@ async function renderCalendarView() {
         guide.classList.remove('hidden');
         btn.setAttribute('aria-expanded', 'true');
         btn.classList.add('is-open');
-        btn.textContent = 'Schliessen';
+        btn.textContent = t('calendar.guideClose');
       } else {
         guide.hidden = true;
         guide.classList.add('hidden');
         btn.setAttribute('aria-expanded', 'false');
         btn.classList.remove('is-open');
-        btn.textContent = 'Anleitung';
+        btn.textContent = t('calendar.guideOpen');
       }
     });
   });
@@ -1130,7 +1179,7 @@ async function renderHivesView() {
   if (hives.length === 0) {
     container.innerHTML = `
       <div class="card empty-state">
-        <p class="empty-state-title">${canEdit ? 'Noch keine Völker' : 'Keine Völker'}</p>
+        <p class="empty-state-title">${escapeHtml(canEdit ? t('hives.emptyTitle') : t('hives.emptyTitleReadonly'))}</p>
         <p class="empty-state-text">${canEdit ? 'Du hast noch keine Völker erfasst.' : 'In diesem Betrieb sind noch keine Völker erfasst.'}</p>
         ${canEdit ? '<button id="btn-add-hive-empty" class="btn btn-primary">Erstes Volk erfassen</button>' : ''}
       </div>
@@ -1141,10 +1190,10 @@ async function renderHivesView() {
 
   const apiaryById = Object.fromEntries(apiaries.map((a) => [a.id, a]));
   const treatmentsByHive = {};
-  for (const t of activeTreatments) {
-    for (const hid of t.hiveIds || []) {
+  for (const tx of activeTreatments) {
+    for (const hid of tx.hiveIds || []) {
       if (!treatmentsByHive[hid]) treatmentsByHive[hid] = [];
-      treatmentsByHive[hid].push(t);
+      treatmentsByHive[hid].push(tx);
     }
   }
 
@@ -1157,7 +1206,7 @@ async function renderHivesView() {
   }
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Völker in diesem Stand.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><p class="empty-state-text">${escapeHtml(t('hives.emptyApiaryShort'))}</p></div>`;
     return;
   }
 
@@ -1183,13 +1232,13 @@ async function renderHivesView() {
           </div>
           <div class="hive-card-badges">
             <span class="status-badge status-${statusClass}">${escapeHtml(hive.status)}</span>
-            ${hasTreatment ? '<span class="treatment-badge">Behandlung</span>' : ''}
+            ${hasTreatment ? `<span class="treatment-badge">${escapeHtml(t('treatments.badge'))}</span>` : ''}
           </div>
         </div>
         <div class="hive-card-footer">
           <div class="hive-card-queen">
             <span class="queen-badge ${qColorClass}">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?' }</span>
-            <span class="hive-card-queen-text">Königin ${queenLabel} (${escapeHtml(hive.queenYear || 'Unbekannt')}, ${escapeHtml(qColorName)})</span>
+            <span class="hive-card-queen-text">${escapeHtml(t('hives.queenLine', { label: queenLabel, year: hive.queenYear || t('common.unknown'), color: qColorName }))}</span>
           </div>
           <span class="hive-card-cta">Details</span>
         </div>
@@ -1260,20 +1309,20 @@ async function renderHiveDetailView() {
 
   const treatmentsBanner = activeTreatments.length
     ? `<div class="treatment-banner-list">
-        ${activeTreatments.map((t) => {
-          const label = t.productLabel || getTreatmentProduct(t.productId)?.label || 'Behandlung';
-          const blocked = t.harvestBlockedUntil
-            ? ` · Honig frei ab ${formatDateString(t.harvestBlockedUntil)}`
+        ${activeTreatments.map((tx) => {
+          const label = getTreatmentProductLabel(tx.productId) || tx.productLabel || t('treatments.fallbackLabel');
+          const blocked = tx.harvestBlockedUntil
+            ? t('treatments.honeyFreeFrom', { date: formatDateString(tx.harvestBlockedUntil) })
             : '';
           return `
-            <div class="treatment-banner${canEdit ? ' is-clickable' : ''}" data-treatment-id="${escapeHtml(t.id)}">
+            <div class="treatment-banner${canEdit ? ' is-clickable' : ''}" data-treatment-id="${escapeHtml(tx.id)}">
               <div class="treatment-banner-row">
                 <div>
-                  <span class="treatment-badge">Aktiv</span>
+                  <span class="treatment-badge">${escapeHtml(t('common.active'))}</span>
                   <strong class="treatment-banner-label">${escapeHtml(label)}</strong>
-                  <div class="treatment-banner-meta">Seit ${escapeHtml(formatDateString(t.dateStart))}${escapeHtml(blocked)}</div>
+                  <div class="treatment-banner-meta">${escapeHtml(t('treatments.since', { date: formatDateString(tx.dateStart) }))}${escapeHtml(blocked)}</div>
                 </div>
-                ${canEdit ? '<span class="treatment-banner-cta">Bearbeiten</span>' : ''}
+                ${canEdit ? `<span class="treatment-banner-cta">${escapeHtml(t('common.edit'))}</span>` : ''}
               </div>
             </div>
           `;
@@ -1292,7 +1341,7 @@ async function renderHiveDetailView() {
       <span class="detail-row-value">${escapeHtml(apiary?.name || 'Kein Stand')}</span>
     </div>
     <div class="detail-row">
-      <span class="text-secondary">Name der Königin</span>
+      <span class="text-secondary">${escapeHtml(t('hives.queenName'))}</span>
       <span class="detail-row-value">${escapeHtml(hive.queenName || 'Kein Name vergeben')}</span>
     </div>
     <div class="detail-row">
@@ -1300,7 +1349,7 @@ async function renderHiveDetailView() {
       <span class="detail-row-value">${escapeHtml(hive.breed || 'Nicht angegeben')}</span>
     </div>
     <div class="detail-row">
-      <span class="text-secondary">Königinnen-Jahrgang</span>
+      <span class="text-secondary">${escapeHtml(t('hives.queenYear'))}</span>
       <div class="detail-row-queen">
         <span class="queen-badge ${qColorClass}">${hive.queenYear ? escapeHtml(hive.queenYear.toString().slice(-2)) : '?'}</span>
         <span class="detail-row-value">${escapeHtml(hive.queenYear || 'Unbekannt')} (${escapeHtml(qColorName)})</span>
@@ -1357,11 +1406,11 @@ async function renderHiveDetailView() {
   recommendationBlock.className = 'card recommendation-card';
   recommendationBlock.innerHTML = `
     <div class="recommendation-header">
-      <h3 class="section-title">KI-Empfehlung</h3>
-      <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary">Neu laden</button>
+      <h3 class="section-title">${escapeHtml(t('ai.recommendationTitle'))}</h3>
+      <button id="btn-refresh-recommendation" class="btn btn-sm btn-secondary">${escapeHtml(t('common.retry'))}</button>
     </div>
     <div id="recommendation-content" class="recommendation-body">
-      <span>Empfehlung wird geladen…</span>
+      <span>${escapeHtml(t('ai.recommendationLoading'))}</span>
     </div>
   `;
   
@@ -1375,16 +1424,19 @@ async function renderHiveDetailView() {
 
     if (!hasProAccess()) {
       recommendationContent.innerHTML =
-        '<span class="text-secondary">KI-Empfehlungen sind Teil von Hively Pro. ' +
-        '<button type="button" class="btn btn-sm btn-secondary" id="btn-rec-upsell" style="width:auto; margin-top:8px;">Pro ansehen</button></span>';
+        '<span class="text-secondary">' +
+        escapeHtml(t('ai.recommendationPro')) +
+        ' <button type="button" class="btn btn-sm btn-secondary" id="btn-rec-upsell" style="width:auto; margin-top:8px;">' +
+        escapeHtml(t('billing.upsellTitle')) +
+        '</button></span>';
       document.getElementById('btn-rec-upsell')?.addEventListener('click', () => {
-        openProModal('KI-Empfehlungen');
+        openProModal(t('ai.featureRecommendation'));
       });
       return;
     }
 
     try {
-      recommendationContent.innerHTML = '<span>Empfehlung wird geladen…</span>';
+      recommendationContent.innerHTML = `<span>${escapeHtml(t('ai.recommendationLoading'))}</span>`;
       const recommendation = await getHiveRecommendation(hive, inspections);
       trackEvent('ai_recommendation_loaded', { ok: true });
       
@@ -1396,7 +1448,7 @@ async function renderHiveDetailView() {
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
       trackEvent('ai_recommendation_loaded', { ok: false });
-      recommendationContent.innerHTML = '<span class="text-danger">Fehler beim Laden der Empfehlung. Bitte versuche es später erneut.</span>';
+      recommendationContent.innerHTML = '<span class="text-danger">' + escapeHtml(t('ai.recommendationLoadError')) + '</span>';
     }
   }
 
@@ -1420,7 +1472,7 @@ async function renderHiveDetailView() {
   if (inspections.length === 0) {
     timeline.innerHTML = `
       <div class="card empty-state empty-state-dashed">
-        <p class="empty-state-text">Keine Durchsichten erfasst.</p>
+        <p class="empty-state-text">${escapeHtml(t('inspections.empty'))}</p>
         ${canEdit ? '<button id="btn-new-insp-empty" class="btn btn-sm btn-secondary">Erste Durchsicht eintragen</button>' : ''}
       </div>
     `;
@@ -1498,7 +1550,7 @@ async function renderFinanceView() {
     // Render Expenses
     const finances = (await getFinances()).filter(f => f.type === 'expense' || !f.type);
     if (finances.length === 0) {
-      expensesList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Käufe erfasst.</p></div>`;
+      expensesList.innerHTML = `<div class="empty-state"><p class="empty-state-text">${escapeHtml(t('finances.emptyExpenses'))}</p></div>`;
       return;
     }
 
@@ -1507,12 +1559,12 @@ async function renderFinanceView() {
         <div class="data-row-main">
           <h4 class="data-row-title">${escapeHtml(item.description)}</h4>
           <div class="data-row-meta">
-            ${escapeHtml(formatDateString(item.date))} · <span class="data-row-cat">${escapeHtml(item.category)}</span>
+            ${escapeHtml(formatDateString(item.date))} · <span class="data-row-cat">${escapeHtml(financeCategoryLabel(item.category))}</span>
           </div>
         </div>
         <div class="data-row-side">
           <span class="amount amount-danger">−${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
-          <button class="btn btn-sm btn-danger btn-row-delete btn-delete-fin-item" data-id="${escapeHtml(item.id)}">Löschen</button>
+          <button class="btn btn-sm btn-danger btn-row-delete btn-delete-fin-item" data-id="${escapeHtml(item.id)}">${escapeHtml(t('common.delete'))}</button>
         </div>
       </div>
     `).join('');
@@ -1533,7 +1585,7 @@ async function renderFinanceView() {
     document.querySelectorAll('.btn-delete-fin-item').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Kauf wirklich löschen?')) {
+        if (confirm(t('confirms.deleteExpense'))) {
           await deleteFinance(btn.getAttribute('data-id'));
           await renderFinanceView();
           await renderDashboardView();
@@ -1552,7 +1604,7 @@ async function renderFinanceView() {
     const hives = await getHives();
     
     if (honey.length === 0) {
-      honeyList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Honigernten erfasst.</p></div>`;
+      honeyList.innerHTML = `<div class="empty-state"><p class="empty-state-text">${escapeHtml(t('finances.emptyHoney'))}</p></div>`;
       return;
     }
 
@@ -1563,12 +1615,12 @@ async function renderFinanceView() {
           <div class="data-row-main">
             <h4 class="data-row-title">${escapeHtml(hive ? hive.name : 'Unbekanntes Volk')}</h4>
             <div class="data-row-meta">
-              ${escapeHtml(formatDateString(harvest.date))} · Sorte: ${escapeHtml(harvest.type || 'Frühtracht')}
+              ${escapeHtml(formatDateString(harvest.date))} · ${escapeHtml(t('finances.typePrefix', { type: harvest.type || t('finances.defaultHoneyType') }))}
             </div>
           </div>
           <div class="data-row-side">
             <span class="amount amount-primary">${escapeHtml(parseFloat(harvest.amount).toFixed(1))} kg</span>
-            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}">Löschen</button>
+            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-honey-item" data-id="${escapeHtml(harvest.id)}">${escapeHtml(t('common.delete'))}</button>
           </div>
         </div>
       `;
@@ -1590,7 +1642,7 @@ async function renderFinanceView() {
     document.querySelectorAll('.btn-delete-honey-item').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Erntebeleg wirklich löschen?')) {
+        if (confirm(t('confirms.deleteHoney'))) {
           await deleteHoneyHarvest(btn.getAttribute('data-id'));
           await renderFinanceView();
           await renderDashboardView();
@@ -1608,7 +1660,7 @@ async function renderFinanceView() {
     const hives = await getHives();
 
     if (finances.length === 0) {
-      sponsorshipsList.innerHTML = `<div class="empty-state"><p class="empty-state-text">Keine Patenschaften erfasst.</p></div>`;
+      sponsorshipsList.innerHTML = `<div class="empty-state"><p class="empty-state-text">${escapeHtml(t('finances.emptySponsorships'))}</p></div>`;
       return;
     }
 
@@ -1619,12 +1671,12 @@ async function renderFinanceView() {
           <div class="data-row-main">
             <h4 class="data-row-title">${escapeHtml(item.sponsorName || 'Unbekannter Pate')}</h4>
             <div class="data-row-meta">
-              ${escapeHtml(formatDateString(item.date))} · Kasten: ${escapeHtml(hive ? hive.name : 'Gelöschtes Volk')}
+              ${escapeHtml(formatDateString(item.date))} · ${escapeHtml(t('finances.hivePrefix', { name: hive ? hive.name : t('common.unknownHive') }))}
             </div>
           </div>
           <div class="data-row-side">
             <span class="amount amount-success">+${escapeHtml(parseFloat(item.price).toFixed(2))} CHF</span>
-            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-sponsorship-item" data-id="${escapeHtml(item.id)}">Löschen</button>
+            <button class="btn btn-sm btn-danger btn-row-delete btn-delete-sponsorship-item" data-id="${escapeHtml(item.id)}">${escapeHtml(t('common.delete'))}</button>
           </div>
         </div>
       `;
@@ -1646,7 +1698,7 @@ async function renderFinanceView() {
     document.querySelectorAll('.btn-delete-sponsorship-item').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Patenschaft wirklich löschen?')) {
+        if (confirm(t('confirms.deleteSponsorship'))) {
           await deleteFinance(btn.getAttribute('data-id'));
           await renderFinanceView();
           await renderDashboardView();
@@ -1674,7 +1726,7 @@ function setupModals() {
   const closeBtns = document.querySelectorAll('[data-close]');
   closeBtns.forEach(btn => {
     if (!btn.getAttribute('aria-label')) {
-      btn.setAttribute('aria-label', 'Schliessen');
+      btn.setAttribute('aria-label', t('common.close'));
     }
     btn.addEventListener('click', () => {
       const modalId = btn.getAttribute('data-close');
@@ -1712,7 +1764,7 @@ function closeModal(id) {
 
 async function openHiveModal(hive = null) {
   if (!canEditActiveOp()) {
-    alert('Als Betrachter kannst du Völker nur ansehen.');
+    alert(t('hives.viewerReadonly'));
     return;
   }
   const form = document.getElementById('form-hive');
@@ -1758,7 +1810,7 @@ async function openHiveModal(hive = null) {
 
 async function openInspectionModal(inspection = null, preselectedHiveId = null) {
   if (!canEditActiveOp()) {
-    alert('Als Betrachter kannst du Durchsichten nur ansehen.');
+    alert(t('inspections.viewerReadonly'));
     return;
   }
   const form = document.getElementById('form-inspection');
@@ -1769,7 +1821,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
   const hives = await getHives();
   
   if (hives.length === 0) {
-    alert('Bitte erstelle zuerst ein Volk/Kasten, bevor du Durchsichten erfasst.');
+    alert(t('inspections.needHiveFirst'));
     openHiveModal();
     return;
   }
@@ -1811,19 +1863,21 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     inpWeatherCond.value = '';
     
     const loadWeather = async () => {
-      weatherDisplay.innerHTML = 'Wird ermittelt…';
+      weatherDisplay.innerHTML = escapeHtml(t('inspections.weatherLoading'));
       btnWeatherRetry.style.display = 'none';
       try {
         const w = await fetchCurrentWeather();
-        const cacheHint = w.fromCache ? ' <span class="text-muted" style="font-weight:400;">(Cache)</span>' : '';
-        weatherDisplay.innerHTML = `${escapeHtml(w.conditionText)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
+        const cond = w.code != null ? conditionFromCode(w.code) : null;
+        const condLabel = cond?.labelKey ? t(cond.labelKey) : (w.conditionText || t('weather.unknown'));
+        const cacheHint = w.fromCache ? ` <span class="text-muted" style="font-weight:400;">(${escapeHtml(t('radar.stale'))})</span>` : '';
+        weatherDisplay.innerHTML = `${escapeHtml(condLabel)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
         inpWeatherTemp.value = w.temperature;
-        inpWeatherCond.value = w.conditionText;
+        inpWeatherCond.value = condLabel;
         if (w.fromCache) {
           btnWeatherRetry.style.display = 'block';
         }
       } catch (err) {
-        weatherDisplay.innerHTML = `<span class="text-danger">Offline – Wetter manuell möglich</span>`;
+        weatherDisplay.innerHTML = `<span class="text-danger">${escapeHtml(t('inspections.weatherOffline'))}</span>`;
         btnWeatherRetry.style.display = 'block';
       }
     };
@@ -1846,7 +1900,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
 
 async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
   if (!canEditActiveOp()) {
-    alert('Als Betrachter kannst du Behandlungen nur ansehen.');
+    alert(t('treatments.viewerReadonly'));
     return;
   }
   const form = document.getElementById('form-treatment');
@@ -1856,14 +1910,14 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
 
   const hives = await getHives();
   if (hives.length === 0) {
-    alert('Bitte erstelle zuerst ein Volk/Kasten, bevor du Behandlungen erfasst.');
+    alert(t('treatments.needHiveFirst'));
     openHiveModal();
     return;
   }
 
   const productSelect = document.getElementById('treatment-form-product');
   productSelect.innerHTML = TREATMENT_PRODUCTS.map(
-    (p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.label)}</option>`
+    (p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(getTreatmentProductLabel(p.id))}</option>`
   ).join('');
 
   const hivesContainer = document.getElementById('treatment-form-hives-container');
@@ -1881,7 +1935,7 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
   }).join('');
 
   if (treatment) {
-    title.innerText = 'Behandlung bearbeiten';
+    title.innerText = t('treatments.editTitle');
     document.getElementById('treatment-form-id').value = treatment.id;
     document.getElementById('treatment-form-date-start').value = treatment.dateStart || '';
     document.getElementById('treatment-form-date-end').value = treatment.dateEnd || '';
@@ -1891,7 +1945,7 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
     document.getElementById('treatment-form-notes').value = treatment.notes || '';
     deleteBtn.style.display = 'block';
   } else {
-    title.innerText = 'Behandlung erfassen';
+    title.innerText = t('treatments.title');
     document.getElementById('treatment-form-id').value = '';
     document.getElementById('treatment-form-date-start').value = new Date().toISOString().split('T')[0];
     document.getElementById('treatment-form-date-end').value = '';
@@ -1921,7 +1975,7 @@ async function openFinanceModal(finance = null) {
     document.getElementById('finance-form-id').value = finance.id;
     document.getElementById('finance-form-date').value = finance.date;
     document.getElementById('finance-form-description').value = finance.description;
-    document.getElementById('finance-form-category').value = finance.category || 'Hardware';
+    document.getElementById('finance-form-category').value = financeCategorySelectValue(finance.category);
     document.getElementById('finance-form-price').value = finance.price;
     deleteBtn.style.display = 'block';
   } else {
@@ -1943,7 +1997,7 @@ async function openHoneyModal(honey = null) {
   const hives = await getHives();
 
   if (hives.length === 0) {
-    alert('Bitte erstelle zuerst ein Volk, bevor du eine Honigernte buchst.');
+    alert(t('finances.needHiveHoney'));
     openHiveModal();
     return;
   }
@@ -1955,12 +2009,12 @@ async function openHoneyModal(honey = null) {
     document.getElementById('honey-form-hive-id').value = honey.hiveId;
     document.getElementById('honey-form-date').value = honey.date;
     document.getElementById('honey-form-amount').value = honey.amount;
-    document.getElementById('honey-form-type').value = honey.type || 'Frühtracht';
+    document.getElementById('honey-form-type').value = honey.type || t('finances.defaultHoneyType');
     deleteBtn.style.display = 'block';
   } else {
     document.getElementById('honey-form-id').value = '';
     document.getElementById('honey-form-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('honey-form-type').value = 'Frühtracht';
+    document.getElementById('honey-form-type').value = t('finances.defaultHoneyType');
     deleteBtn.style.display = 'none';
     
     if (activeHiveIdForDetail) {
@@ -1981,7 +2035,7 @@ async function openSponsorshipModal(sponsorship = null) {
   const hives = await getHives();
 
   if (hives.length === 0) {
-    alert('Bitte erstelle zuerst ein Volk, bevor du eine Patenschaft buchst.');
+    alert(t('finances.needHiveSponsorship'));
     openHiveModal();
     return;
   }
@@ -2052,7 +2106,7 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern des Volks:', err);
-        alert('Fehler beim Speichern des Volks: ' + (err.message || err));
+        alert(t('errors.saveHive', { name: err.message || err }));
       }
     });
   });
@@ -2060,7 +2114,7 @@ function setupForms() {
   // Hive Delete Button
   document.getElementById('btn-delete-hive').addEventListener('click', async () => {
     const id = document.getElementById('hive-form-id').value;
-    if (id && confirm('Möchtest du dieses Volk und alle dazugehörigen Durchsichten unwiderruflich löschen?')) {
+    if (id && confirm(t('confirms.deleteHive'))) {
       const btn = document.getElementById('btn-delete-hive');
       await withButtonLoading(btn, async () => {
         await deleteHive(id);
@@ -2068,7 +2122,7 @@ function setupForms() {
         closeModal('modal-hive');
         await navigate('hives');
         await renderDashboardView();
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2083,7 +2137,7 @@ function setupForms() {
       return el.type === 'hidden' || el.checked;
     });
     if (checkedCheckboxes.length === 0) {
-      alert('Bitte wähle mindestens ein Bienenvolk aus.');
+      alert(t('inspections.selectHive'));
       return;
     }
 
@@ -2150,7 +2204,7 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern der Durchsicht:', err);
-        alert('Fehler beim Speichern der Durchsicht: ' + (err.message || err));
+        alert(t('errors.saveInspection', { name: err.message || err }));
       }
     });
   });
@@ -2158,7 +2212,7 @@ function setupForms() {
   // Inspection Delete Button
   document.getElementById('btn-delete-inspection').addEventListener('click', async () => {
     const id = document.getElementById('insp-form-id').value;
-    if (id && confirm('Diese Durchsicht wirklich löschen?')) {
+    if (id && confirm(t('confirms.deleteInspection'))) {
       const btn = document.getElementById('btn-delete-inspection');
       await withButtonLoading(btn, async () => {
         await deleteInspection(id);
@@ -2167,7 +2221,7 @@ function setupForms() {
           await renderHiveDetailView();
         }
         await renderDashboardView();
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2179,7 +2233,7 @@ function setupForms() {
 
     const checked = Array.from(document.querySelectorAll('.treatment-hive-checkbox')).filter((el) => el.checked);
     if (checked.length === 0) {
-      alert('Bitte wähle mindestens ein Bienenvolk aus.');
+      alert(t('inspections.selectHive'));
       return;
     }
 
@@ -2197,7 +2251,7 @@ function setupForms() {
           dateEnd,
           disease: product?.disease || 'varroa',
           productId,
-          productLabel: product?.label || productId,
+          productLabel: product ? getTreatmentProductLabel(product.id) : productId,
           dose: document.getElementById('treatment-form-dose').value || null,
           phiDays,
           harvestBlockedUntil: computeHarvestBlockedUntil(dateStart, dateEnd, phiDays),
@@ -2221,14 +2275,14 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern der Behandlung:', err);
-        alert('Fehler beim Speichern der Behandlung: ' + (err.message || err));
+        alert(t('errors.saveTreatment', { name: err.message || err }));
       }
     });
   });
 
   document.getElementById('btn-delete-treatment')?.addEventListener('click', async () => {
     const id = document.getElementById('treatment-form-id').value;
-    if (id && confirm('Diese Behandlung wirklich löschen?')) {
+    if (id && confirm(t('confirms.deleteTreatment'))) {
       const btn = document.getElementById('btn-delete-treatment');
       await withButtonLoading(btn, async () => {
         await deleteTreatment(id);
@@ -2236,7 +2290,7 @@ function setupForms() {
         if (currentView === 'hive-detail') await renderHiveDetailView();
         else if (currentView === 'hives') await renderHivesView();
         await renderDashboardView();
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2264,7 +2318,7 @@ function setupForms() {
         const item = {
           date: document.getElementById('finance-form-date').value,
           description: document.getElementById('finance-form-description').value,
-          category: document.getElementById('finance-form-category').value,
+          category: financeCategoryStorageValue(document.getElementById('finance-form-category').value),
           price: parseFloat(document.getElementById('finance-form-price').value),
           type: 'expense'
         };
@@ -2285,7 +2339,7 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern der Ausgabe:', err);
-        alert('Fehler beim Speichern der Ausgabe: ' + (err.message || err));
+        alert(t('errors.saveFinance', { name: err.message || err }));
       }
     });
   });
@@ -2293,7 +2347,7 @@ function setupForms() {
   // Finance Delete Button (modal)
   document.getElementById('btn-delete-finance').addEventListener('click', async () => {
     const id = document.getElementById('finance-form-id').value;
-    if (id && confirm('Diesen Kauf wirklich löschen?')) {
+    if (id && confirm(t('confirms.deleteFinance'))) {
       const btn = document.getElementById('btn-delete-finance');
       await withButtonLoading(btn, async () => {
         try {
@@ -2305,9 +2359,9 @@ function setupForms() {
           await renderDashboardView();
         } catch (err) {
           console.error('Fehler beim Löschen der Ausgabe:', err);
-          alert('Fehler beim Löschen: ' + (err.message || err));
+          alert(t('errors.deleteGeneric', { name: err.message || err }));
         }
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2345,7 +2399,7 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern der Honigernte:', err);
-        alert('Fehler beim Speichern der Honigernte: ' + (err.message || err));
+        alert(t('errors.saveHoney', { name: err.message || err }));
       }
     });
   });
@@ -2353,7 +2407,7 @@ function setupForms() {
   // Honey Delete Button (modal)
   document.getElementById('btn-delete-honey').addEventListener('click', async () => {
     const id = document.getElementById('honey-form-id').value;
-    if (id && confirm('Diese Honigernte wirklich löschen?')) {
+    if (id && confirm(t('confirms.deleteHoneyEntry'))) {
       const btn = document.getElementById('btn-delete-honey');
       await withButtonLoading(btn, async () => {
         try {
@@ -2366,9 +2420,9 @@ function setupForms() {
           await renderDashboardView();
         } catch (err) {
           console.error('Fehler beim Löschen der Honigernte:', err);
-          alert('Fehler beim Löschen: ' + (err.message || err));
+          alert(t('errors.deleteGeneric', { name: err.message || err }));
         }
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2383,11 +2437,11 @@ function setupForms() {
         const sponsorName = document.getElementById('sponsorship-form-sponsor').value;
         const item = {
           date: document.getElementById('sponsorship-form-date').value,
-          description: `Patenschaft: ${sponsorName}`,
+          description: t('finances.sponsorshipDesc', { name: sponsorName }),
           sponsorName: sponsorName,
           hiveId: document.getElementById('sponsorship-form-hive-id').value,
           price: parseFloat(document.getElementById('sponsorship-form-price').value),
-          category: 'Patenschaft',
+          category: 'sponsorship',
           notes: document.getElementById('sponsorship-form-notes').value,
           type: 'sponsorship'
         };
@@ -2409,7 +2463,7 @@ function setupForms() {
         await renderDashboardView();
       } catch (err) {
         console.error('Fehler beim Speichern der Patenschaft:', err);
-        alert('Fehler beim Speichern der Patenschaft: ' + (err.message || err));
+        alert(t('errors.saveSponsorship', { name: err.message || err }));
       }
     });
   });
@@ -2417,7 +2471,7 @@ function setupForms() {
   // Sponsorship Delete Button
   document.getElementById('btn-delete-sponsorship').addEventListener('click', async () => {
     const id = document.getElementById('sponsorship-form-id').value;
-    if (id && confirm('Diese Patenschaft wirklich löschen?')) {
+    if (id && confirm(t('confirms.deleteSponsorshipEntry'))) {
       const btn = document.getElementById('btn-delete-sponsorship');
       await withButtonLoading(btn, async () => {
         await deleteFinance(id);
@@ -2426,7 +2480,7 @@ function setupForms() {
           await renderFinanceView();
         }
         await renderDashboardView();
-      }, 'Löschen…');
+      }, t('common.deleting'));
     }
   });
 
@@ -2445,25 +2499,25 @@ function formatSyncStatusText() {
   const parts = [];
 
   if (!navigator.onLine) {
-    parts.push('Offline – Änderungen bleiben lokal.');
+    parts.push(t('offline.changesLocal'));
   } else if (prefs.fieldMode && isConstrainedConnection()) {
-    parts.push(`Funkloch-Modus aktiv (${conn || 'schwaches Netz'}).`);
+    parts.push(`${t('offline.fieldModeOn')} (${conn || t('header.offline')}).`);
   } else {
-    parts.push(conn ? `Online (${conn}).` : 'Online.');
+    parts.push(conn ? `${t('header.online')} (${conn}).` : t('header.online') + '.');
   }
 
   parts.push(summary.pending > 0
-    ? `${summary.pending} Änderung(en) warten auf Sync.`
-    : 'Keine ausstehenden Sync-Änderungen.');
+    ? t('offline.pendingSync', { n: summary.pending })
+    : t('offline.allSynced'));
 
   if (summary.lastPullAt) {
-    const when = new Date(summary.lastPullAt).toLocaleString('de-CH', {
+    const when = new Date(summary.lastPullAt).toLocaleString(getLocaleTag(), {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
     });
-    parts.push(`Letzter Abruf: ${when}.`);
+    parts.push(`${when}`);
   }
 
   return parts.join(' ');
@@ -2493,14 +2547,14 @@ async function renderApiariesSettings() {
   list.innerHTML = apiaries.map((a) => `
     <div class="apiary-settings-row" data-id="${escapeHtml(a.id)}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid var(--border-color);">
       <span style="font-weight: 500; font-size: 0.95rem;">${escapeHtml(a.name)}</span>
-      ${canEdit ? `<button type="button" class="btn btn-sm btn-danger btn-delete-apiary" data-id="${escapeHtml(a.id)}" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">Löschen</button>` : ''}
+      ${canEdit ? `<button type="button" class="btn btn-sm btn-danger btn-delete-apiary" data-id="${escapeHtml(a.id)}" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">${escapeHtml(t('common.delete'))}</button>` : ''}
     </div>
   `).join('');
 
   list.querySelectorAll('.btn-delete-apiary').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
-      if (!id || !confirm('Bienenstand löschen? Zugeordnete Völker behalten ihren Eintrag ohne Stand.')) return;
+      if (!id || !confirm(t('confirms.deleteApiary'))) return;
       await withButtonLoading(btn, async () => {
         await deleteApiary(id);
         await renderApiariesSettings();
@@ -2619,7 +2673,7 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
         refreshBillingSettingsUI();
       }
       if (activated) {
-        alert('Willkommen bei Hively Pro! Dein Abo ist aktiv.');
+        alert(t('billing.welcomePro'));
       } else if (isBillingEnabled()) {
         alert(
           'Willkommen bei Hively Pro! Die Freischaltung kann noch kurz dauern – bitte Einstellungen in einer Minute aktualisieren.'
@@ -2676,7 +2730,7 @@ function refreshBillingSettingsUI() {
   }
 
   const plan = getActivePlanMeta();
-  summary.textContent = formatBillingPlanSummary(plan);
+  summary.textContent = formatLocalizedBillingSummary(plan);
   if (plan.hasPro) {
     if (openBtn) openBtn.style.display = isOperationOwner() ? 'none' : '';
     if (manageBtn) manageBtn.style.display = isOperationOwner() ? '' : 'none';
@@ -2692,16 +2746,16 @@ function refreshBillingSettingsUI() {
 function setupBilling() {
   document.getElementById('btn-open-pro')?.addEventListener('click', () => {
     if (!supabase) {
-      alert('Pro benötigt eine Anmeldung.');
+      alert(t('billing.needsLogin'));
       return;
     }
     if (!getActiveOperationId()) {
-      alert('Bitte zuerst einen Betrieb anlegen.');
+      alert(t('billing.needsOperation'));
       openOperationsModal();
       return;
     }
     if (!isOperationOwner()) {
-      alert('Nur der Betriebsinhaber kann Pro aktivieren.');
+      alert(t('billing.ownerOnly'));
       return;
     }
     openProModal();
@@ -2713,7 +2767,7 @@ function setupBilling() {
       try {
         await openBillingPortal();
       } catch (err) {
-        alert(err.message || 'Abo-Verwaltung fehlgeschlagen.');
+        alert(err.message || t('billing.manageFailed'));
       }
     }, 'Öffne…');
   });
@@ -2805,6 +2859,31 @@ function setupBugReport() {
   });
 }
 
+function updateLegalLinks() {
+  const map = {
+    'link-legal-impressum': 'impressum',
+    'link-legal-agb': 'agb',
+    'link-legal-privacy': 'privacy',
+    'link-legal-delete': 'delete-account'
+  };
+  for (const [id, page] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.href = legalUrl(page);
+  }
+}
+
+function setupLocaleControls() {
+  const select = document.getElementById('settings-locale');
+  if (select) {
+    select.value = getLocale();
+    select.addEventListener('change', () => {
+      setLocale(select.value);
+    });
+  }
+  updateLegalLinks();
+  applyDomI18n(document);
+}
+
 function setupSettings() {
   const fieldEl = document.getElementById('pref-field-mode');
   const wifiEl = document.getElementById('pref-wifi-only-media');
@@ -2825,9 +2904,9 @@ function setupSettings() {
   }
   if (syncBtn) {
     syncBtn.addEventListener('click', async () => {
-      if (!requireProFeature('Cloud-Sync')) return;
+      if (!requireProFeature(t('ai.featureCloudSync'))) return;
       if (!navigator.onLine) {
-        alert('Keine Verbindung – Sync ist offline nicht möglich.');
+        alert(t('errors.syncOffline'));
         return;
       }
       await withButtonLoading(syncBtn, async () => {
@@ -2837,14 +2916,14 @@ function setupSettings() {
             await processOfflineMemosQueue();
           }
           alert(result.pending > 0
-            ? `Teilweise synchronisiert. Noch ${result.pending} ausstehend.`
-            : 'Synchronisation abgeschlossen.');
+            ? t('errors.syncPartial', { n: result.pending })
+            : t('errors.syncOk'));
           refreshNetworkSettingsUI();
           updateConnectionStatusUI();
           if (currentView === 'dashboard') await renderDashboardView();
         } catch (err) {
           console.error(err);
-          alert('Sync fehlgeschlagen: ' + (err.message || err));
+          alert(t('errors.syncFailed', { name: err.message || err }));
         } finally {
           refreshNetworkSettingsUI();
         }
@@ -2857,13 +2936,13 @@ function setupSettings() {
   // Apiaries management
   document.getElementById('btn-add-apiary')?.addEventListener('click', async () => {
     if (!canEditActiveOp()) {
-      alert('Als Betrachter kannst du keine Stände anlegen.');
+      alert(t('errors.viewerApiary'));
       return;
     }
     const input = document.getElementById('apiary-name-input');
     const name = (input?.value || '').trim();
     if (!name) {
-      alert('Bitte einen Namen für den Bienenstand eingeben.');
+      alert(t('errors.apiaryNameRequired'));
       return;
     }
     const btn = document.getElementById('btn-add-apiary');
@@ -2875,11 +2954,7 @@ function setupSettings() {
   });
 
   document.getElementById('btn-reset-local-data')?.addEventListener('click', async () => {
-    const confirmed = confirm(
-      'Wirklich alle lokalen Daten auf diesem Gerät löschen?\n\n' +
-        'Völker, Kontrollen, Finanzen, Sync-Warteschlange und Offline-KI werden entfernt. ' +
-        'Daten im Cloud-Betrieb bleiben erhalten.'
-    );
+    const confirmed = confirm(t('confirms.clearLocal'));
     if (!confirmed) return;
 
     const btn = document.getElementById('btn-reset-local-data');
@@ -2893,16 +2968,16 @@ function setupSettings() {
       try {
         sessionStorage.clear();
       } catch (_) { /* ignore */ }
-      alert('Lokale Daten wurden gelöscht. Die App wird neu geladen.');
+      alert(t('errors.localDataCleared'));
       location.reload();
-    }, 'Lösche…');
+    }, t('common.deletingLong'));
   });
 }
 
 // --- Bienenbetrieb (Operations) ---
 
 async function promptLoginForInvite(joinCode) {
-  let inviteLabel = 'einem Bienenbetrieb';
+  let inviteLabel = t('auth.inviteFallbackName');
   try {
     const preview = await previewInvite(joinCode);
     if (preview?.operation_name) {
@@ -2912,10 +2987,7 @@ async function promptLoginForInvite(joinCode) {
     console.warn('Invite-Vorschau nicht möglich:', err);
   }
 
-  alert(
-    `Du wurdest zu ${inviteLabel} eingeladen.\n\n` +
-    `Bitte melde dich an oder registriere dich mit dem Login-Button — danach wirst du automatisch dem Betrieb hinzugefügt.`
-  );
+  alert(t('auth.inviteLoginAlert', { name: inviteLabel }));
   openModal('modal-auth');
 }
 
@@ -2936,10 +3008,10 @@ async function bootstrapOperationsForSession(session, { joinCode } = {}) {
       const url = new URL(window.location.href);
       url.searchParams.delete('join');
       window.history.replaceState({}, '', url.pathname + url.search);
-      alert(`Du bist dem Betrieb „${joined.name}“ beigetreten.`);
+      alert(t('errors.joinOk', { name: joined.name }));
     } catch (err) {
       console.warn('Join via code failed:', err);
-      alert('Beitritt fehlgeschlagen: ' + (err.message || err));
+      alert(t('errors.joinFailed', { name: err.message || err }));
       await ensureActiveOperation();
     }
   } else {
@@ -2963,19 +3035,19 @@ async function maybeOfferLocalMigration() {
   if (hasDeclinedSync) return 'skipped_declined_before';
   if (!isOperationOwner()) return 'skipped_not_owner';
 
-  if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
+  if (confirm(t('confirms.transferLocal'))) {
     try {
       const ok = await syncLocalToRemote();
       if (!ok) {
         throw new Error('Kein aktiver Betrieb oder Sync nicht möglich.');
       }
       trackEvent('sync_local_to_remote', { ok: true });
-      alert('Daten erfolgreich synchronisiert!');
+      alert(t('errors.syncOk'));
       return 'uploaded';
     } catch (syncErr) {
       console.error('Sync fehlgeschlagen:', syncErr);
       trackEvent('sync_local_to_remote', { ok: false });
-      alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+      alert(t('errors.syncIncomplete', { name: syncErr.message || syncErr }));
       return 'failed';
     }
   }
@@ -3158,7 +3230,7 @@ async function renderOperationMembers(operationId) {
 
 async function openOperationsModal() {
   if (!supabase) {
-    alert('Betriebe benötigen eine Anmeldung.');
+    alert(t('errors.operationsNeedLogin'));
     return;
   }
   const { data: { session } } = await supabase.auth.getSession();
@@ -3238,9 +3310,9 @@ function setupOperationsUI() {
         updateOperationChrome();
         applyRoleBasedUI();
         await navigate('dashboard');
-        alert(`Betrieb „${created.name}“ angelegt.`);
+        alert(t('errors.createOpOk', { name: created.name }));
       } catch (err) {
-        alert('Anlegen fehlgeschlagen: ' + (err.message || err));
+        alert(t('errors.createOpFailed', { name: err.message || err }));
       }
     }, 'Anlegen…');
   });
@@ -3265,9 +3337,9 @@ function setupOperationsUI() {
         updateOperationChrome();
         applyRoleBasedUI();
         await navigate('dashboard');
-        alert(`Beigetreten: ${joined.name}`);
+        alert(t('errors.joinedShort', { name: joined.name }));
       } catch (err) {
-        alert('Beitritt fehlgeschlagen: ' + (err.message || err));
+        alert(t('errors.joinFailed', { name: err.message || err }));
       }
     }, 'Beitreten…');
   });
@@ -3286,15 +3358,15 @@ function setupOperationsUI() {
         });
         updateOperationChrome();
         await refreshOperationSettingsUI();
-        alert('Betrieb gespeichert.');
+        alert(t('errors.saveOpOk'));
       } catch (err) {
-        alert('Speichern fehlgeschlagen: ' + (err.message || err));
+        alert(t('errors.saveOpFailed', { name: err.message || err }));
       }
     });
   });
 
   document.getElementById('btn-create-invite')?.addEventListener('click', async () => {
-    if (!requireProFeature('Team-Einladungen')) return;
+    if (!requireProFeature(t('ai.featureTeamInvites'))) return;
     const btn = document.getElementById('btn-create-invite');
     const opId = getActiveOperationId();
     const result = document.getElementById('operation-invite-result');
@@ -3317,14 +3389,14 @@ function setupOperationsUI() {
           document.getElementById('btn-copy-invite')?.addEventListener('click', async () => {
             try {
               await navigator.clipboard.writeText(`${invite.code}\n${link}`);
-              alert('Einladung kopiert.');
+              alert(t('errors.inviteCopied'));
             } catch {
               prompt('Einladung kopieren:', `${invite.code}\n${link}`);
             }
           });
         }
       } catch (err) {
-        alert('Einladung fehlgeschlagen: ' + (err.message || err));
+        alert(t('errors.inviteFailed', { name: err.message || err }));
       }
     }, 'Erzeuge…');
   });
@@ -3404,7 +3476,7 @@ function setupAuth() {
   btnAuthAction.addEventListener('click', async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (!confirm('Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.')) {
+      if (!confirm(t('confirms.logout'))) {
         return;
       }
       const pending = getSyncQueueLength();
@@ -3417,9 +3489,7 @@ function setupAuth() {
           }
         }
         if (getSyncQueueLength() > 0) {
-          if (!confirm(
-            `${getSyncQueueLength()} Änderung(en) sind noch nicht synchronisiert und gehen beim Abmelden verloren. Trotzdem abmelden?`
-          )) {
+          if (!confirm(t('confirms.logoutPendingSync', { n: getSyncQueueLength() }))) {
             return;
           }
         }
@@ -3428,7 +3498,7 @@ function setupAuth() {
       // Clear only after SIGNED_OUT (avoids wipe if signOut fails).
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
-        alert('Abmelden fehlgeschlagen: ' + (signOutError.message || signOutError));
+        alert(t('auth.signOutFailed', { name: signOutError.message || signOutError }));
         return;
       }
       location.reload();
@@ -3523,7 +3593,7 @@ function setupVoiceAssistant() {
       return;
     }
 
-    if (!requireProFeature('Sprachdiktat')) return;
+    if (!requireProFeature(t('ai.featureVoice'))) return;
 
     previewDiv.innerText = 'Aufnahme läuft... Mundart sprechen erlaubt!';
     previewDiv.style.display = 'block';
@@ -3571,7 +3641,7 @@ function setupVoiceAssistant() {
     } else if (status === 'processing') {
       btnIcon.innerText = '';
       btnText.innerText = 'KI analysiert…';
-      statusBadge.innerText = 'Analysiere...';
+      statusBadge.innerText = t('ai.receiptAnalyzing');
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
       statusBadge.classList.remove('voice-badge-listening');
@@ -3590,7 +3660,7 @@ function setupVoiceAssistant() {
       await renderOfflineMemos();
     } catch (err) {
       console.error(err);
-      alert('Fehler beim lokalen Speichern der Sprachnotiz.');
+      alert(t('errors.voiceSaveFailed'));
     }
   }
 
@@ -3598,8 +3668,8 @@ function setupVoiceAssistant() {
     // Weak / offline links: never burn mobile data on large audio uploads
     if (!shouldAutoProcessMedia()) {
       const msg = !navigator.onLine
-        ? 'Offline: Diktat lokal gespeichert. Verarbeitung bei besserer Verbindung.'
-        : 'Funkloch-Modus: Diktat lokal gespeichert. KI-Verarbeitung wartet auf gutes Netz/WLAN.';
+        ? t('ai.voiceOfflineSaved')
+        : t('ai.voiceOfflineSaved');
       await queueVoiceMemoLocally(audioBlob, msg);
       return;
     }
@@ -3701,7 +3771,7 @@ function setupReceiptScanner() {
 
   btnScan.addEventListener('click', () => {
     errorDiv.style.display = 'none';
-    if (!requireProFeature('Beleg-Scan')) return;
+    if (!requireProFeature(t('ai.featureReceipt'))) return;
     fileInput.click();
   });
 
@@ -3714,12 +3784,12 @@ function setupReceiptScanner() {
         const base64 = await blobToBase64(file);
         await saveOfflineMemo('receipt', base64, file.type || 'image/jpeg');
         alert(!navigator.onLine
-          ? 'Offline: Beleg lokal gespeichert. Analyse bei besserer Verbindung.'
-          : 'Funkloch-Modus: Beleg lokal gespeichert. KI-Analyse wartet auf gutes Netz/WLAN.');
+          ? t('ai.receiptOfflineSaved')
+          : t('ai.receiptOfflineSaved'));
         await renderOfflineMemos();
       } catch (err) {
         console.error(err);
-        alert('Fehler beim lokalen Speichern des Belegs.');
+        alert(t('errors.receiptSaveFailed'));
       } finally {
         fileInput.value = '';
       }
@@ -3732,7 +3802,7 @@ function setupReceiptScanner() {
     try {
       const data = await parseReceiptWithGemini(file);
       trackEvent('ai_receipt_parsed', { ok: true });
-      if (!data) throw new Error('Keine Daten vom Beleg-Scanner empfangen.');
+      if (!data) throw new Error(t('ai.noReceiptData'));
 
       // Populate form fields
       if (data.date) {
@@ -3743,22 +3813,20 @@ function setupReceiptScanner() {
         document.getElementById('finance-form-description').value = data.description;
         highlightField('finance-form-description');
       }
-      if (data.category) {
+      {
         const catSelect = document.getElementById('finance-form-category');
-        const validCategories = Array.from(catSelect.options).map(opt => opt.value);
-        if (validCategories.includes(data.category)) {
-          catSelect.value = data.category;
-        } else {
-          catSelect.value = 'Sonstiges';
+        const rawCat = data.categoryId || data.category;
+        if (rawCat && catSelect) {
+          catSelect.value = financeCategorySelectValue(rawCat);
+          highlightField('finance-form-category');
         }
-        highlightField('finance-form-category');
       }
       if (data.price !== undefined && data.price !== null) {
         document.getElementById('finance-form-price').value = parseFloat(data.price).toFixed(2);
         highlightField('finance-form-price');
       }
 
-      statusBadge.innerText = 'Beleg erfasst!';
+      statusBadge.innerText = t('ai.receiptCaptured');
       statusBadge.style.background = '#10b981';
       statusBadge.style.color = '#fff';
 
@@ -3771,12 +3839,12 @@ function setupReceiptScanner() {
       try {
         const base64 = await blobToBase64(file);
         await saveOfflineMemo('receipt', base64, file.type || 'image/jpeg');
-        errorDiv.innerText = 'Analyse fehlgeschlagen – Beleg lokal gespeichert und später erneut verarbeitbar.';
+        errorDiv.innerText = t('ai.receiptOfflineFallback');
         errorDiv.style.display = 'block';
         await renderOfflineMemos();
       } catch (saveErr) {
         console.error(saveErr);
-        errorDiv.innerText = formatGeminiError(err, 'Fehler beim Analysieren des Belegs.');
+        errorDiv.innerText = formatGeminiError(err, t('ai.receiptError'));
         errorDiv.style.display = 'block';
       }
       updateUI('idle');
@@ -3789,14 +3857,14 @@ function setupReceiptScanner() {
     if (status === 'processing') {
       btnScan.disabled = true;
       btnIcon.innerText = '';
-      btnText.innerText = 'Beleg wird analysiert…';
-      statusBadge.innerText = 'Analysiere...';
+      btnText.innerText = t('ai.receiptBtnProcessing');
+      statusBadge.innerText = t('ai.receiptAnalyzing');
       statusBadge.style.background = 'var(--primary)';
       statusBadge.style.color = '#000';
     } else {
       btnScan.disabled = false;
       btnIcon.innerText = '';
-      btnText.innerText = 'Beleg hochladen / fotografieren';
+      btnText.innerText = t('ai.receiptUpload');
       statusBadge.innerText = 'Bereit';
       statusBadge.style.background = 'rgba(255,255,255,0.1)';
       statusBadge.style.color = 'var(--text-primary)';
@@ -3894,8 +3962,8 @@ function updateConnectionStatusUI() {
 
   if (!navigator.onLine) {
     statusEl.classList.add('is-offline');
-    statusEl.title = 'Offline – Änderungen werden lokal gespeichert';
-    statusEl.setAttribute('aria-label', 'Offline');
+    statusEl.title = t('offline.changesLocal');
+    statusEl.setAttribute('aria-label', t('header.offline'));
     return;
   }
 
@@ -3978,7 +4046,7 @@ async function renderOfflineMemos() {
           await renderOfflineMemos();
           return;
         }
-        alert('Verarbeitung fehlgeschlagen: ' + err.message);
+        alert(t('errors.processFailed', { name: err.message }));
       }
     });
   });
@@ -3990,8 +4058,8 @@ async function renderOfflineMemos() {
       if (!id) return;
       const confirmMsg =
         type === 'receipt'
-          ? 'Diesen Offline-Beleg wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.'
-          : 'Dieses Offline-Diktat wirklich verwerfen? Die lokale Zwischenspeicherung wird gelöscht und nicht mehr verarbeitet.';
+          ? t('offline.memoConfirmDiscard')
+          : t('offline.memoConfirmDiscard');
       if (!confirm(confirmMsg)) return;
       setOfflineMemoRowBusy(id, true);
       try {
@@ -4000,7 +4068,7 @@ async function renderOfflineMemos() {
         await renderOfflineMemos();
       } catch (err) {
         setOfflineMemoRowBusy(id, false);
-        alert('Verwerfen fehlgeschlagen: ' + (err?.message || err));
+        alert(t('errors.discardFailed', { name: err?.message || err }));
       }
     });
   });
@@ -4056,7 +4124,7 @@ async function processSingleOfflineMemo(id) {
         broodStatus: '',
         honeySuper: '',
         temperament: 5,
-        notes: data.notes || 'Durchsicht via Offline-Sprachmemo.'
+        notes: data.notes || t('inspections.offlineMemoNotes')
       };
       await saveInspection(inspection);
     }
@@ -4072,8 +4140,8 @@ async function processSingleOfflineMemo(id) {
     // 2. Save finance item
     const finance = {
       date: data.date || new Date(memo.timestamp).toISOString().split('T')[0],
-      description: data.description || 'Offline Beleg-Scan',
-      category: data.category || 'Sonstiges',
+      description: data.description || t('finances.offlineReceipt'),
+      category: financeCategoryStorageValue(data.categoryId || data.category || 'other'),
       price: parseFloat(data.price || 0),
       type: 'expense'
     };

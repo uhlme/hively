@@ -7,6 +7,15 @@ import { parseGeminiJson } from '../src/utils.js';
 import { isBillingEnforced } from './billing.js';
 import { assertUserOperationHasPro, getServiceSupabase } from './proGate.js';
 import { buildCorsJsonHeaders } from './corsHeaders.js';
+import {
+  buildAudioPrompt,
+  buildHiveRecommendationPrompt,
+  buildReceiptPrompt,
+  buildWeatherInsightPrompt,
+  languageMeta,
+  normalizeFinanceCategory,
+  normalizePromptLocale
+} from './i18n/promptLocale.js';
 
 const MODEL = 'gemini-2.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
@@ -26,51 +35,15 @@ const ALLOWED_RECEIPT_TYPES = new Set([
   'image/heic',
   'image/heif'
 ]);
-const ALLOWED_CATEGORIES = new Set([
-  'Hardware',
-  'Futter',
-  'Bienen',
-  'Imkereibedarf',
-  'Sonstiges'
-]);
 
-const AUDIO_PROMPT = `Du bist eine KI zur Analyse von gesprochenen Imker-Protokollen bei einer Durchsicht von Bienenvölkern.
-Höre dir die beigefügte Audiodatei genau an. Sie ist auf Schweizerdeutsch (Mundart) gesprochen.
-Verstehe den Dialekt, übersetze ihn gedanklich ins Hochdeutsche und extrahiere die relevanten Daten.
-Liefere ein strukturiertes JSON-Objekt zurück.
-
-Formatvorgabe (JSON):
-{
-  "hiveNames": ["Array von erkannten Kasten-Namen, z.B. ['Kasten 1', 'Kasten 2']. Falls der Benutzer explizit 'alle' oder 'bei allen' sagt, liefere ['alle'] zurück. Leeres Array [], wenn keine genannt wurden."],
-  "notes": "Eine übersichtliche, strukturierte Zusammenfassung der gesamten Durchsicht auf Hochdeutsch. Fasse alle beobachteten Details wie Brutstatus, Honigraum, Sanftmut, Fütterung, Varroabehandlung und sonstige Arbeiten in lesbaren, strukturierten Notizen zusammen."
-}
-
-Wichtig:
-- Antworte AUSSCHLIESSLICH mit dem validen JSON-Objekt.
-- Füge keine Markdown-Formatierung wie \`\`\`json oder sonstigen Text hinzu.
-- Setze nicht erwähnte Felder auf ein leeres Array oder null.`;
-
-const RECEIPT_PROMPT = `Du bist ein Beleg-Scanner für eine Imker-App.
-Analysiere das beigefügte Bild der Quittung/Rechnung.
-Extrahiere die folgenden Informationen und gib sie als strukturiertes JSON-Objekt zurück:
-- date: Das Belegdatum im Format YYYY-MM-DD (falls nicht auffindbar, nimm das heutige Datum im gleichen Format: YYYY-MM-DD).
-- description: Eine kurze Zusammenfassung der wichtigsten gekauften Artikel (z.B. "10x Absperrgitter, Zander Beute").
-- category: Weise dem Kauf eine der folgenden Kategorien zu: "Hardware", "Futter", "Bienen", "Imkereibedarf", "Sonstiges".
-- price: Der Gesamtbetrag (Total/Endsumme) als Dezimalzahl (z.B. 129.50). Ignoriere Währungssymbole, liefere nur die reine Zahl.
-
-Formatvorgabe (JSON):
-{
-  "date": "YYYY-MM-DD",
-  "description": "Artikelbeschreibung",
-  "category": "KategorieName",
-  "price": 129.50
-}
-
-Wichtig:
-- Antworte AUSSCHLIESSLICH mit dem validen JSON-Objekt.
-- Füge keine Markdown-Formatierung wie \`\`\`json oder sonstigen Text hinzu.
-- Verwende exakt die vorgegebenen Kategorienamen (Hardware, Futter, Bienen, Imkereibedarf, Sonstiges) - passe sie wenn nötig an.
-- Setze nicht erkennbare Felder auf plausible Werte (z.B. heutigen Tag für Datum, "Unbekannter Beleg" für Beschreibung).`;
+/** Legacy DE labels still accepted from older clients / stored rows. */
+const CATEGORY_ID_TO_LEGACY = {
+  hardware: 'Hardware',
+  feed: 'Futter',
+  bees: 'Bienen',
+  equipment: 'Imkereibedarf',
+  other: 'Sonstiges'
+};
 
 /** Default CORS headers (localhost / APP_ORIGIN). Prefer buildCorsJsonHeaders(origin). */
 export const GEMINI_JSON_HEADERS = buildCorsJsonHeaders('');
@@ -246,33 +219,17 @@ async function generateJson(ai, parts) {
   return parsed;
 }
 
-async function weatherInsight(ai, weatherData) {
+async function weatherInsight(ai, weatherData, locale) {
   if (!weatherData || typeof weatherData !== 'object') {
     throw new Error('Ungültige Wetterdaten.');
   }
 
-  const pollenText = weatherData.dominantPollen
-    ? `Stärkste Pollenbelastung: ${weatherData.dominantPollen.name} (${weatherData.dominantPollen.value} grains/m³).`
-    : 'Keine nennenswerte Pollenbelastung.';
-
-  const prompt = `
-Du bist ein erfahrener Imker-Experte aus der Schweiz.
-Hier sind die aktuellen Wetter- und Trachtdaten direkt am Bienenstand:
-- Temperatur: ${weatherData.temperature}°C
-- Wetterlage: ${weatherData.conditionText}
-- Windgeschwindigkeit: ${weatherData.windSpeed} km/h
-- Pollen: ${pollenText}
-
-Aufgabe:
-Erkläre in maximal 2 kurzen Sätzen, was diese Situation konkret für das Verhalten der Bienen oder die Arbeit des Imkers bedeutet.
-Formuliere praxisnah, motivierend und direkt (ohne Einleitung wie "Hallo").
-  `;
-
+  const prompt = buildWeatherInsightPrompt(locale, weatherData);
   const result = await getModel(ai).generateContent(prompt);
   return { text: result.response.text().trim() };
 }
 
-async function parseAudio(ai, payload = {}) {
+async function parseAudio(ai, payload = {}, locale = 'de') {
   requireBase64Data(
     payload.data,
     'Keine Audiodaten übermittelt.',
@@ -286,7 +243,7 @@ async function parseAudio(ai, payload = {}) {
 
   const parsed = await generateJson(ai, [
     { inlineData: { data: payload.data, mimeType: audioMime } },
-    { text: AUDIO_PROMPT }
+    { text: buildAudioPrompt(locale) }
   ]);
 
   return {
@@ -295,7 +252,7 @@ async function parseAudio(ai, payload = {}) {
   };
 }
 
-async function parseReceipt(ai, payload = {}) {
+async function parseReceipt(ai, payload = {}, locale = 'de') {
   requireBase64Data(
     payload.data,
     'Keine Bilddatei übermittelt.',
@@ -308,13 +265,14 @@ async function parseReceipt(ai, payload = {}) {
 
   const parsed = await generateJson(ai, [
     { inlineData: { data: payload.data, mimeType: mimeType || 'image/jpeg' } },
-    { text: RECEIPT_PROMPT }
+    { text: buildReceiptPrompt(locale) }
   ]);
 
   const price = Number(parsed.price);
   const today = new Date().toISOString().split('T')[0];
   const description =
     typeof parsed.description === 'string' ? parsed.description.trim() : '';
+  const categoryId = normalizeFinanceCategory(parsed.category);
 
   return {
     date:
@@ -322,87 +280,88 @@ async function parseReceipt(ai, payload = {}) {
         ? parsed.date
         : today,
     description: description || 'Unbekannter Beleg',
-    category: ALLOWED_CATEGORIES.has(parsed.category) ? parsed.category : 'Sonstiges',
+    // Stable id for new clients + legacy DE label for existing finance forms.
+    categoryId,
+    category: CATEGORY_ID_TO_LEGACY[categoryId] || 'Sonstiges',
     price: Number.isFinite(price) ? price : 0
   };
 }
 
-async function hiveRecommendation(ai, payload = {}) {
+async function hiveRecommendation(ai, payload = {}, locale = 'de') {
   const { hive, inspections } = payload;
-  
+  const loc = normalizePromptLocale(locale);
+  const lang = languageMeta(loc);
+
   if (!hive || typeof hive !== 'object') {
     throw new Error('Ungültige Volksdaten.');
   }
-  
+
   if (!Array.isArray(inspections) || inspections.length === 0) {
-    return { recommendation: 'Noch keine Durchsichten vorhanden. Erstelle eine erste Durchsicht, um Empfehlungen zu erhalten.' };
+    return {
+      recommendation:
+        loc === 'fr'
+          ? "Aucune visite pour l'instant. Crée une première visite pour obtenir des recommandations."
+          : loc === 'it'
+            ? 'Nessuna visita ancora. Crea una prima visita per ricevere raccomandazioni.'
+            : loc === 'en'
+              ? 'No inspections yet. Create a first inspection to get recommendations.'
+              : 'Noch keine Durchsichten vorhanden. Erstelle eine erste Durchsicht, um Empfehlungen zu erhalten.'
+    };
   }
 
-  // Sortiere Durchsichten nach Datum (neueste zuerst)
-  const sortedInspections = [...inspections].sort((a, b) => 
-    new Date(b.date) - new Date(a.date)
+  const sortedInspections = [...inspections].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
   );
-
-  // Begrenze auf die letzten 10 Durchsichten für Performance
   const recentInspections = sortedInspections.slice(0, 10);
 
-  // Bereite Volksinformationen auf
   const hiveInfo = `
-Volk: ${hive.name}
-Königin: ${hive.queenName || 'Unbekannt'} (${hive.queenYear || 'Jahr unbekannt'}, ${hive.queenColor || 'Farbe unbekannt'})
-Rasse: ${hive.breed || 'Unbekannt'}
-Status: ${hive.status || 'Unbekannt'}
-Brutwaben: ${hive.broodFrames || 0}
-Honigwaben HR1: ${hive.honeyFrames1 || 0}
-Honigwaben HR2: ${hive.honeyFrames2 || 0}
-Notizen: ${hive.notes || 'Keine'}
+Hive: ${hive.name}
+Queen: ${hive.queenName || 'Unknown'} (${hive.queenYear || 'year unknown'}, ${hive.queenColor || 'color unknown'})
+Breed: ${hive.breed || 'Unknown'}
+Status: ${hive.status || 'Unknown'}
+Brood frames: ${hive.broodFrames || 0}
+Honey frames 1: ${hive.honeyFrames1 || 0}
+Honey frames 2: ${hive.honeyFrames2 || 0}
+Notes: ${hive.notes || 'None'}
   `.trim();
 
-  // Bereite Durchsichten auf
-  const inspectionsSummary = recentInspections.map((insp, idx) => {
-    return `
-Durchsicht ${idx + 1} (${insp.date}):
-- Fütterung: ${insp.feeding || 'Keine Angabe'}
-- Varroa-Behandlung: ${insp.varroa || 'Keine Angabe'}
-- Brutstatus: ${insp.broodStatus || 'Keine Angabe'}
-- Honigraum: ${insp.honeySuper || 'Keine Angabe'}
-- Sanftmut: ${insp.temperament || 'Keine Angabe'}/5
-- Wetter: ${insp.weatherCondition || 'Unbekannt'}, ${insp.weatherTemp !== undefined && insp.weatherTemp !== null && insp.weatherTemp !== '' ? insp.weatherTemp + '°C' : 'Temp. unbekannt'}
-- Notizen: ${insp.notes || 'Keine'}
+  const inspectionsSummary = recentInspections
+    .map((insp, idx) => {
+      return `
+Inspection ${idx + 1} (${insp.date}):
+- Feeding: ${insp.feeding || 'n/a'}
+- Varroa: ${insp.varroa || 'n/a'}
+- Brood: ${insp.broodStatus || 'n/a'}
+- Honey super: ${insp.honeySuper || 'n/a'}
+- Temperament: ${insp.temperament || 'n/a'}/5
+- Weather: ${insp.weatherCondition || 'unknown'}, ${
+        insp.weatherTemp !== undefined && insp.weatherTemp !== null && insp.weatherTemp !== ''
+          ? `${insp.weatherTemp}°C`
+          : 'temp n/a'
+      }
+- Notes: ${insp.notes || 'None'}
     `.trim();
-  }).join('\n\n');
+    })
+    .join('\n\n');
 
-  const prompt = `
-Du bist ein erfahrener Schweizer Imker-Experte. Analysiere dieses Bienenvolk:
-
-${hiveInfo}
-
-LETZTE DURCHSICHTEN:
-${inspectionsSummary}
-
-Aufgabe:
-Gib eine KURZE, PRÄGNANTE Empfehlung auf DEUTSCH (max. 4-5 Sätze) mit den wichtigsten nächsten Schritten.
-
-WICHTIG:
-- Antworte AUSSCHLIESSLICH auf Deutsch (Hochdeutsch mit Schweizer Imker-Begriffen)
-- Maximal 4-5 Sätze insgesamt
-- Fokus auf die 2-3 wichtigsten Aktionen
-- Konkret und handlungsorientiert
-- Berücksichtige die aktuelle Jahreszeit (heute: ${new Date().toLocaleDateString('de-CH')})
-
-Beispiel-Format:
-"Das Volk entwickelt sich stark/schwach. [Hauptbeobachtung in 1 Satz]. Nächste Schritte: [Konkrete Aktion 1], [Konkrete Aktion 2]. [Optional: Wichtiger Hinweis]."
-  `;
+  const todayLabel = new Date().toLocaleDateString(lang.localeTag);
+  const prompt = buildHiveRecommendationPrompt(loc, {
+    hiveInfo,
+    inspectionsSummary,
+    todayLabel
+  });
 
   const result = await getModel(ai).generateContent(prompt);
   return { recommendation: result.response.text().trim() };
 }
 
 const ACTIONS = {
-  weather_insight: (ai, body) => weatherInsight(ai, body.weatherData),
-  parse_audio: (ai, body) => parseAudio(ai, body),
-  parse_receipt: (ai, body) => parseReceipt(ai, body),
-  hive_recommendation: (ai, body) => hiveRecommendation(ai, body)
+  weather_insight: (ai, body) =>
+    weatherInsight(ai, body.weatherData, normalizePromptLocale(body.locale)),
+  parse_audio: (ai, body) => parseAudio(ai, body, normalizePromptLocale(body.locale)),
+  parse_receipt: (ai, body) => parseReceipt(ai, body, normalizePromptLocale(body.locale)),
+  hive_recommendation: (ai, body) =>
+    hiveRecommendation(ai, body, normalizePromptLocale(body.locale))
 };
 
 /**

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informativa sulla privacy – Hively</title>
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+
+<nav class="nav-legal" aria-label="Informazioni legali">
+  <a href="/it/impressum/">Note legali</a>
+  <a href="/it/agb/">CG</a>
+  <a href="/it/privacy/">Privacy</a>
+  <a href="/it/delete-account/">Elimina account</a>
+</nav>
+
+<h1>Informativa sulla privacy – Hively</h1>
+<p class="updated">Stato: 8 agosto 2026</p>
+
+<p>
+  La presente informativa sulla privacy si applica all’app <strong>Hively</strong>
+  (Web/PWA nonché le app native iOS e Android, nome del pacchetto
+  <code>ch.hively.app</code>) e spiega quali dati personali trattiamo,
+  per quali finalità e quali diritti ti spettano.
+</p>
+
+<h2>1. Titolare del trattamento</h2>
+<div class="contact">
+  Raphael Uhlmann<br>
+  Schwyzermatt 13<br>
+  6130 Willisau<br>
+  Svizzera<br>
+  E-mail: <a href="mailto:hively.support@proton.me">hively.support@proton.me</a>
+</div>
+
+<h2>2. Base giuridica</h2>
+<p>
+  Il trattamento dei tuoi dati personali è disciplinato principalmente dalla
+  legge federale svizzera sulla protezione dei dati (LPD). Nella misura in cui
+  utilizzi l’app dall’UE, rispettiamo inoltre i principi del regolamento
+  generale sulla protezione dei dati (GDPR).
+</p>
+
+<h2>3. Principio di base: local-first</h2>
+<p>
+  Hively è concepita come app « local-first »: i tuoi dati su alveari,
+  ispezioni, raccolti e finanze sono memorizzati principalmente in locale
+  sul tuo dispositivo e funzionano completamente offline. Un account è
+  opzionale e necessario solo se desideri sincronizzare i dati tra
+  dispositivi o utilizzare Hively&nbsp;Pro.
+</p>
+
+<h2>4. Quali dati trattiamo</h2>
+<table>
+  <tr><th>Categoria</th><th>Finalità</th><th>Destinatario / luogo di trattamento</th></tr>
+  <tr>
+    <td>Dati di account e di accesso (indirizzo e-mail, hash della password)</td>
+    <td>Accesso e sincronizzazione cloud opzionale dei tuoi dati su
+      più dispositivi</td>
+    <td>Supabase (responsabile del trattamento, regione UE)</td>
+  </tr>
+  <tr>
+    <td>Contenuti da te inseriti: alveari, note di ispezione,
+      trattamenti, dati di raccolto e finanziari, foto di ricevute, note vocali</td>
+    <td>Funzione principale dell’app; con sincronizzazione cloud attiva
+      anche memorizzati sui nostri server</td>
+    <td>In locale sul tuo dispositivo; opzionalmente Supabase (regione UE)</td>
+  </tr>
+  <tr>
+    <td>Registrazioni vocali (dettatura IA) e foto di ricevute (scanner spese)</td>
+    <td>Trascrizione automatica o riconoscimento del testo tramite IA</td>
+    <td>Tramite un server proxy dedicato (Netlify) verso l’API
+      Google&nbsp;Gemini; la chiave API resta lato server</td>
+  </tr>
+  <tr>
+    <td>Posizione (area approssimativa, per radar meteo/polline)</td>
+    <td>Visualizzazione di dati meteo e polline locali</td>
+    <td>Solo con la tua autorizzazione esplicita; non viene memorizzata
+      in modo permanente presso di noi</td>
+  </tr>
+  <tr>
+    <td>Dati di pagamento e di abbonamento (per Hively&nbsp;Pro)</td>
+    <td>Sottoscrizione e gestione dell’abbonamento</td>
+    <td>Stripe (prestatore di servizi di pagamento). Non memorizziamo
+      dati completi della carta; sul nostro sistema solo lo stato
+      dell’abbonamento e gli ID cliente/abbonamento Stripe per l’esercizio</td>
+  </tr>
+  <tr>
+    <td>Dati di utilizzo anonimizzati</td>
+    <td>Miglioramento del prodotto</td>
+    <td>PostHog (server UE, <code>eu.i.posthog.com</code>). Nessun autocapture;
+      Session Replay solo se esplicitamente attivato (input mascherati)</td>
+  </tr>
+</table>
+
+<h2>5. Comunicazione a terzi</h2>
+<p>
+  Non vendiamo dati personali. I dati vengono trasmessi esclusivamente ai
+  responsabili del trattamento sopra indicati, nella misura necessaria
+  allo scopo respectivo.
+</p>
+
+<h2>6. Periodo di conservazione</h2>
+<p>
+  I dati locali restano sul tuo dispositivo finché non li elimini o
+  disinstalli l’app. I dati cloud sono conservati finché esiste il tuo
+  account e vengono rimossi con l’eliminazione dell’account. Stripe
+  conserva i dati di fatturazione secondo gli obblighi di legge.
+</p>
+
+<h2>7. I tuoi diritti</h2>
+<ul>
+  <li>Informazioni sui dati personali trattati che ti riguardano</li>
+  <li>Rettifica dei dati inesatti</li>
+  <li>Eliminazione del tuo account e dei relativi dati cloud
+    (<a href="/it/delete-account/">istruzioni</a>)</li>
+  <li>Consegna dei tuoi dati cloud in un formato comune
+    (portabilità dei dati) – su richiesta via e-mail all’indirizzo di contatto;
+    i dati locali puoi eliminarli nelle impostazioni dell’app sul dispositivo</li>
+  <li>Revoca di un consenso prestato (ad es. accesso alla posizione)
+    in qualsiasi momento con effetto per il futuro</li>
+</ul>
+
+<h2>8. Nessuna pubblicità</h2>
+<p>Hively non mostra pubblicità e non contiene SDK pubblicitari.</p>
+
+<h2>9. Minori</h2>
+<p>
+  Hively non si rivolge specificamente a minori di 13&nbsp;anni e
+  non raccoglie consapevolmente dati personali di bambini di questa età.
+</p>
+
+<h2>10. Sicurezza dei dati</h2>
+<p>
+  Adottiamo misure tecniche e organizzative adeguate
+  (tra l’altro trasmissione crittografata, limitazioni di accesso presso
+  i responsabili del trattamento).
+</p>
+
+<h2>11. Modifiche</h2>
+<p>
+  Adattiamo questa informativa se necessario. La versione attuale è
+  sempre disponibile su questa pagina.
+</p>
+
+<h2>12. Contatto</h2>
+<div class="contact">
+  Domande sulla protezione dei dati:
+  <a href="mailto:hively.support@proton.me">hively.support@proton.me</a>
+</div>
+
+<p class="note">
+  In caso di divergenze, fa fede la versione tedesca.
+</p>
+
+</body>
+</html>

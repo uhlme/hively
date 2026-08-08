@@ -46,7 +46,8 @@ describe('callGemini', () => {
     expect(JSON.parse(options.body)).toEqual({
       action: 'weather_insight',
       operationId: 'op-test-1',
-      weatherData: { temperature: 20 }
+      weatherData: { temperature: 20 },
+      locale: 'de'
     });
     expect(options.headers.Authorization).toBeUndefined();
   });

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy – Hively</title>
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+
+<nav class="nav-legal" aria-label="Legal">
+  <a href="/en/impressum/">Legal notice</a>
+  <a href="/en/agb/">Terms</a>
+  <a href="/en/privacy/">Privacy</a>
+  <a href="/en/delete-account/">Delete account</a>
+</nav>
+
+<h1>Privacy policy – Hively</h1>
+<p class="updated">As of: 8 August 2026</p>
+
+<p>
+  This privacy policy applies to the <strong>Hively</strong> app
+  (Web/PWA as well as the native iOS and Android apps, package name
+  <code>ch.hively.app</code>) and explains which personal data we
+  process, for what purposes, and what rights you have.
+</p>
+
+<h2>1. Controller</h2>
+<div class="contact">
+  Raphael Uhlmann<br>
+  Schwyzermatt 13<br>
+  6130 Willisau<br>
+  Switzerland<br>
+  Email: <a href="mailto:hively.support@proton.me">hively.support@proton.me</a>
+</div>
+
+<h2>2. Legal basis</h2>
+<p>
+  The processing of your personal data is primarily governed by the Swiss
+  Federal Act on Data Protection (FADP). Where you use the app from the EU,
+  we additionally follow the principles of the EU General Data Protection
+  Regulation (GDPR).
+</p>
+
+<h2>3. Core principle: local-first</h2>
+<p>
+  Hively is designed as a “local-first” app: your hive, inspection, harvest,
+  and finance data are stored primarily locally on your device and work fully
+  offline. An account is optional and only required if you want to sync data
+  across devices or use Hively&nbsp;Pro.
+</p>
+
+<h2>4. What data we process</h2>
+<table>
+  <tr><th>Category</th><th>Purpose</th><th>Recipient / place of processing</th></tr>
+  <tr>
+    <td>Account and access data (email address, password hash)</td>
+    <td>Sign-in and optional cloud synchronisation of your data across
+      multiple devices</td>
+    <td>Supabase (processor, EU region)</td>
+  </tr>
+  <tr>
+    <td>Content you enter: hives, inspection notes,
+      treatments, harvest and finance data, receipt photos, voice notes</td>
+    <td>Core app functionality; when cloud sync is enabled, also stored
+      on our servers</td>
+    <td>Locally on your device; optionally Supabase (EU region)</td>
+  </tr>
+  <tr>
+    <td>Voice recordings (AI dictation) and receipt photos (expense scanner)</td>
+    <td>Automatic transcription or text recognition via AI</td>
+    <td>Via our own proxy server (Netlify) to the
+      Google&nbsp;Gemini&nbsp;API; the API key remains server-side</td>
+  </tr>
+  <tr>
+    <td>Location (approximate area, for weather/pollen radar)</td>
+    <td>Display of local weather and pollen data</td>
+    <td>Only with your explicit permission; not stored permanently
+      with us</td>
+  </tr>
+  <tr>
+    <td>Payment and subscription data (for Hively&nbsp;Pro)</td>
+    <td>Concluding and managing the subscription</td>
+    <td>Stripe (payment provider). We do not store full card data;
+      on our system only subscription status and Stripe customer/subscription
+      IDs for operations</td>
+  </tr>
+  <tr>
+    <td>Anonymised usage data</td>
+    <td>Product improvement</td>
+    <td>PostHog (EU servers, <code>eu.i.posthog.com</code>). No autocapture;
+      Session Replay only when explicitly enabled (inputs masked)</td>
+  </tr>
+</table>
+
+<h2>5. Disclosure to third parties</h2>
+<p>
+  We do not sell personal data. Data is shared only with the processors
+  named above, to the extent required for the respective purpose.
+</p>
+
+<h2>6. Retention period</h2>
+<p>
+  Local data remains on your device until you delete it or uninstall the app.
+  Cloud data is stored for as long as your account exists and is removed
+  upon account deletion. Stripe retains invoice data in accordance with
+  statutory retention obligations.
+</p>
+
+<h2>7. Your rights</h2>
+<ul>
+  <li>Access to the personal data processed about you</li>
+  <li>Correction of inaccurate data</li>
+  <li>Deletion of your account and associated cloud data
+    (<a href="/en/delete-account/">instructions</a>)</li>
+  <li>Provision of your cloud data in a common format
+    (data portability) – on request by email to the contact address;
+    you can delete local data in the app settings on the device</li>
+  <li>Withdrawal of a given consent (e.g. location access)
+    at any time with effect for the future</li>
+</ul>
+
+<h2>8. No advertising</h2>
+<p>Hively shows no advertising and contains no advertising SDKs.</p>
+
+<h2>9. Children</h2>
+<p>
+  Hively is not directed at children under 13&nbsp;years of age and
+  does not knowingly collect personal data from children in that age group.
+</p>
+
+<h2>10. Data security</h2>
+<p>
+  We implement appropriate technical and organisational measures
+  (including encrypted transmission and access restrictions at processors).
+</p>
+
+<h2>11. Changes</h2>
+<p>
+  We update this policy as needed. The current version is always available
+  on this page.
+</p>
+
+<h2>12. Contact</h2>
+<div class="contact">
+  Privacy questions:
+  <a href="mailto:hively.support@proton.me">hively.support@proton.me</a>
+</div>
+
+<p class="note">
+  In case of discrepancies, the German version is authoritative.
+</p>
+
+</body>
+</html>

@@ -27,7 +27,7 @@ alwaysApply: true
 
 ## Code-Stil
 - Bestehende Module und Namenskonventionen (camelCase lokal, snake_case in DB) beibehalten
-- UI-Texte auf Deutsch (Schweiz)
+- UI-Texte mehrsprachig (de/fr/it/en) über `src/i18n/`; Fallback Deutsch (CH)
 - Keine unnötigen Dependencies hinzufügen
 - Bestehende Tests in `tests/` erweitern, wenn Logik geändert wird
 

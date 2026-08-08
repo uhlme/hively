@@ -6,36 +6,36 @@ import { Capacitor } from '@capacitor/core';
 import { fetchWithTimeout } from './network.js';
 import { safeJsonParse } from './utils.js';
 
-/** WMO weather codes → German label + icon kind (SVG, no emoji). */
+/** WMO weather codes → DE fallback label + icon + i18n key. */
 const WMO_CODES = {
-  0: { label: 'Sonnig', icon: 'sun' },
-  1: { label: 'Heiter', icon: 'sun' },
-  2: { label: 'Wolkig', icon: 'partly-cloudy' },
-  3: { label: 'Bedeckt', icon: 'cloudy' },
-  45: { label: 'Nebel', icon: 'fog' },
-  48: { label: 'Rauhreifnebel', icon: 'fog' },
-  51: { label: 'Leichter Nieselregen', icon: 'drizzle' },
-  53: { label: 'Nieselregen', icon: 'drizzle' },
-  55: { label: 'Dichter Nieselregen', icon: 'drizzle' },
-  56: { label: 'Leichter gefrierender Nieselregen', icon: 'drizzle' },
-  57: { label: 'Dichter gefrierender Nieselregen', icon: 'drizzle' },
-  61: { label: 'Leichter Regen', icon: 'rain' },
-  63: { label: 'Regen', icon: 'rain' },
-  65: { label: 'Starker Regen', icon: 'rain' },
-  66: { label: 'Leichter gefrierender Regen', icon: 'rain' },
-  67: { label: 'Starker gefrierender Regen', icon: 'rain' },
-  71: { label: 'Leichter Schneefall', icon: 'snow' },
-  73: { label: 'Schneefall', icon: 'snow' },
-  75: { label: 'Starker Schneefall', icon: 'snow' },
-  77: { label: 'Schneegriesel', icon: 'snow' },
-  80: { label: 'Leichte Regenschauer', icon: 'showers' },
-  81: { label: 'Regenschauer', icon: 'showers' },
-  82: { label: 'Starke Regenschauer', icon: 'showers' },
-  85: { label: 'Leichte Schneeschauer', icon: 'snow' },
-  86: { label: 'Starke Schneeschauer', icon: 'snow' },
-  95: { label: 'Gewitter', icon: 'thunderstorm' },
-  96: { label: 'Gewitter mit leichtem Hagel', icon: 'thunderstorm' },
-  99: { label: 'Gewitter mit starkem Hagel', icon: 'thunderstorm' }
+  0: { label: 'Sonnig', icon: 'sun', labelKey: 'weather.sunny' },
+  1: { label: 'Heiter', icon: 'sun', labelKey: 'weather.clear' },
+  2: { label: 'Wolkig', icon: 'partly-cloudy', labelKey: 'weather.partlyCloudy' },
+  3: { label: 'Bedeckt', icon: 'cloudy', labelKey: 'weather.cloudy' },
+  45: { label: 'Nebel', icon: 'fog', labelKey: 'weather.fog' },
+  48: { label: 'Rauhreifnebel', icon: 'fog', labelKey: 'weather.fog' },
+  51: { label: 'Leichter Nieselregen', icon: 'drizzle', labelKey: 'weather.drizzle' },
+  53: { label: 'Nieselregen', icon: 'drizzle', labelKey: 'weather.drizzle' },
+  55: { label: 'Dichter Nieselregen', icon: 'drizzle', labelKey: 'weather.drizzle' },
+  56: { label: 'Leichter gefrierender Nieselregen', icon: 'drizzle', labelKey: 'weather.drizzle' },
+  57: { label: 'Dichter gefrierender Nieselregen', icon: 'drizzle', labelKey: 'weather.drizzle' },
+  61: { label: 'Leichter Regen', icon: 'rain', labelKey: 'weather.rain' },
+  63: { label: 'Regen', icon: 'rain', labelKey: 'weather.rain' },
+  65: { label: 'Starker Regen', icon: 'rain', labelKey: 'weather.rain' },
+  66: { label: 'Leichter gefrierender Regen', icon: 'rain', labelKey: 'weather.rain' },
+  67: { label: 'Starker gefrierender Regen', icon: 'rain', labelKey: 'weather.rain' },
+  71: { label: 'Leichter Schneefall', icon: 'snow', labelKey: 'weather.snow' },
+  73: { label: 'Schneefall', icon: 'snow', labelKey: 'weather.snow' },
+  75: { label: 'Starker Schneefall', icon: 'snow', labelKey: 'weather.snow' },
+  77: { label: 'Schneegriesel', icon: 'snow', labelKey: 'weather.snow' },
+  80: { label: 'Leichte Regenschauer', icon: 'showers', labelKey: 'weather.showers' },
+  81: { label: 'Regenschauer', icon: 'showers', labelKey: 'weather.showers' },
+  82: { label: 'Starke Regenschauer', icon: 'showers', labelKey: 'weather.showers' },
+  85: { label: 'Leichte Schneeschauer', icon: 'snow', labelKey: 'weather.snow' },
+  86: { label: 'Starke Schneeschauer', icon: 'snow', labelKey: 'weather.snow' },
+  95: { label: 'Gewitter', icon: 'thunderstorm', labelKey: 'weather.thunderstorm' },
+  96: { label: 'Gewitter mit leichtem Hagel', icon: 'thunderstorm', labelKey: 'weather.thunderstorm' },
+  99: { label: 'Gewitter mit starkem Hagel', icon: 'thunderstorm', labelKey: 'weather.thunderstorm' }
 };
 
 const SVG_ATTRS =
@@ -93,7 +93,7 @@ export function writeWeatherCache(data) {
 }
 
 export function conditionFromCode(code) {
-  return WMO_CODES[code] || { label: 'Unbekannt', icon: 'unknown' };
+  return WMO_CODES[code] || { label: 'Unbekannt', icon: 'unknown', labelKey: 'weather.unknown' };
 }
 
 /** Resolve icon kind from WMO code or legacy condition text (cached radar). */
@@ -214,12 +214,12 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
   const conditionData = conditionFromCode(weatherCode);
   const p = pollenData.current || {};
   const pollenLevels = [
-    { name: 'Erle', value: p.alder_pollen || 0 },
-    { name: 'Birke', value: p.birch_pollen || 0 },
-    { name: 'Gräser', value: p.grass_pollen || 0 },
-    { name: 'Beifuß', value: p.mugwort_pollen || 0 },
-    { name: 'Olive', value: p.olive_pollen || 0 },
-    { name: 'Traubenkraut', value: p.ragweed_pollen || 0 }
+    { name: 'Erle', nameKey: 'weather.pollen.alder', value: p.alder_pollen || 0 },
+    { name: 'Birke', nameKey: 'weather.pollen.birch', value: p.birch_pollen || 0 },
+    { name: 'Gräser', nameKey: 'weather.pollen.grass', value: p.grass_pollen || 0 },
+    { name: 'Beifuß', nameKey: 'weather.pollen.mugwort', value: p.mugwort_pollen || 0 },
+    { name: 'Olive', nameKey: 'weather.pollen.olive', value: p.olive_pollen || 0 },
+    { name: 'Traubenkraut', nameKey: 'weather.pollen.ragweed', value: p.ragweed_pollen || 0 }
   ].sort((a, b) => b.value - a.value);
 
   return {
