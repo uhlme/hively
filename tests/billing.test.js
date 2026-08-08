@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getBillingReturnUrls,
+  getNativeAppUrlScheme,
   isBillingEnforced,
   isProEntitlement,
   isTrialEligible,
@@ -163,5 +165,18 @@ describe('billing helpers', () => {
     expect(resolvePriceId('month', env)).toBe('price_m');
     expect(resolvePriceId('year', env)).toBe('price_y');
     expect(() => resolvePriceId('week', env)).toThrow(/Intervall/);
+  });
+
+  it('builds web vs native Stripe return URLs', () => {
+    expect(getNativeAppUrlScheme({})).toBe('ch.hively.app');
+    const web = getBillingReturnUrls({ APP_ORIGIN: 'https://hivelyy.netlify.app/' });
+    expect(web.success).toBe('https://hivelyy.netlify.app/?view=settings&billing=success');
+    expect(web.cancel).toContain('billing=cancel');
+    expect(web.portalReturn).toBe('https://hivelyy.netlify.app/?view=settings');
+
+    const native = getBillingReturnUrls({}, { native: true });
+    expect(native.success).toBe('ch.hively.app://billing?view=settings&billing=success');
+    expect(native.cancel).toBe('ch.hively.app://billing?view=settings&billing=cancel');
+    expect(native.portalReturn).toBe('ch.hively.app://billing?view=settings');
   });
 });

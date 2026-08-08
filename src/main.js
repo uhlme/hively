@@ -97,6 +97,7 @@ import {
   startProCheckout,
   openBillingPortal,
   planStatusLabel,
+  setupNativeBillingLifecycle,
   TRIAL_DAYS
 } from './billing.js';
 
@@ -377,6 +378,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupVoiceAssistant();
   setupReceiptScanner();
   setupConnectionTracking();
+  setupNativeBillingLifecycle({
+    onBillingReturn: (result) => handleBillingReturn(result, { fromDeepLink: true }),
+    onAppResume: () => refreshBillingOnResume()
+  }).catch((err) => console.warn('Native Billing-Lifecycle fehlgeschlagen:', err));
 
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
@@ -414,31 +419,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   refreshBillingSettingsUI();
 
   const billingParam = urlParams.get('billing');
-  if (billingParam === 'success') {
-    trackEvent('billing_checkout_returned', { result: 'success' });
-    let activated = false;
-    if (isBillingEnabled()) {
-      activated = await pollBillingAfterCheckout();
-    } else {
-      refreshBillingSettingsUI();
-    }
-    if (activated) {
-      alert('Willkommen bei Hively Pro! Dein Abo ist aktiv.');
-    } else if (isBillingEnabled()) {
-      alert(
-        'Willkommen bei Hively Pro! Die Freischaltung kann noch kurz dauern – bitte Einstellungen in einer Minute aktualisieren.'
-      );
-    }
-    // Drop billing query so a refresh does not re-trigger the flow
-    try {
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete('billing');
-      window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
-    } catch {
-      /* ignore */
-    }
-  } else if (billingParam === 'cancel') {
-    trackEvent('billing_checkout_returned', { result: 'cancel' });
+  if (billingParam === 'success' || billingParam === 'cancel') {
+    await handleBillingReturn(billingParam, { fromDeepLink: false });
   }
 });
 
@@ -589,6 +571,13 @@ async function navigate(viewName) {
     await renderCalendarView();
   } else if (viewName === 'settings') {
     refreshNetworkSettingsUI();
+    try {
+      if (supabase && isBillingEnabled()) {
+        await refreshActiveOperationBilling();
+      }
+    } catch (err) {
+      console.warn('Billing-Refresh in Einstellungen fehlgeschlagen:', err);
+    }
     refreshOperationSettingsUI();
     await renderApiariesSettings();
   }
@@ -2494,10 +2483,80 @@ async function pollBillingAfterCheckout({ attempts = 8, delayMs = 1500 } = {}) {
       console.warn('Billing refresh failed:', err);
     }
     refreshBillingSettingsUI();
+    applyRoleBasedUI();
     if (getActivePlanMeta().hasPro) return true;
     if (i < attempts - 1) await delay(delayMs);
   }
   return getActivePlanMeta().hasPro;
+}
+
+let lastBillingResumeRefreshAt = 0;
+let billingReturnInFlight = false;
+
+/** Soft refresh when the native app resumes or in-app browser closes. */
+async function refreshBillingOnResume() {
+  if (!isBillingEnabled() || !supabase || !getActiveOperationId()) return;
+  const now = Date.now();
+  if (now - lastBillingResumeRefreshAt < 12000) return;
+  lastBillingResumeRefreshAt = now;
+  try {
+    await refreshActiveOperationBilling();
+  } catch (err) {
+    console.warn('Billing-Refresh nach Resume fehlgeschlagen:', err);
+  }
+  refreshBillingSettingsUI();
+  applyRoleBasedUI();
+}
+
+/**
+ * Handle Stripe Checkout return (web query or native deep link).
+ * @param {'success' | 'cancel'} result
+ * @param {{ fromDeepLink?: boolean }} [options]
+ */
+async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
+  if (result !== 'success' && result !== 'cancel') return;
+  if (billingReturnInFlight) return;
+  billingReturnInFlight = true;
+  try {
+    trackEvent('billing_checkout_returned', {
+      result,
+      surface: fromDeepLink ? 'native' : 'web'
+    });
+
+    if (result === 'success') {
+      let activated = false;
+      if (isBillingEnabled()) {
+        activated = await pollBillingAfterCheckout();
+      } else {
+        refreshBillingSettingsUI();
+      }
+      if (activated) {
+        alert('Willkommen bei Hively Pro! Dein Abo ist aktiv.');
+      } else if (isBillingEnabled()) {
+        alert(
+          'Willkommen bei Hively Pro! Die Freischaltung kann noch kurz dauern – bitte Einstellungen in einer Minute aktualisieren.'
+        );
+      }
+    }
+
+    if (!fromDeepLink) {
+      try {
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('billing');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (currentView !== 'settings') {
+      await navigate('settings');
+    } else {
+      refreshBillingSettingsUI();
+    }
+  } finally {
+    billingReturnInFlight = false;
+  }
 }
 
 function refreshBillingSettingsUI() {

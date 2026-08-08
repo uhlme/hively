@@ -145,6 +145,35 @@ export function getAppOrigin(env = process.env, fallback = 'https://hivelyy.netl
   ).replace(/\/$/, '');
 }
 
+/** Custom URL scheme for Capacitor deep links (must match iOS/Android config). */
+export function getNativeAppUrlScheme(env = process.env) {
+  return String(env.NATIVE_APP_URL_SCHEME || 'ch.hively.app').replace(/:\/\/.*$/, '');
+}
+
+/**
+ * Stripe Checkout / Portal return URLs.
+ * Native uses the app URL scheme so Stripe redirects back into Capacitor
+ * instead of the public website.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @param {{ native?: boolean }} [options]
+ */
+export function getBillingReturnUrls(env = process.env, { native = false } = {}) {
+  if (native) {
+    const scheme = getNativeAppUrlScheme(env);
+    return {
+      success: `${scheme}://billing?view=settings&billing=success`,
+      cancel: `${scheme}://billing?view=settings&billing=cancel`,
+      portalReturn: `${scheme}://billing?view=settings`
+    };
+  }
+  const origin = getAppOrigin(env);
+  return {
+    success: `${origin}/?view=settings&billing=success`,
+    cancel: `${origin}/?view=settings&billing=cancel`,
+    portalReturn: `${origin}/?view=settings`
+  };
+}
+
 /** Safe client-facing error (avoid leaking Stripe/internal details). */
 export function publicBillingError(err, fallback) {
   if (err?.status && err.status >= 400 && err.status < 500 && err.message) {
