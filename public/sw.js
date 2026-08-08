@@ -94,6 +94,12 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Never cache API routes (auth/billing/AI)
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   // Only runtime-cache same-origin responses
   const isSameOrigin = url.origin === self.location.origin;
   const saveData = prefersSaveData(e.request);

@@ -28,7 +28,9 @@ import {
   getSyncQueueLength,
   getLastSyncSummary,
   syncNow,
-  clearLocalEntityCache
+  clearLocalEntityCache,
+  clearCloudSessionData,
+  hasPendingSyncForOperation
 } from './storage.js';
 import {
   TREATMENT_PRODUCTS,
@@ -533,7 +535,10 @@ function setupRouting() {
   });
 }
 
+let navigateGeneration = 0;
+
 async function navigate(viewName) {
+  const gen = ++navigateGeneration;
   currentView = viewName;
 
   // Toggle active tab in bottom nav
@@ -558,20 +563,22 @@ async function navigate(viewName) {
 
   // Header button sync
   const quickAddBtn = document.getElementById('btn-quick-add');
-  if (viewName === 'hives') {
-    quickAddBtn.classList.remove('hidden');
-    quickAddBtn.innerText = '+ Volk';
-  } else if (viewName === 'finances') {
-    quickAddBtn.classList.remove('hidden');
-    if (currentFinanceTab === 'expenses') {
-      quickAddBtn.innerText = '+ Kauf';
-    } else if (currentFinanceTab === 'honey') {
-      quickAddBtn.innerText = '+ Ernte';
+  if (quickAddBtn) {
+    if (viewName === 'hives') {
+      quickAddBtn.classList.remove('hidden');
+      quickAddBtn.innerText = '+ Volk';
+    } else if (viewName === 'finances') {
+      quickAddBtn.classList.remove('hidden');
+      if (currentFinanceTab === 'expenses') {
+        quickAddBtn.innerText = '+ Kauf';
+      } else if (currentFinanceTab === 'honey') {
+        quickAddBtn.innerText = '+ Ernte';
+      } else {
+        quickAddBtn.innerText = '+ Paten.';
+      }
     } else {
-      quickAddBtn.innerText = '+ Paten.';
+      quickAddBtn.classList.add('hidden');
     }
-  } else {
-    quickAddBtn.classList.add('hidden');
   }
 
   // Render content
@@ -598,6 +605,8 @@ async function navigate(viewName) {
     await renderApiariesSettings();
   }
 
+  // Stale navigate (rapid tab switches) must not update analytics / finish late
+  if (gen !== navigateGeneration) return;
   trackPageView(viewName);
 }
 
@@ -2866,7 +2875,7 @@ async function promptLoginForInvite(joinCode) {
   openModal('modal-auth');
 }
 
-async function bootstrapOperationsForSession(session, { joinCode } = {}) {
+async function bootstrapOperationsForSession(session, { joinCode, clearCache = true } = {}) {
   if (!session) {
     clearActiveOperation();
     updateOperationChrome();
@@ -2893,9 +2902,36 @@ async function bootstrapOperationsForSession(session, { joinCode } = {}) {
     await ensureActiveOperation();
   }
 
-  clearLocalEntityCache();
+  if (clearCache) clearLocalEntityCache();
   updateOperationChrome();
   applyRoleBasedUI();
+}
+
+/** Offer local→cloud migration while entity keys are still intact. */
+async function maybeOfferLocalMigration() {
+  let localHives = [];
+  try {
+    localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
+  } catch {
+    localHives = [];
+  }
+  const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
+  if (!(localHives.length > 0 && !hasDeclinedSync && isOperationOwner())) return;
+
+  if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
+    try {
+      await syncLocalToRemote();
+      trackEvent('sync_local_to_remote', { ok: true });
+      alert('Daten erfolgreich synchronisiert!');
+    } catch (syncErr) {
+      console.error('Sync fehlgeschlagen:', syncErr);
+      trackEvent('sync_local_to_remote', { ok: false });
+      alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+    }
+  } else {
+    localStorage.setItem('bee_tracker_sync_declined', 'true');
+    trackEvent('sync_local_to_remote_declined');
+  }
 }
 
 async function switchToOperation(operation) {
@@ -3229,36 +3265,27 @@ function setupAuth() {
       userStatus.innerText = session.user.email;
       btnAuthAction.innerText = 'Logout';
 
-      try {
-        const pendingJoin = sessionStorage.getItem('hively_pending_join');
-        await bootstrapOperationsForSession(session, { joinCode: pendingJoin });
-      } catch (err) {
-        console.warn('Betrieb nach Login nicht bereit:', err);
+      // Token refresh must not wipe entity caches or re-run migration/bootstrap.
+      if (event === 'TOKEN_REFRESHED') {
+        return;
       }
 
-      // Check if there is local data to sync (into active Betrieb)
-      let localHives = [];
       try {
-        localHives = JSON.parse(localStorage.getItem('bee_tracker_hives') || '[]') || [];
-      } catch {
-        localHives = [];
-      }
-      const hasDeclinedSync = localStorage.getItem('bee_tracker_sync_declined') === 'true';
-      if (localHives.length > 0 && !hasDeclinedSync && isOperationOwner()) {
-        if (confirm('Möchtest du deine bestehenden lokalen Bienendaten in den aktiven Betrieb übertragen?')) {
-          try {
-            await syncLocalToRemote();
-            trackEvent('sync_local_to_remote', { ok: true });
-            alert('Daten erfolgreich synchronisiert!');
-          } catch (syncErr) {
-            console.error('Sync fehlgeschlagen:', syncErr);
-            trackEvent('sync_local_to_remote', { ok: false });
-            alert('Synchronisation unvollständig: ' + (syncErr.message || syncErr));
+        const pendingJoin = sessionStorage.getItem('hively_pending_join');
+        // Resolve Betrieb first without clearing — migration needs local hive keys.
+        await bootstrapOperationsForSession(session, {
+          joinCode: pendingJoin,
+          clearCache: false
+        });
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          await maybeOfferLocalMigration();
+          // Do not wipe while outbox pending — pulls are blocked and UI would go empty.
+          if (!hasPendingSyncForOperation()) {
+            clearLocalEntityCache();
           }
-        } else {
-          localStorage.setItem('bee_tracker_sync_declined', 'true');
-          trackEvent('sync_local_to_remote_declined');
         }
+      } catch (err) {
+        console.warn('Betrieb nach Login nicht bereit:', err);
       }
 
       await navigate(currentView);
@@ -3268,6 +3295,7 @@ function setupAuth() {
       if (event === 'SIGNED_OUT') {
         trackEvent('auth_signed_out');
         resetAnalyticsUser();
+        clearCloudSessionData();
       }
       userStatus.innerText = 'Lokal';
       btnAuthAction.innerText = 'Login';
@@ -3282,10 +3310,11 @@ function setupAuth() {
   btnAuthAction.addEventListener('click', async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (confirm('Möchtest du dich abmelden?')) {
+      if (confirm('Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.')) {
         localStorage.removeItem('bee_tracker_sync_declined');
+        clearCloudSessionData();
         await supabase.auth.signOut();
-        location.reload(); // Reload to reset storage state
+        location.reload();
       }
     } else {
       openModal('modal-auth');
@@ -3383,17 +3412,22 @@ function setupVoiceAssistant() {
     previewDiv.innerText = 'Aufnahme läuft... Mundart sprechen erlaubt!';
     previewDiv.style.display = 'block';
 
-    startAudioRecording({
-      onError: (err) => {
-        errorDiv.innerText = err;
-        errorDiv.style.display = 'block';
-        resetUI();
-      },
-      onStatusChange: (status) => {
-        currentStatus = status;
-        updateUIForStatus(status);
-      }
-    });
+    btnRecord.disabled = true;
+    try {
+      await startAudioRecording({
+        onError: (err) => {
+          errorDiv.innerText = err;
+          errorDiv.style.display = 'block';
+          resetUI();
+        },
+        onStatusChange: (status) => {
+          currentStatus = status;
+          updateUIForStatus(status);
+        }
+      });
+    } finally {
+      btnRecord.disabled = false;
+    }
   });
 
   function resetUI() {
@@ -3682,7 +3716,9 @@ function setupConnectionTracking() {
     updateConnectionStatusUI();
     console.log('[Connection] Online – prüfe Sync...');
     try {
-      if (shouldUseBackgroundNetwork() && hasProAccess()) {
+      // Outbox flush for all sessions (RLS/Pro gates enforce server-side).
+      // Align with initial sync — do not require client hasProAccess().
+      if (shouldUseBackgroundNetwork()) {
         await processSyncQueue();
       }
       if (shouldAutoProcessMedia() && hasProAccess()) {

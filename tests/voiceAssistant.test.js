@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { pickRecordingMimeType } from '../src/voiceAssistant.js';
+import { describe, expect, it, vi, afterEach } from 'vitest';
+import { pickRecordingMimeType, startAudioRecording } from '../src/voiceAssistant.js';
 
 describe('pickRecordingMimeType', () => {
   afterEach(() => {
@@ -24,5 +24,42 @@ describe('pickRecordingMimeType', () => {
   it('defaults to audio/mp4 when MediaRecorder API is missing', () => {
     vi.stubGlobal('MediaRecorder', undefined);
     expect(pickRecordingMimeType()).toBe('audio/mp4');
+  });
+});
+
+describe('startAudioRecording cleanup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('stops media tracks when MediaRecorder construction fails', async () => {
+    const stop = vi.fn();
+    const track = { stop };
+    vi.stubGlobal('navigator', {
+      mediaDevices: {
+        getUserMedia: vi.fn(async () => ({
+          getTracks: () => [track]
+        }))
+      }
+    });
+    vi.stubGlobal(
+      'MediaRecorder',
+      class {
+        static isTypeSupported() {
+          return true;
+        }
+        constructor() {
+          throw new Error('unsupported mime');
+        }
+      }
+    );
+
+    const onError = vi.fn();
+    const onStatusChange = vi.fn();
+    await startAudioRecording({ onError, onStatusChange });
+
+    expect(stop).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+    expect(onStatusChange).toHaveBeenCalledWith('idle');
   });
 });

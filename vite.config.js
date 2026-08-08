@@ -1,11 +1,11 @@
 import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
-import { handleGeminiRequest, GEMINI_JSON_HEADERS } from './server/geminiProxy.js';
+import { handleGeminiRequest } from './server/geminiProxy.js';
 import {
   handleCreateCheckout,
-  handleCreatePortal,
-  STRIPE_JSON_HEADERS
+  handleCreatePortal
 } from './server/stripeHandlers.js';
+import { buildCorsJsonHeaders } from './server/corsHeaders.js';
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -16,9 +16,13 @@ function readRequestBody(req) {
   });
 }
 
-function sendJson(res, statusCode, body, headers = GEMINI_JSON_HEADERS) {
+function requestOrigin(req) {
+  return req.headers?.origin || req.headers?.Origin || '';
+}
+
+function sendJson(res, statusCode, body, headers) {
   res.statusCode = statusCode;
-  for (const [key, value] of Object.entries(headers)) {
+  for (const [key, value] of Object.entries(headers || {})) {
     res.setHeader(key, value);
   }
   res.end(body == null || body === '' ? '' : JSON.stringify(body));
@@ -29,8 +33,9 @@ function geminiApiPlugin() {
     name: 'gemini-api-dev',
     configureServer(server) {
       server.middlewares.use('/api/gemini', async (req, res, next) => {
+        const cors = buildCorsJsonHeaders(requestOrigin(req));
         if (req.method === 'OPTIONS') {
-          sendJson(res, 204, null);
+          sendJson(res, 204, null, cors);
           return;
         }
         if (req.method !== 'POST') {
@@ -43,23 +48,23 @@ function geminiApiPlugin() {
           try {
             const raw = await readRequestBody(req);
             if (raw.length > 10 * 1024 * 1024) {
-              sendJson(res, 413, { error: 'Payload zu gross (max. 10 MB).' });
+              sendJson(res, 413, { error: 'Payload zu gross (max. 10 MB).' }, cors);
               return;
             }
             body = JSON.parse(raw || '{}');
           } catch (parseErr) {
             if (parseErr instanceof SyntaxError) {
-              sendJson(res, 400, { error: 'Ungültiges JSON.' });
+              sendJson(res, 400, { error: 'Ungültiges JSON.' }, cors);
               return;
             }
             throw parseErr;
           }
 
           const result = await handleGeminiRequest(body, { headers: req.headers || {} });
-          sendJson(res, result.status, result.body);
+          sendJson(res, result.status, result.body, cors);
         } catch (err) {
           console.error('[vite gemini middleware]', err);
-          sendJson(res, 500, { error: 'Interner Proxy-Fehler.' });
+          sendJson(res, 500, { error: 'Interner Proxy-Fehler.' }, cors);
         }
       });
     }
@@ -72,8 +77,9 @@ function stripeApiPlugin() {
     configureServer(server) {
       const mount = (path, handler) => {
         server.middlewares.use(path, async (req, res, next) => {
+          const cors = buildCorsJsonHeaders(requestOrigin(req));
           if (req.method === 'OPTIONS') {
-            sendJson(res, 204, null, STRIPE_JSON_HEADERS);
+            sendJson(res, 204, null, cors);
             return;
           }
           if (req.method !== 'POST') {
@@ -84,10 +90,10 @@ function stripeApiPlugin() {
             const raw = await readRequestBody(req);
             const body = JSON.parse(raw || '{}');
             const result = await handler(body, { headers: req.headers || {} });
-            sendJson(res, result.status, result.body, STRIPE_JSON_HEADERS);
+            sendJson(res, result.status, result.body, cors);
           } catch (err) {
             console.error('[vite stripe middleware]', err);
-            sendJson(res, 500, { error: 'Interner Billing-Fehler.' }, STRIPE_JSON_HEADERS);
+            sendJson(res, 500, { error: 'Interner Billing-Fehler.' }, cors);
           }
         });
       };
@@ -100,8 +106,7 @@ function stripeApiPlugin() {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  process.env.GEMINI_API_KEY =
-    env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
+  process.env.GEMINI_API_KEY = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
   for (const key of [
     'STRIPE_SECRET_KEY',
     'STRIPE_WEBHOOK_SECRET',
@@ -111,6 +116,7 @@ export default defineConfig(({ mode }) => {
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
     'APP_ORIGIN',
+    'URL',
     'VITE_BILLING_ENABLED',
     'BILLING_ENABLED'
   ]) {

@@ -5,7 +5,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseGeminiJson } from '../src/utils.js';
 import { isBillingEnforced } from './billing.js';
-import { assertUserOperationHasPro } from './proGate.js';
+import { assertUserOperationHasPro, getServiceSupabase } from './proGate.js';
+import { buildCorsJsonHeaders } from './corsHeaders.js';
 
 const MODEL = 'gemini-2.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
@@ -71,19 +72,12 @@ Wichtig:
 - Verwende exakt die vorgegebenen Kategorienamen (Hardware, Futter, Bienen, Imkereibedarf, Sonstiges) - passe sie wenn nötig an.
 - Setze nicht erkennbare Felder auf plausible Werte (z.B. heutigen Tag für Datum, "Unbekannter Beleg" für Beschreibung).`;
 
-export const GEMINI_JSON_HEADERS = {
-  'Content-Type': 'application/json; charset=utf-8',
-  'Cache-Control': 'no-store',
-  // Erlaubt Cross-Origin-Zugriff von der nativen App (capacitor://localhost),
-  // die den Proxy über die absolute Produktions-URL statt relativ aufruft.
-  // Unbedenklich, da jede Aktion einen gültigen Supabase-Bearer-Token verlangt.
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-};
+/** Default CORS headers (localhost / APP_ORIGIN). Prefer buildCorsJsonHeaders(origin). */
+export const GEMINI_JSON_HEADERS = buildCorsJsonHeaders('');
 
 function getApiKey() {
-  return process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  // Never fall back to VITE_* — that encourages shipping the key in the client bundle.
+  return process.env.GEMINI_API_KEY || '';
 }
 
 function getSupabaseUrl() {
@@ -147,11 +141,8 @@ async function authenticateRequest(headers = {}) {
   return { user };
 }
 
-function enforceRateLimit(action, subjectKey) {
-  const limit = RATE_LIMITS[action];
-  if (!limit || !subjectKey) return null;
+function enforceRateLimitMemory(bucketKey, limit) {
   const now = Date.now();
-  const bucketKey = `${action}:${subjectKey}`;
   const recent = (requestBuckets.get(bucketKey) || []).filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
   if (recent.length >= limit) {
     return fail(429, 'Zu viele KI-Anfragen. Bitte warte kurz und versuche es erneut.');
@@ -159,6 +150,72 @@ function enforceRateLimit(action, subjectKey) {
   recent.push(now);
   requestBuckets.set(bucketKey, recent);
   return null;
+}
+
+/**
+ * Durable rate limit via Supabase (service_role). Falls back to in-memory on misconfig / missing table.
+ */
+async function enforceRateLimitDurable(bucketKey, limit) {
+  let supabase;
+  try {
+    supabase = getServiceSupabase();
+  } catch {
+    return null; // caller falls back to memory
+  }
+
+  const now = new Date();
+  const windowCutoff = new Date(now.getTime() - RATE_LIMIT_WINDOW_MS);
+
+  const { data, error } = await supabase
+    .from('api_rate_limits')
+    .select('bucket_key, window_start, hit_count')
+    .eq('bucket_key', bucketKey)
+    .maybeSingle();
+  if (error) throw error;
+
+  const windowStart = data?.window_start ? new Date(data.window_start) : null;
+  const hitCount = Number(data?.hit_count) || 0;
+
+  if (!windowStart || windowStart < windowCutoff) {
+    const { error: upsertErr } = await supabase.from('api_rate_limits').upsert({
+      bucket_key: bucketKey,
+      window_start: now.toISOString(),
+      hit_count: 1,
+      updated_at: now.toISOString()
+    });
+    if (upsertErr) throw upsertErr;
+    return { limited: false };
+  }
+
+  if (hitCount >= limit) {
+    return {
+      limited: true,
+      response: fail(429, 'Zu viele KI-Anfragen. Bitte warte kurz und versuche es erneut.')
+    };
+  }
+
+  const { error: updateErr } = await supabase
+    .from('api_rate_limits')
+    .update({ hit_count: hitCount + 1, updated_at: now.toISOString() })
+    .eq('bucket_key', bucketKey);
+  if (updateErr) throw updateErr;
+  return { limited: false };
+}
+
+async function enforceRateLimit(action, subjectKey) {
+  const limit = RATE_LIMITS[action];
+  if (!limit || !subjectKey) return null;
+  const bucketKey = `${action}:${subjectKey}`;
+
+  try {
+    const durable = await enforceRateLimitDurable(bucketKey, limit);
+    if (durable?.limited) return durable.response;
+    if (durable && durable.limited === false) return null;
+  } catch (err) {
+    console.warn('[geminiProxy] durable rate limit unavailable, using memory:', err.message || err);
+  }
+
+  return enforceRateLimitMemory(bucketKey, limit);
 }
 
 function estimateBase64Bytes(b64) {
@@ -380,7 +437,7 @@ export async function handleGeminiRequest(body, context = {}) {
     }
   }
 
-  const rateLimitError = enforceRateLimit(action, auth.user.id);
+  const rateLimitError = await enforceRateLimit(action, auth.user.id);
   if (rateLimitError) return rateLimitError;
 
   try {
@@ -403,10 +460,10 @@ export async function handleGeminiRequest(body, context = {}) {
 }
 
 /** Netlify-style JSON response helper. */
-export function geminiLambdaResponse(statusCode, body) {
+export function geminiLambdaResponse(statusCode, body, requestOrigin = '') {
   return {
     statusCode,
-    headers: GEMINI_JSON_HEADERS,
+    headers: buildCorsJsonHeaders(requestOrigin),
     body: body == null || body === '' ? '' : JSON.stringify(body)
   };
 }

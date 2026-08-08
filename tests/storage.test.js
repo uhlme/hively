@@ -224,4 +224,132 @@ describe('storage local-first + sync queue', () => {
     expect(summary.pending).toBe(0);
     expect(storage.getSyncQueueLength()).toBe(0);
   });
+
+  it('merges outbox items added while processSyncQueue is in flight', async () => {
+    mockNavigatorNetwork({ onLine: false });
+    await storage.saveHive({ name: 'First', status: 'Gesund' });
+
+    let releaseUpsert;
+    const upsertGate = new Promise((resolve) => {
+      releaseUpsert = resolve;
+    });
+
+    const builder = createQueryBuilder();
+    builder.upsert = vi.fn(async () => {
+      await upsertGate;
+      return { data: null, error: null };
+    });
+    supabaseMock.from.mockReturnValue(builder);
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+
+    const processing = storage.processSyncQueue();
+    await vi.waitFor(() => expect(builder.upsert).toHaveBeenCalled());
+
+    // Concurrent enqueue while remote upsert is still awaiting
+    const queue = JSON.parse(localStorage.getItem('bee_tracker_sync_queue'));
+    queue.push({
+      id: 'sq_manual_second',
+      action: 'upsert',
+      type: 'hives',
+      payload: {
+        id: 'hive_second',
+        name: 'Second',
+        status: 'Gesund',
+        operationId: 'op-test-1'
+      },
+      operationId: 'op-test-1',
+      timestamp: Date.now(),
+      attemptCount: 0,
+      nextRetryAt: 0
+    });
+    localStorage.setItem('bee_tracker_sync_queue', JSON.stringify(queue));
+
+    releaseUpsert();
+    await processing;
+
+    expect(storage.getSyncQueueLength()).toBe(1);
+    const remaining = JSON.parse(localStorage.getItem('bee_tracker_sync_queue'));
+    expect(remaining[0].payload.name).toBe('Second');
+  });
+
+  it('dead-letters permanent RLS errors instead of infinite backoff', async () => {
+    mockNavigatorNetwork({ onLine: false });
+    await storage.saveHive({ name: 'Poison', status: 'Gesund' });
+
+    const err = new Error('new row violates row-level security policy');
+    err.code = '42501';
+    const builder = createQueryBuilder({ error: err });
+    supabaseMock.from.mockReturnValue(builder);
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+
+    const result = await storage.processSyncQueue();
+    expect(result.synced).toBe(0);
+    expect(result.pending).toBe(0);
+    expect(result.deadLetter).toBe(1);
+    expect(storage.getSyncQueueLength()).toBe(0);
+    const dead = JSON.parse(localStorage.getItem('bee_tracker_sync_dead_letter'));
+    expect(dead).toHaveLength(1);
+  });
+
+  it('scopes pull blocking to the active operation outbox', async () => {
+    mockNavigatorNetwork({ onLine: false });
+    await storage.saveHive({ name: 'Op1', status: 'Gesund' });
+    // Simulate pending item for another Betrieb
+    const queue = JSON.parse(localStorage.getItem('bee_tracker_sync_queue'));
+    queue[0].operationId = 'other-op';
+    if (queue[0].payload && typeof queue[0].payload === 'object') {
+      queue[0].payload.operationId = 'other-op';
+    }
+    localStorage.setItem('bee_tracker_sync_queue', JSON.stringify(queue));
+
+    expect(storage.hasPendingSyncForOperation('op-test-1')).toBe(false);
+    expect(storage.hasPendingSyncForOperation('other-op')).toBe(true);
+
+    const builder = createQueryBuilder({
+      data: [{
+        id: 'remote-1',
+        name: 'Remote',
+        status: 'Gesund',
+        queen_name: null,
+        queen_year: null,
+        queen_color: null,
+        breed: null,
+        notes: null,
+        brood_frames: 0,
+        honey_frames_1: 0,
+        honey_frames_2: 0,
+        created_at: '2026-01-01',
+        updated_at: '2026-01-01'
+      }]
+    });
+    supabaseMock.from.mockReturnValue(builder);
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+
+    const hives = await storage.getHives();
+    expect(hives.map((h) => h.name)).toContain('Remote');
+    expect(builder.select).toHaveBeenCalled();
+  });
+
+  it('queues treatment updates when a hive is deleted offline', async () => {
+    mockNavigatorNetwork({ onLine: false });
+    const hive = await storage.saveHive({ name: 'TreatHive', status: 'Gesund' });
+    await storage.saveTreatment({
+      hiveIds: [hive.id, 'other-hive'],
+      dateStart: '2026-08-01',
+      dateEnd: '2026-08-08',
+      disease: 'varroa',
+      productId: 'formic_60',
+      productLabel: 'Ameisensäure 60%',
+      status: 'active'
+    });
+
+    await storage.deleteHive(hive.id);
+
+    const queue = JSON.parse(localStorage.getItem('bee_tracker_sync_queue'));
+    const treatmentUpsert = queue.find(
+      (q) => q.type === 'treatments' && q.action === 'upsert'
+    );
+    expect(treatmentUpsert).toBeTruthy();
+    expect(treatmentUpsert.payload.hiveIds).toEqual(['other-hive']);
+  });
 });

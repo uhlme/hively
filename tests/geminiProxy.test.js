@@ -30,6 +30,7 @@ describe('handleGeminiRequest', () => {
   });
 
   it('returns 503 when no API key is configured', async () => {
+    process.env.VITE_GEMINI_API_KEY = 'should-not-be-used';
     const { handleGeminiRequest } = await import('../server/geminiProxy.js');
     const result = await handleGeminiRequest(
       { action: 'weather_insight', weatherData: {} },
