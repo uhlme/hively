@@ -78,6 +78,7 @@ import {
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
+import { PRO_UPSELL_INSIGHT, isProUpsellInsight } from './radarInsight.js';
 import { getHiveRecommendation } from './hiveRecommendations.js';
 import {
   initAnalytics,
@@ -142,13 +143,31 @@ async function buildRadarPayload(forceLocation) {
   if (shouldUseBackgroundNetwork() && hasProAccess()) {
     insight = await getWeatherInsightFromGemini(weatherData);
   } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
-    insight = 'KI-Einschätzung ist Teil von Hively Pro.';
+    insight = PRO_UPSELL_INSIGHT;
   }
   return {
     ...weatherData,
     insight,
     timestamp: Date.now()
   };
+}
+
+/**
+ * After upgrading to Pro, cached radar still holds the upsell string.
+ * Keep weather UI, refresh only the KI insight when network allows.
+ */
+async function upgradeRadarInsightIfNeeded(cached) {
+  if (!cached || !isProUpsellInsight(cached.insight)) return null;
+  if (!hasProAccess() || !shouldUseBackgroundNetwork()) return null;
+  try {
+    const insight = await getWeatherInsightFromGemini(cached);
+    const next = { ...cached, insight, timestamp: Date.now() };
+    writeRadarCache(next);
+    return next;
+  } catch (err) {
+    console.warn('KI-Einschätzung nach Pro-Upgrade fehlgeschlagen:', err);
+    return null;
+  }
 }
 
 // --- State Variables ---
@@ -879,6 +898,8 @@ async function loadDashboardRadar() {
     if (stale && Date.now() - stale.timestamp < RADAR_STALE_OK_MS) {
       if (setupPrompt) setupPrompt.style.display = 'none';
       applyRadarData(stale, { stale: true });
+      const upgraded = await upgradeRadarInsightIfNeeded(stale);
+      if (upgraded) applyRadarData(upgraded);
       return;
     }
     radarContent.style.display = 'none';
@@ -895,6 +916,9 @@ async function loadDashboardRadar() {
   const cached = readRadarCache();
   if (cached && Date.now() - cached.timestamp < RADAR_FRESH_MS) {
     applyRadarData(cached);
+    // Pro just unlocked: replace cached upsell copy with a real KI insight.
+    const upgraded = await upgradeRadarInsightIfNeeded(cached);
+    if (upgraded) applyRadarData(upgraded);
     return;
   }
 
@@ -2603,6 +2627,12 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
 
     if (result === 'success') {
       await navigate('dashboard');
+      // navigate() uses a fresh radar cache that may still say «Teil von Hively Pro».
+      try {
+        await loadDashboardRadar();
+      } catch (err) {
+        console.warn('Radar-Refresh nach Pro-Aktivierung fehlgeschlagen:', err);
+      }
     } else if (currentView !== 'settings') {
       await navigate('settings');
     } else {
