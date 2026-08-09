@@ -34,7 +34,7 @@ test.describe('Hive detail back navigation', () => {
     await expect(page.locator('#view-hives')).toBeVisible();
     await expect(page.locator('#view-hives')).not.toHaveClass(/hidden/);
     await expect(page.locator('#view-hive-detail')).toHaveClass(/hidden/);
-    await expect(page.getByText(hiveName)).toBeVisible();
+    await expect(page.locator('#view-hives .hive-card', { hasText: hiveName })).toBeVisible();
     await expect(page).toHaveURL(/localhost:5173/);
   });
 
@@ -55,7 +55,7 @@ test.describe('Hive detail back navigation', () => {
 
     await expect(page.locator('#view-hives')).toBeVisible();
     await expect(page.locator('#view-hive-detail')).toHaveClass(/hidden/);
-    await expect(page.getByText(hiveName)).toBeVisible();
+    await expect(page.locator('#view-hives .hive-card', { hasText: hiveName })).toBeVisible();
   });
 
   test('viewer-style Dashboard Durchsicht opens hive detail and back returns to Dashboard', async ({ page }) => {
