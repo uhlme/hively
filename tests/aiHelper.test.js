@@ -82,6 +82,13 @@ describe('getWeatherInsightFromGemini', () => {
     expect(text).toBe('Login erforderlich für KI-Anfragen.');
   });
 
+  it('maps network/CORS failures to the unavailable text instead of Failed to fetch', async () => {
+    callGeminiMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const { getWeatherInsightFromGemini } = await import('../src/aiHelper.js');
+    const text = await getWeatherInsightFromGemini({ temperature: 10 });
+    expect(text).toBe('Wetter-Einschätzung derzeit nicht verfügbar.');
+  });
+
   it('falls back to the generic unavailable text when the error has no message', async () => {
     const err = new Error();
     err.message = '';

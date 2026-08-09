@@ -5,6 +5,9 @@ describe('corsHeaders allowlist', () => {
   it('allows Capacitor and local Vite origins', () => {
     expect(resolveAllowedOrigin('capacitor://localhost')).toBe('capacitor://localhost');
     expect(resolveAllowedOrigin('http://localhost:5173')).toBe('http://localhost:5173');
+    // Android Capacitor (androidScheme: https) sends https://localhost
+    expect(resolveAllowedOrigin('https://localhost')).toBe('https://localhost');
+    expect(resolveAllowedOrigin('https://127.0.0.1')).toBe('https://127.0.0.1');
   });
 
   it('allows APP_ORIGIN / site URL and matching deploy previews only', () => {
