@@ -7,7 +7,8 @@ import {
   setButtonLoading,
   withButtonLoading,
   blobToBase64,
-  makeId
+  makeId,
+  formatHiveActivityLabel
 } from '../src/utils.js';
 
 describe('escapeHtml', () => {
@@ -22,6 +23,24 @@ describe('escapeHtml', () => {
   it('returns empty string for nullish values', () => {
     expect(escapeHtml(null)).toBe('');
     expect(escapeHtml(undefined)).toBe('');
+  });
+});
+
+describe('formatHiveActivityLabel', () => {
+  it('joins Kastenbezeichnung and Königinnenname', () => {
+    expect(formatHiveActivityLabel({ name: 'Kasten 7', queenName: 'Brummhilde' })).toBe(
+      'Kasten 7 - Brummhilde'
+    );
+  });
+
+  it('falls back to name only when queen name is missing', () => {
+    expect(formatHiveActivityLabel({ name: 'Kasten 1', queenName: '' })).toBe('Kasten 1');
+    expect(formatHiveActivityLabel({ name: 'Kasten 1' })).toBe('Kasten 1');
+  });
+
+  it('uses fallback when hive is missing', () => {
+    expect(formatHiveActivityLabel(null)).toBe('Unbekanntes Volk');
+    expect(formatHiveActivityLabel({ name: '  ' }, 'Unbekannt')).toBe('Unbekannt');
   });
 });
 

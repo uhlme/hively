@@ -92,7 +92,7 @@ import {
   roleLabel
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
-import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
+import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse, formatHiveActivityLabel } from './utils.js';
 import { getProUpsellInsight, isProUpsellInsight } from './radarInsight.js';
 import {
   applyHistoryAction,
@@ -761,7 +761,7 @@ async function renderDashboardView() {
     activities.push({
       date: i.date || i.createdAt,
       type: 'inspection',
-      hiveName: hive ? hive.name : 'Unbekanntes Volk',
+      hiveName: formatHiveActivityLabel(hive),
       details: i.notes || 'Durchsicht protokolliert.',
       tag: 'Durchsicht',
       raw: i
@@ -773,7 +773,7 @@ async function renderDashboardView() {
     activities.push({
       date: h.date || h.createdAt,
       type: 'honey',
-      hiveName: hive ? hive.name : 'Unbekanntes Volk',
+      hiveName: formatHiveActivityLabel(hive),
       details: `${h.amount} kg geerntet (${h.type || 'Blüte'})`,
       tag: 'Honigernte',
       raw: h
