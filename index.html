@@ -67,7 +67,6 @@
           <button id="btn-operation-switcher" class="btn btn-sm btn-secondary header-btn header-op-btn" type="button" title="Betrieb wechseln" data-i18n-title="header.switchOperation" data-i18n="header.operation" style="display: none;">Betrieb</button>
           <span id="user-status" class="user-status-text" data-i18n="header.local">Lokal</span>
           <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn" data-i18n="header.login">Login</button>
-          <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn" data-i18n="header.quickAddHive">+ Volk</button>
           <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen" data-i18n-title="header.settings" data-i18n-aria-label="header.settings">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <circle cx="12" cy="12" r="3"></circle>
@@ -489,6 +488,14 @@
           <span data-i18n="nav.calendar">Kalender</span>
         </button>
       </nav>
+
+      <button
+        id="btn-quick-add"
+        class="fab-quick-add btn btn-primary hidden"
+        type="button"
+        data-i18n="header.quickAddHive"
+        aria-label="+ Volk"
+      >+ Volk</button>
 
       <!-- MODAL: Kasten hinzufügen/bearbeiten -->
       <div id="modal-hive" class="modal-overlay">

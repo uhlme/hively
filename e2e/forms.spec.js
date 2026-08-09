@@ -31,6 +31,38 @@ test.describe('Hive form', () => {
     await page.locator('.nav-item[data-view="hives"]').click();
     await expect(page.getByText(hiveName)).toBeVisible();
   });
+
+  test('dashboard activities show Kastenbezeichnung and Königinnenname', async ({ page }) => {
+    const hiveName = `Kasten 7 ${Date.now()}`;
+    const queenName = 'Brummhilde';
+    await page.locator('#hive-form-name').fill(hiveName);
+    await page.locator('#hive-form-queen-name').fill(queenName);
+    await page.locator('#hive-form-status').selectOption('Gesund');
+    await page.locator('#form-hive button[type="submit"]').click();
+    await expect(page.locator('#modal-hive')).not.toHaveClass(/active/);
+
+    const hiveId = await page.locator('.hive-card', { hasText: hiveName }).getAttribute('data-id');
+    await page.evaluate(({ hiveId: id }) => {
+      const key = 'bee_tracker_inspections';
+      const inspections = JSON.parse(localStorage.getItem(key) || '[]');
+      inspections.push({
+        id: `insp_e2e_${Date.now()}`,
+        hiveId: id,
+        date: '2026-08-06',
+        notes: 'Fütterung',
+        checklist: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      localStorage.setItem(key, JSON.stringify(inspections));
+    }, { hiveId });
+
+    await page.locator('.nav-item[data-view="dashboard"]').click();
+    await expect(page.locator('#view-dashboard')).toBeVisible();
+    await expect(
+      page.locator('.recent-activity-card', { hasText: `${hiveName} - ${queenName}` })
+    ).toBeVisible();
+  });
 });
 
 test.describe('Finance form', () => {
