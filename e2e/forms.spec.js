@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test.describe('Hive form', () => {
   test.beforeEach(async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Finance form', () => {
     const description = `E2E Absperrgitter ${Date.now()}`;
     await page.locator('#finance-form-date').fill('2026-08-01');
     await page.locator('#finance-form-description').fill(description);
-    await page.locator('#finance-form-category').selectOption('Hardware');
+    await page.locator('#finance-form-category').selectOption('hardware');
     await page.locator('#finance-form-price').fill('42.50');
     await page.locator('#form-finance button[type="submit"]').click();
 

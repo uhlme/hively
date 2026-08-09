@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test.describe('Hively smoke', () => {
   test('homepage loads with dashboard', async ({ page }) => {

@@ -9,13 +9,18 @@ export default defineConfig({
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   use: {
     baseURL: 'http://localhost:5173',
+    // Keep E2E assertions on the German catalog (CI runners are often en-US).
+    locale: 'de-CH',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure'
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      use: {
+        ...devices['Desktop Chrome'],
+        locale: 'de-CH'
+      }
     }
   ],
   webServer: {
