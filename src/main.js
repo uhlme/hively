@@ -92,7 +92,7 @@ import {
   roleLabel
 } from './operations.js';
 import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
-import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
+import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse, formatHiveActivityLabel } from './utils.js';
 import { getProUpsellInsight, isProUpsellInsight } from './radarInsight.js';
 import {
   applyHistoryAction,
@@ -517,6 +517,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- Routing / View Swapping ---
+function setQuickAddLabel(label) {
+  const btn = document.getElementById('btn-quick-add');
+  if (!btn) return;
+  btn.innerText = label;
+  btn.setAttribute('aria-label', label);
+}
+
+/** Extra main padding only when the FAB is actually visible (not hidden / not viewer). */
+function syncFabLayout() {
+  const btn = document.getElementById('btn-quick-add');
+  const visible =
+    Boolean(btn) &&
+    !btn.classList.contains('hidden') &&
+    !btn.classList.contains('is-readonly-hidden');
+  document.body.classList.toggle('has-fab', visible);
+}
+
 function setupRouting() {
   const navItems = document.querySelectorAll('nav.bottom-nav .nav-item');
   navItems.forEach(item => {
@@ -666,25 +683,23 @@ async function navigate(viewName, options = {}) {
     targetView.classList.remove('hidden');
   }
 
-  // Header button sync
+  // Floating quick-add sync (Kästen / Finanzen)
   const quickAddBtn = document.getElementById('btn-quick-add');
   if (quickAddBtn) {
     if (viewName === 'hives') {
       quickAddBtn.classList.remove('hidden');
-      quickAddBtn.innerText = '+ Volk';
+      setQuickAddLabel('+ Volk');
     } else if (viewName === 'finances') {
       quickAddBtn.classList.remove('hidden');
-      if (currentFinanceTab === 'expenses') {
-        quickAddBtn.innerText = '+ Kauf';
-      } else if (currentFinanceTab === 'honey') {
-        quickAddBtn.innerText = '+ Ernte';
-      } else {
-        quickAddBtn.innerText = '+ Paten.';
-      }
+      let label = '+ Paten.';
+      if (currentFinanceTab === 'expenses') label = '+ Kauf';
+      else if (currentFinanceTab === 'honey') label = '+ Ernte';
+      setQuickAddLabel(label);
     } else {
       quickAddBtn.classList.add('hidden');
     }
   }
+  syncFabLayout();
 
   const stillCurrent = () => gen === navigateGeneration;
 
@@ -761,7 +776,7 @@ async function renderDashboardView() {
     activities.push({
       date: i.date || i.createdAt,
       type: 'inspection',
-      hiveName: hive ? hive.name : 'Unbekanntes Volk',
+      hiveName: formatHiveActivityLabel(hive),
       details: i.notes || 'Durchsicht protokolliert.',
       tag: 'Durchsicht',
       raw: i
@@ -773,7 +788,7 @@ async function renderDashboardView() {
     activities.push({
       date: h.date || h.createdAt,
       type: 'honey',
-      hiveName: hive ? hive.name : 'Unbekanntes Volk',
+      hiveName: formatHiveActivityLabel(hive),
       details: `${h.amount} kg geerntet (${h.type || 'Blüte'})`,
       tag: 'Honigernte',
       raw: h
@@ -1627,7 +1642,7 @@ async function renderFinanceView() {
     sectionExpenses.classList.remove('hidden');
     sectionHoney.classList.add('hidden');
     sectionSponsorships.classList.add('hidden');
-    document.getElementById('btn-quick-add').innerText = '+ Kauf';
+    setQuickAddLabel('+ Kauf');
     
     // Render Expenses
     const finances = (await getFinances()).filter(f => f.type === 'expense' || !f.type);
@@ -1679,7 +1694,7 @@ async function renderFinanceView() {
     sectionExpenses.classList.add('hidden');
     sectionHoney.classList.remove('hidden');
     sectionSponsorships.classList.add('hidden');
-    document.getElementById('btn-quick-add').innerText = '+ Ernte';
+    setQuickAddLabel('+ Ernte');
 
     // Render Honey Yields
     const honey = await getHoneyHarvests();
@@ -1735,7 +1750,7 @@ async function renderFinanceView() {
     sectionExpenses.classList.add('hidden');
     sectionHoney.classList.add('hidden');
     sectionSponsorships.classList.remove('hidden');
-    document.getElementById('btn-quick-add').innerText = '+ Paten.';
+    setQuickAddLabel('+ Paten.');
 
     // Render Bienenpatenschaften
     const finances = (await getFinances()).filter(f => f.type === 'sponsorship');
@@ -3219,8 +3234,9 @@ function applyRoleBasedUI() {
 
   const quickAdd = document.getElementById('btn-quick-add');
   if (quickAdd) {
-    quickAdd.style.display = canEdit ? '' : 'none';
+    quickAdd.classList.toggle('is-readonly-hidden', !canEdit);
   }
+  syncFabLayout();
   const dashInsp = document.getElementById('dash-btn-insp');
   const dashHoney = document.getElementById('dash-btn-honey');
   const dashTreatment = document.getElementById('dash-btn-treatment');

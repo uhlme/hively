@@ -52,6 +52,18 @@ export function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Dashboard «Letzte Aktivitäten» label: Kastenbezeichnung – Königinnenname.
+ * @param {{ name?: string, queenName?: string } | null | undefined} hive
+ * @param {string} [fallback='Unbekanntes Volk']
+ */
+export function formatHiveActivityLabel(hive, fallback = 'Unbekanntes Volk') {
+  const name = String(hive?.name || '').trim();
+  if (!name) return fallback;
+  const queen = String(hive?.queenName || '').trim();
+  return queen ? `${name} - ${queen}` : name;
+}
+
 /** Sanitize a status string for use as a CSS class fragment. */
 export function statusToCssClass(status) {
   return String(status || '')
