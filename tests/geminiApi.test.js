@@ -17,8 +17,10 @@ vi.mock('../src/operations.js', () => ({
 }));
 
 describe('callGemini', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     supabaseMock.auth.getSession.mockResolvedValue({ data: { session: null } });
+    const { setLocale } = await import('../src/i18n/index.js');
+    setLocale('de', { persist: false });
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -50,6 +52,18 @@ describe('callGemini', () => {
       locale: 'de'
     });
     expect(options.headers.Authorization).toBeUndefined();
+  });
+
+  it('forces active locale even if payload tries to override it', async () => {
+    const { setLocale } = await import('../src/i18n/index.js');
+    setLocale('en', { persist: false });
+    const { callGemini } = await import('../src/geminiApi.js');
+    await callGemini('weather_insight', {
+      weatherData: { temperature: 18 },
+      locale: 'de'
+    });
+    const [, options] = fetch.mock.calls[0];
+    expect(JSON.parse(options.body).locale).toBe('en');
   });
 
   it('forces active operationId even if payload tries to override it', async () => {
