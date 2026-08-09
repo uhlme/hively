@@ -69,7 +69,8 @@ test.describe('Finance form', () => {
   test('empty submit is blocked by required fields', async ({ page }) => {
     await page.goto('/');
     await page.locator('.nav-item[data-view="finances"]').click();
-    await expect(page.locator('#btn-quick-add')).toHaveText('+ Kauf');
+    await expect(page.locator('#btn-quick-add')).toHaveText('+');
+    await expect(page.locator('#btn-quick-add')).toHaveAttribute('aria-label', '+ Kauf');
     await page.locator('#btn-quick-add').click();
     await expect(page.locator('#modal-finance')).toHaveClass(/active/);
 
