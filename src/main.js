@@ -56,6 +56,7 @@ import {
   fetchCurrentWeather,
   fetchDashboardWeatherAndPollen,
   getCachedLocation,
+  LocationPermissionError,
   weatherIconSvg,
   writeWeatherCache
 } from './weather.js';
@@ -924,27 +925,54 @@ async function loadDashboardRadar() {
     elInsight.innerText = (data.insight || '') + ageHint;
   }
 
+  const setupErrorEl = document.getElementById('radar-setup-error');
+
+  function radarLocationErrorMessage(err) {
+    if (err instanceof LocationPermissionError) {
+      if (err.code === 'denied') return t('radar.locateDeniedHint');
+      if (err.code === 'disabled') return t('radar.locateDisabled');
+    }
+    return t('radar.locateFailed');
+  }
+
+  function showRadarSetupError(err) {
+    radarLoading.style.display = 'none';
+    radarLoading.innerText = t('dashboard.radarLoading');
+    if (btnLocate) btnLocate.style.display = 'none';
+    radarContent.style.display = 'none';
+    radarContent.style.opacity = '1';
+    if (setupPrompt) setupPrompt.style.display = 'flex';
+    if (setupErrorEl) {
+      setupErrorEl.textContent = radarLocationErrorMessage(err);
+      setupErrorEl.style.display = 'block';
+    }
+  }
+
+  function clearRadarSetupError() {
+    if (setupErrorEl) {
+      setupErrorEl.textContent = '';
+      setupErrorEl.style.display = 'none';
+    }
+  }
+
   // Bind click handlers (safely overwrite)
   if (btnSetup) {
     btnSetup.onclick = async () => {
+      clearRadarSetupError();
       setupPrompt.style.display = 'none';
       radarLoading.style.display = 'block';
-      radarLoading.innerText = 'Standort ermitteln...';
+      radarLoading.innerText = t('radar.locating');
       try {
         const data = await buildRadarPayload(true);
         writeRadarCache(data);
         applyRadarData(data);
       } catch (err) {
         const stale = readRadarCache();
-        if (stale) {
+        if (stale && !(err instanceof LocationPermissionError)) {
           applyRadarData(stale, { stale: true });
           return;
         }
-        radarLoading.innerText = 'Standort-Fehler';
-        setTimeout(() => {
-          radarLoading.style.display = 'none';
-          setupPrompt.style.display = 'flex';
-        }, 3000);
+        showRadarSetupError(err);
       }
     };
   }
@@ -952,9 +980,10 @@ async function loadDashboardRadar() {
   if (btnLocate) {
     btnLocate.onclick = async (e) => {
       e.stopPropagation();
+      clearRadarSetupError();
       btnLocate.style.display = 'none';
       radarLoading.style.display = 'block';
-      radarLoading.innerText = 'Ortung...';
+      radarLoading.innerText = t('radar.locating');
       radarContent.style.opacity = '0.5';
       try {
         const data = await buildRadarPayload(true);
@@ -962,11 +991,15 @@ async function loadDashboardRadar() {
         applyRadarData(data);
       } catch (err) {
         const stale = readRadarCache();
-        if (stale) {
+        if (stale && !(err instanceof LocationPermissionError)) {
           applyRadarData(stale, { stale: true });
           return;
         }
-        radarLoading.innerText = 'Fehler';
+        if (err instanceof LocationPermissionError || !stale) {
+          showRadarSetupError(err);
+          return;
+        }
+        radarLoading.innerText = t('radar.locateError');
         radarContent.style.opacity = '1';
         setTimeout(() => {
           radarLoading.style.display = 'none';

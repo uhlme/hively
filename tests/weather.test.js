@@ -1,19 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const {
+  getCurrentPosition,
+  checkPermissions,
+  requestPermissions,
+  capacitorState
+} = vi.hoisted(() => ({
+  getCurrentPosition: vi.fn(),
+  checkPermissions: vi.fn(),
+  requestPermissions: vi.fn(),
+  capacitorState: { native: false }
+}));
+
+vi.mock('@capacitor/geolocation', () => ({
+  Geolocation: {
+    getCurrentPosition,
+    checkPermissions,
+    requestPermissions
+  }
+}));
+
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => capacitorState.native }
+}));
+
 import {
   conditionFromCode,
+  ensureNativeLocationPermission,
   getCachedLocation,
+  LocationPermissionError,
   saveCachedLocation,
   weatherIconKind,
   weatherIconSvg
 } from '../src/weather.js';
-
-vi.mock('@capacitor/geolocation', () => ({
-  Geolocation: { getCurrentPosition: vi.fn() }
-}));
-
-vi.mock('@capacitor/core', () => ({
-  Capacitor: { isNativePlatform: () => false }
-}));
 
 describe('weather icons', () => {
   it('maps WMO codes to labels and icon kinds', () => {
@@ -48,6 +67,11 @@ describe('weather icons', () => {
 });
 
 describe('weather location cache', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    capacitorState.native = false;
+  });
+
   it('round-trips lat/lon through localStorage', () => {
     saveCachedLocation(47.3769, 8.5417);
     expect(getCachedLocation()).toEqual({ lat: 47.3769, lon: 8.5417 });
@@ -60,9 +84,59 @@ describe('weather location cache', () => {
   });
 });
 
+describe('native location permission', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    capacitorState.native = true;
+    getCurrentPosition.mockReset();
+    checkPermissions.mockReset();
+    requestPermissions.mockReset();
+  });
+
+  it('requests runtime permission when not yet granted', async () => {
+    checkPermissions.mockResolvedValueOnce({ location: 'prompt' });
+    requestPermissions.mockResolvedValueOnce({ location: 'granted' });
+
+    await expect(ensureNativeLocationPermission()).resolves.toBe('granted');
+    expect(requestPermissions).toHaveBeenCalledWith({
+      permissions: ['location', 'coarseLocation']
+    });
+  });
+
+  it('skips request when already granted', async () => {
+    checkPermissions.mockResolvedValueOnce({ location: 'granted' });
+    await expect(ensureNativeLocationPermission()).resolves.toBe('granted');
+    expect(requestPermissions).not.toHaveBeenCalled();
+  });
+
+  it('maps denied permission to LocationPermissionError', async () => {
+    checkPermissions.mockResolvedValueOnce({ location: 'denied' });
+    requestPermissions.mockResolvedValueOnce({ location: 'denied' });
+
+    await expect(ensureNativeLocationPermission()).rejects.toMatchObject({
+      name: 'LocationPermissionError',
+      code: 'denied'
+    });
+    expect(LocationPermissionError).toBeTruthy();
+  });
+
+  it('maps disabled location services to LocationPermissionError', async () => {
+    checkPermissions.mockRejectedValueOnce(
+      Object.assign(new Error('Location services are not enabled'), {
+        code: 'OS-PLUG-GLOC-0007'
+      })
+    );
+
+    await expect(ensureNativeLocationPermission()).rejects.toMatchObject({
+      code: 'disabled'
+    });
+  });
+});
+
 describe('weather inspection cache', () => {
   beforeEach(() => {
     localStorage.clear();
+    capacitorState.native = false;
     vi.unstubAllGlobals();
     vi.resetModules();
   });

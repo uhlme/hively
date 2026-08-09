@@ -126,7 +126,8 @@
     "recentActivities": "Ultime attività",
     "noActivities": "Nessuna attività.",
     "until": "fino al {date}",
-    "treatmentOnHive": "{name} · {label}"
+    "treatmentOnHive": "{name} · {label}",
+    "radarLocating": "Rilevamento posizione…"
   },
   "hives": {
     "title": "Apiari",
@@ -771,7 +772,11 @@
     "pollenNone": "basso",
     "locateDenied": "Accesso alla posizione negato.",
     "locateFailed": "Impossibile determinare la posizione.",
-    "stale": "Dati meteo in cache"
+    "stale": "Dati meteo in cache",
+    "locating": "Rilevamento posizione…",
+    "locateError": "Errore posizione",
+    "locateDisabled": "I servizi di localizzazione sono disattivati. Attivali nelle impostazioni di sistema.",
+    "locateDeniedHint": "Accesso alla posizione negato. Consentilo nelle impostazioni dell’app e riprova."
   },
   "confirms": {
     "deleteExpense": "Eliminare questo acquisto?",
