@@ -126,7 +126,8 @@
     "recentActivities": "Dernières activités",
     "noActivities": "Aucune activité.",
     "until": "jusqu’au {date}",
-    "treatmentOnHive": "{name} · {label}"
+    "treatmentOnHive": "{name} · {label}",
+    "radarLocating": "Localisation…"
   },
   "hives": {
     "title": "Ruchers",
@@ -771,7 +772,11 @@
     "pollenNone": "faible",
     "locateDenied": "Accès à la position refusé.",
     "locateFailed": "Impossible de déterminer la position.",
-    "stale": "Données météo en cache"
+    "stale": "Données météo en cache",
+    "locating": "Localisation…",
+    "locateError": "Erreur de position",
+    "locateDisabled": "Les services de localisation sont désactivés. Active-les dans les réglages système.",
+    "locateDeniedHint": "Accès à la position refusé. Autorise-le dans les réglages de l’app, puis réessaie."
   },
   "confirms": {
     "deleteExpense": "Supprimer cet achat ?",

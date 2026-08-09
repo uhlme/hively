@@ -60,10 +60,92 @@ const WEATHER_ICON_PATHS = {
   unknown: '<circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.5-1.1 1-1.1 1.8M12 17h.01"/>'
 };
 
-const GEO_OPTIONS = { timeout: 10000, maximumAge: 60000 };
+const GEO_OPTIONS = {
+  enableHighAccuracy: true,
+  timeout: 20000,
+  maximumAge: 60000,
+  enableLocationFallback: true
+};
 const WEATHER_CACHE_KEY = 'hively_weather_cache';
 /** Allow stale inspection weather for up to 7 days when offline. */
 const WEATHER_STALE_OK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** @typedef {'denied' | 'disabled' | 'unavailable'} LocationErrorCode */
+
+export class LocationPermissionError extends Error {
+  /** @param {LocationErrorCode} code */
+  constructor(code, message = code) {
+    super(message);
+    this.name = 'LocationPermissionError';
+    this.code = code;
+  }
+}
+
+function isLocationServicesDisabledError(err) {
+  const msg = String(err?.message || err || '');
+  const code = String(err?.code || '');
+  return (
+    /OS-PLUG-GLOC-0007/i.test(msg) ||
+    /OS-PLUG-GLOC-0007/i.test(code) ||
+    /location services are not enabled/i.test(msg) ||
+    /location(?:\s+services)?\s+(?:are\s+)?(?:not enabled|disabled)/i.test(msg)
+  );
+}
+
+function isLocationDeniedError(err) {
+  const msg = String(err?.message || err || '');
+  const code = String(err?.code || '');
+  return (
+    /OS-PLUG-GLOC-0003/i.test(msg) ||
+    /OS-PLUG-GLOC-0003/i.test(code) ||
+    /permission .*denied/i.test(msg) ||
+    /location permission request was denied/i.test(msg)
+  );
+}
+
+/** True if fine or coarse location was granted (Android 12+ approximate OK). */
+export function hasGrantedLocationPermission(status) {
+  return status?.location === 'granted' || status?.coarseLocation === 'granted';
+}
+
+/**
+ * Ensure Android/iOS runtime location permission is granted.
+ * Explicitly calls requestPermissions so the system dialog is shown
+ * (getCurrentPosition alone can fail without a prompt on some devices).
+ */
+export async function ensureNativeLocationPermission() {
+  if (!Capacitor.isNativePlatform()) return 'granted';
+
+  let status;
+  try {
+    status = await Geolocation.checkPermissions();
+  } catch (err) {
+    if (isLocationServicesDisabledError(err)) {
+      throw new LocationPermissionError('disabled', String(err?.message || err));
+    }
+    status = { location: 'prompt', coarseLocation: 'prompt' };
+  }
+
+  if (hasGrantedLocationPermission(status)) return 'granted';
+
+  let requested;
+  try {
+    requested = await Geolocation.requestPermissions({
+      permissions: ['location', 'coarseLocation']
+    });
+  } catch (err) {
+    if (isLocationServicesDisabledError(err)) {
+      throw new LocationPermissionError('disabled', String(err?.message || err));
+    }
+    if (isLocationDeniedError(err)) {
+      throw new LocationPermissionError('denied', String(err?.message || err));
+    }
+    throw new LocationPermissionError('unavailable', String(err?.message || err));
+  }
+
+  if (hasGrantedLocationPermission(requested)) return 'granted';
+  throw new LocationPermissionError('denied', 'Location permission denied');
+}
 
 export function getCachedLocation() {
   return safeJsonParse(localStorage.getItem('hively_user_location'), null);
@@ -143,6 +225,7 @@ async function resolveUserCoords(forceRefresh) {
 
   if (Capacitor.isNativePlatform()) {
     try {
+      await ensureNativeLocationPermission();
       const position = await Geolocation.getCurrentPosition(GEO_OPTIONS);
       const coords = {
         lat: position.coords.latitude,
@@ -151,8 +234,19 @@ async function resolveUserCoords(forceRefresh) {
       saveCachedLocation(coords.lat, coords.lon);
       return coords;
     } catch (error) {
-      console.warn('Standortabfrage fehlgeschlagen oder abgelehnt:', error.message);
-      throw error;
+      console.warn('Standortabfrage fehlgeschlagen oder abgelehnt:', error?.message || error);
+      if (error instanceof LocationPermissionError) throw error;
+      if (isLocationServicesDisabledError(error)) {
+        throw new LocationPermissionError('disabled', String(error?.message || error));
+      }
+      if (isLocationDeniedError(error)) {
+        throw new LocationPermissionError('denied', String(error?.message || error));
+      }
+      // GPS timeout / Play Services issues are not permission failures —
+      // keep them as generic Errors so the UI can fall back to stale radar.
+      throw error instanceof Error
+        ? error
+        : new Error(String(error || 'location unavailable'));
     }
   }
 

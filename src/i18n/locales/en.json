@@ -126,7 +126,8 @@
     "recentActivities": "Recent activity",
     "noActivities": "No activities yet.",
     "until": "until {date}",
-    "treatmentOnHive": "{name} · {label}"
+    "treatmentOnHive": "{name} · {label}",
+    "radarLocating": "Getting location…"
   },
   "hives": {
     "title": "Apiaries",
@@ -771,7 +772,11 @@
     "pollenNone": "low",
     "locateDenied": "Location access denied.",
     "locateFailed": "Could not determine location.",
-    "stale": "Cached weather data"
+    "stale": "Cached weather data",
+    "locating": "Getting location…",
+    "locateError": "Location error",
+    "locateDisabled": "Location services are off. Please enable them in system settings.",
+    "locateDeniedHint": "Location access denied. Allow it in the app settings and try again."
   },
   "confirms": {
     "deleteExpense": "Delete this purchase?",
