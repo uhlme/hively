@@ -13,11 +13,16 @@ test.describe('Hively smoke', () => {
     await page.locator('.nav-item[data-view="hives"]').click();
     await expect(page.locator('#view-hives')).toBeVisible();
     await expect(page.locator('#view-hives .section-title')).toHaveText('Bienenstände');
+    await expect(page.locator('#btn-quick-add')).toBeVisible();
+    await expect(page.locator('#btn-quick-add')).toHaveClass(/fab-quick-add/);
+    await expect(page.locator('#btn-quick-add')).toHaveText('+ Volk');
 
     await page.locator('.nav-item[data-view="finances"]').click();
     await expect(page.locator('#view-finances')).toBeVisible();
+    await expect(page.locator('#btn-quick-add')).toHaveText('+ Kauf');
 
     await page.locator('.nav-item[data-view="calendar"]').click();
     await expect(page.locator('#view-calendar')).toBeVisible();
+    await expect(page.locator('#btn-quick-add')).toHaveClass(/hidden/);
   });
 });
