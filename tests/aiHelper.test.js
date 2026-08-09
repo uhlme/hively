@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '../src/i18n/index.js';
 
 const { callGeminiMock } = vi.hoisted(() => ({
   callGeminiMock: vi.fn()
@@ -11,21 +12,60 @@ vi.mock('../src/geminiApi.js', () => ({
 describe('getWeatherInsightFromGemini', () => {
   beforeEach(() => {
     callGeminiMock.mockReset();
+    setLocale('de', { persist: false });
   });
 
   it('returns trimmed insight text from Gemini', async () => {
     callGeminiMock.mockResolvedValueOnce({ text: '  Gutes Flugwetter.  ' });
     const { getWeatherInsightFromGemini } = await import('../src/aiHelper.js');
 
-    const weatherData = { temperature: 22, condition: 'Sonnig' };
+    const weatherData = {
+      temperature: 22,
+      code: 0,
+      conditionText: 'Sonnig',
+      windSpeed: 4,
+      dominantPollen: { name: 'Erle', nameKey: 'weather.pollen.alder', value: 12 }
+    };
     const text = await getWeatherInsightFromGemini(weatherData);
 
     expect(text).toBe('Gutes Flugwetter.');
     expect(callGeminiMock).toHaveBeenCalledWith(
       'weather_insight',
-      { weatherData },
+      {
+        weatherData: expect.objectContaining({
+          temperature: 22,
+          conditionText: 'Sonnig',
+          dominantPollen: expect.objectContaining({ name: 'Erle', value: 12 })
+        })
+      },
       20000
     );
+  });
+
+  it('localizes weather labels to the active UI locale before calling Gemini', async () => {
+    setLocale('en', { persist: false });
+    callGeminiMock.mockResolvedValueOnce({ text: 'Great flying weather.' });
+    const { getWeatherInsightFromGemini, localizeWeatherForAi } = await import(
+      '../src/aiHelper.js'
+    );
+
+    const weatherData = {
+      temperature: 22,
+      code: 0,
+      conditionText: 'Sonnig',
+      windSpeed: 4,
+      dominantPollen: { name: 'Erle', nameKey: 'weather.pollen.alder', value: 12 }
+    };
+
+    expect(localizeWeatherForAi(weatherData, 'en')).toMatchObject({
+      conditionText: 'Sunny',
+      dominantPollen: { name: 'Alder', value: 12 }
+    });
+
+    await getWeatherInsightFromGemini(weatherData);
+    const payload = callGeminiMock.mock.calls[0][1];
+    expect(payload.weatherData.conditionText).toBe('Sunny');
+    expect(payload.weatherData.dominantPollen.name).toBe('Alder');
   });
 
   it('returns unavailable when text is empty', async () => {

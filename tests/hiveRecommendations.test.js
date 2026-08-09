@@ -44,7 +44,7 @@ describe('hiveRecommendations', () => {
         { id: 'h1' },
         [{ id: 'i1', hiveId: 'h1' }]
       );
-      expect(text).toBe('KI-Empfehlung derzeit nicht verfügbar.');
+      expect(text).toBe('Empfehlung gerade nicht verfügbar.');
     });
 
     it('returns unavailable when Gemini fails', async () => {
@@ -54,7 +54,7 @@ describe('hiveRecommendations', () => {
         { id: 'h1' },
         [{ id: 'i1', hiveId: 'h1' }]
       );
-      expect(text).toBe('KI-Empfehlung derzeit nicht verfügbar.');
+      expect(text).toBe('Empfehlung gerade nicht verfügbar.');
     });
   });
 

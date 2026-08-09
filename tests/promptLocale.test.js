@@ -17,13 +17,22 @@ describe('promptLocale', () => {
     expect(buildAudioPrompt('en')).toMatch(/English/);
     expect(buildAudioPrompt('fr')).toMatch(/French/);
     expect(buildReceiptPrompt('it')).toMatch(/Italian|italiano|hardware/i);
-    const weather = buildWeatherInsightPrompt('de', {
+    const weatherDe = buildWeatherInsightPrompt('de', {
       temperature: 20,
       conditionText: 'Sonnig',
       windSpeed: 5,
       dominantPollen: null
     });
-    expect(weather).toMatch(/German|Hochdeutsch|Schweiz/i);
+    expect(weatherDe).toMatch(/German|Hochdeutsch|Schweiz/i);
+
+    const weatherEn = buildWeatherInsightPrompt('en', {
+      temperature: 20,
+      conditionText: 'Sunny',
+      windSpeed: 5,
+      dominantPollen: null
+    });
+    expect(weatherEn).toMatch(/Write the entire answer in English/i);
+    expect(weatherEn).toMatch(/Do not use German/i);
   });
 
   it('normalizes finance categories to stable ids', () => {

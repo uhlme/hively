@@ -706,6 +706,8 @@
     "recommendationLoading": "Empfehlung wird geladen…",
     "recommendationUnavailable": "Empfehlung gerade nicht verfügbar.",
     "weatherUnavailable": "Wetter-Einschätzung derzeit nicht verfügbar.",
+    "insightDataSaver": "Wetterdaten geladen (ohne KI-Einschätzung – Datensparmodus).",
+    "recommendationNoInspections": "Noch keine Durchsichten vorhanden. Erstelle eine erste Durchsicht, um Empfehlungen zu erhalten.",
     "upsellInsight": "KI-Einschätzung ist Teil von Hively Pro.",
     "featureVoice": "Sprachdiktat",
     "featureReceipt": "Beleg-Scan",
