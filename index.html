@@ -60,15 +60,15 @@
               <circle cx="14.65" cy="7.35" r="0.55" fill="#0a0a0c" opacity="0.18"/>
             </svg>
           </span>
-          Hively
+          <span data-i18n="common.appName">Hively</span>
         </h1>
         <div class="header-actions">
-          <span id="connection-status" class="header-status-dot is-online" title="Online" aria-label="Online"></span>
-          <button id="btn-operation-switcher" class="btn btn-sm btn-secondary header-btn header-op-btn" type="button" title="Betrieb wechseln" style="display: none;">Betrieb</button>
-          <span id="user-status" class="user-status-text">Lokal</span>
-          <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn">Login</button>
-          <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn">+ Volk</button>
-          <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen">
+          <span id="connection-status" class="header-status-dot is-online" title="Online" aria-label="Online" data-i18n-title="header.online" data-i18n-aria-label="header.online"></span>
+          <button id="btn-operation-switcher" class="btn btn-sm btn-secondary header-btn header-op-btn" type="button" title="Betrieb wechseln" data-i18n-title="header.switchOperation" data-i18n="header.operation" style="display: none;">Betrieb</button>
+          <span id="user-status" class="user-status-text" data-i18n="header.local">Lokal</span>
+          <button id="btn-auth-action" class="btn btn-sm btn-secondary header-btn" data-i18n="header.login">Login</button>
+          <button id="btn-quick-add" class="btn btn-sm btn-primary header-btn" data-i18n="header.quickAddHive">+ Volk</button>
+          <button id="btn-settings-header" class="header-icon-btn" title="Einstellungen" aria-label="Einstellungen" data-i18n-title="header.settings" data-i18n-aria-label="header.settings">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -82,21 +82,21 @@
         <!-- View 1: Dashboard -->
         <section id="view-dashboard" class="view">
           <div id="viewer-readonly-banner" class="card" style="display: none; margin-bottom: 16px; padding: 12px 16px; border: 1px solid rgba(255, 160, 0, 0.35); background: rgba(255, 160, 0, 0.08);">
-            <p style="margin: 0; font-size: 0.9rem;">
-              Du bist als <strong>Betrachter</strong> eingeladen (z.&nbsp;B. Patenschaft) und siehst den Stand der Völker nur lesend.
+            <p style="margin: 0; font-size: 0.9rem;" data-i18n="dashboard.viewerBanner">
+              Du bist als Betrachter eingeladen (z. B. Patenschaft) und siehst den Stand der Völker nur lesend.
             </p>
           </div>
           <div class="stat-card-row">
             <div class="stat-card">
-              <div class="stat-label">Völker</div>
+              <div class="stat-label" data-i18n="dashboard.statHives">Völker</div>
               <div class="stat-val" id="stat-hives-count">0</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Honig</div>
+              <div class="stat-label" data-i18n="dashboard.statHoney">Honig</div>
               <div class="stat-val text-primary-color" id="stat-honey-weight">0.0</div>
             </div>
             <div class="stat-card" id="stat-card-finance" style="cursor: pointer;">
-              <div class="stat-label" id="stat-finance-label">Bilanz</div>
+              <div class="stat-label" id="stat-finance-label" data-i18n="dashboard.statBalance">Bilanz</div>
               <div class="stat-val" id="stat-finance-sum">0.00 CHF</div>
             </div>
           </div>
@@ -104,20 +104,20 @@
           <!-- Bienen-Radar Widget -->
           <div id="dashboard-radar-widget" class="card radar-card">
             <div class="radar-card-header">
-              <h2 class="radar-card-title">Bienen-Radar</h2>
+              <h2 class="radar-card-title" data-i18n="dashboard.radarTitle">Bienen-Radar</h2>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <button id="btn-radar-locate" class="btn btn-sm btn-secondary" style="width: auto; padding: 4px 8px; font-size: 0.8rem; display: none;" title="Standort aktualisieren">Ortung</button>
-                <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);">Lädt…</span>
+                <button id="btn-radar-locate" class="btn btn-sm btn-secondary" style="width: auto; padding: 4px 8px; font-size: 0.8rem; display: none;" title="Standort aktualisieren" data-i18n="dashboard.locate" data-i18n-title="dashboard.locateTitle">Ortung</button>
+                <span id="radar-loading" style="font-size: 0.85rem; color: var(--text-secondary);" data-i18n="dashboard.radarLoading">Lädt…</span>
               </div>
             </div>
 
             <!-- Location Setup Prompt (if no coords stored) -->
             <div id="radar-setup-prompt" style="display: none; flex-direction: column; align-items: center; gap: 12px; padding: 16px 8px; text-align: center;">
               <div>
-                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">Standort für Wetterdaten festlegen</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 260px; margin: 0 auto;">Hively benötigt deinen Standort, um das aktuelle Wetter und den Pollenflug anzuzeigen.</div>
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;" data-i18n="dashboard.radarSetupTitle">Standort für Wetterdaten festlegen</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 260px; margin: 0 auto;" data-i18n="dashboard.radarSetupHint">Hively benötigt deinen Standort, um das aktuelle Wetter und den Pollenflug anzuzeigen.</div>
               </div>
-              <button id="btn-radar-setup" class="btn btn-primary btn-sm" style="width: auto; padding: 8px 16px;">Standort freigeben</button>
+              <button id="btn-radar-setup" class="btn btn-primary btn-sm" style="width: auto; padding: 8px 16px;" data-i18n="dashboard.radarSetupCta">Standort freigeben</button>
             </div>
 
             <div id="radar-content" style="display: none; flex-direction: column; gap: 12px;">
@@ -128,13 +128,13 @@
                   <div id="radar-condition" class="radar-condition">--</div>
                 </div>
                 <div class="radar-side-metrics">
-                  <div class="radar-side-row">Wind: <span id="radar-wind">--</span> km/h</div>
-                  <div class="radar-side-row">Pollen: <span id="radar-pollen">--</span></div>
+                  <div class="radar-side-row"><span data-i18n="dashboard.wind">Wind</span>: <span id="radar-wind">--</span> km/h</div>
+                  <div class="radar-side-row"><span data-i18n="dashboard.pollen">Pollen</span>: <span id="radar-pollen">--</span></div>
                 </div>
               </div>
 
               <div class="radar-insight">
-                <span class="radar-insight-label">KI-Einschätzung</span>
+                <span class="radar-insight-label" data-i18n="dashboard.aiInsight">KI-Einschätzung</span>
                 <span id="radar-insight" style="font-size: 0.9rem; line-height: 1.45; color: var(--text-secondary);">--</span>
               </div>
             </div>
@@ -142,7 +142,7 @@
 
           <!-- Offline Memos Queue -->
           <div id="dashboard-offline-memos" class="card" style="display: none; margin-bottom: 24px; padding: 16px; border: 1px solid var(--primary); background: var(--primary-soft);">
-            <h3 style="font-size: 1rem; margin-bottom: 12px;">Offline-Diktate ausstehend</h3>
+            <h3 style="font-size: 1rem; margin-bottom: 12px;" data-i18n="dashboard.offlineMemosTitle">Offline-Diktate ausstehend</h3>
             <div id="offline-memos-list" style="display: flex; flex-direction: column; gap: 10px;">
               <!-- Rendered dynamically via JS -->
             </div>
@@ -150,13 +150,13 @@
 
           <!-- Active treatments -->
           <div id="dashboard-treatments" class="card" style="display: none; margin-bottom: 24px; padding: 16px;">
-            <h3 style="font-size: 1rem; margin-bottom: 12px;">Aktive Behandlungen</h3>
+            <h3 style="font-size: 1rem; margin-bottom: 12px;" data-i18n="dashboard.activeTreatments">Aktive Behandlungen</h3>
             <div id="dashboard-treatments-list" style="display: flex; flex-direction: column; gap: 10px;">
               <!-- Rendered dynamically via JS -->
             </div>
           </div>
 
-          <h2 class="section-title">Nächste Schritte</h2>
+          <h2 class="section-title" data-i18n="dashboard.nextSteps">Nächste Schritte</h2>
           <div class="dash-actions" style="margin-bottom: 24px;">
             <button id="dash-btn-insp" class="btn btn-secondary dash-action-btn dash-action-full">
               <span class="dash-action-icon" aria-hidden="true">
@@ -168,8 +168,8 @@
                 </svg>
               </span>
               <span class="dash-action-text">
-                <span class="dash-action-label">Durchsicht</span>
-                <span class="dash-action-sub">Arbeit eintragen</span>
+                <span class="dash-action-label" data-i18n="dashboard.actionInspection">Durchsicht</span>
+                <span class="dash-action-sub" data-i18n="dashboard.actionInspectionSub">Arbeit eintragen</span>
               </span>
             </button>
             <div class="grid-2">
@@ -181,8 +181,8 @@
                   </svg>
                 </span>
                 <span class="dash-action-text">
-                  <span class="dash-action-label">Behandlung</span>
-                  <span class="dash-action-sub">Varroa &amp; Co.</span>
+                  <span class="dash-action-label" data-i18n="dashboard.actionTreatment">Behandlung</span>
+                  <span class="dash-action-sub" data-i18n="dashboard.actionTreatmentSub">Varroa &amp; Co.</span>
                 </span>
               </button>
               <button id="dash-btn-honey" class="btn btn-secondary dash-action-btn">
@@ -194,26 +194,26 @@
                   </svg>
                 </span>
                 <span class="dash-action-text">
-                  <span class="dash-action-label">Honigernte</span>
-                  <span class="dash-action-sub">Ertrag buchen</span>
+                  <span class="dash-action-label" data-i18n="dashboard.actionHoney">Honigernte</span>
+                  <span class="dash-action-sub" data-i18n="dashboard.actionHoneySub">Ertrag buchen</span>
                 </span>
               </button>
             </div>
           </div>
 
-          <h2 class="section-title">Letzte Aktivitäten</h2>
+          <h2 class="section-title" data-i18n="dashboard.recentActivities">Letzte Aktivitäten</h2>
           <div id="dashboard-recent-activities">
             <!-- Rendered via JS -->
-            <p class="text-muted text-center" style="padding: 20px;">Keine Aktivitäten vorhanden.</p>
+            <p class="text-muted text-center" style="padding: 20px;" data-i18n="dashboard.noActivities">Keine Aktivitäten vorhanden.</p>
           </div>
         </section>
 
         <!-- View 2: Völker (Hives List) -->
         <section id="view-hives" class="view hidden">
           <div class="view-toolbar">
-            <h2 class="section-title">Bienenstände</h2>
-            <select id="apiary-filter" class="form-control view-toolbar-select" aria-label="Bienenstand filtern">
-              <option value="">Alle Stände</option>
+            <h2 class="section-title" data-i18n="hives.title">Bienenstände</h2>
+            <select id="apiary-filter" class="form-control view-toolbar-select" aria-label="Bienenstand filtern" data-i18n-aria-label="hives.filterAria">
+              <option value="" data-i18n="hives.filterAll">Alle Stände</option>
             </select>
           </div>
           <div id="hives-list-container">
@@ -224,8 +224,8 @@
         <!-- View 3: Volk Details (Single Hive View) -->
         <section id="view-hive-detail" class="view hidden">
           <div class="view-toolbar">
-            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto;">Zurück</button>
-            <h2 id="detail-hive-title" class="view-title">Kasten Details</h2>
+            <button id="btn-back-to-hives" class="btn btn-secondary btn-sm" style="width: auto;" data-i18n="common.back">Zurück</button>
+            <h2 id="detail-hive-title" class="view-title" data-i18n="hives.detailTitle">Kasten Details</h2>
           </div>
 
           <div class="detail-header" id="detail-hive-info">
@@ -233,8 +233,8 @@
           </div>
 
           <div class="view-toolbar">
-            <h3 class="section-title">Verlaufsprotokoll</h3>
-            <button id="btn-new-inspection" class="btn btn-sm btn-primary">+ Neue Durchsicht</button>
+            <h3 class="section-title" data-i18n="hives.history">Verlaufsprotokoll</h3>
+            <button id="btn-new-inspection" class="btn btn-sm btn-primary" data-i18n="hives.newInspection">+ Neue Durchsicht</button>
           </div>
 
           <div id="hive-inspections-list">
@@ -245,15 +245,15 @@
         <!-- View 4: Finanzen (Finance & Harvests) -->
         <section id="view-finances" class="view hidden">
           <div class="segmented-control">
-            <button id="tab-fin-expenses" class="active">Ausgaben</button>
-            <button id="tab-fin-honey">Honig</button>
-            <button id="tab-fin-sponsorships">Paten</button>
+            <button id="tab-fin-expenses" class="active" data-i18n="finances.tabExpenses">Ausgaben</button>
+            <button id="tab-fin-honey" data-i18n="finances.tabHoney">Honig</button>
+            <button id="tab-fin-sponsorships" data-i18n="finances.tabSponsorships">Paten</button>
           </div>
 
           <!-- Section: Expenses -->
           <div id="section-expenses">
             <div class="view-toolbar">
-              <h2 class="section-title">Einkäufe &amp; Belege</h2>
+              <h2 class="section-title" data-i18n="finances.expensesTitle">Einkäufe &amp; Belege</h2>
             </div>
             <div id="expenses-list-container">
               <!-- Rendered via JS -->
@@ -263,8 +263,8 @@
           <!-- Section: Honey Yield -->
           <div id="section-honey" class="hidden">
             <div class="view-toolbar">
-              <h2 class="section-title">Ernteübersicht</h2>
-              <button id="btn-add-honey" class="btn btn-sm btn-primary">+ Ernte buchen</button>
+              <h2 class="section-title" data-i18n="finances.honeyTitle">Ernteübersicht</h2>
+              <button id="btn-add-honey" class="btn btn-sm btn-primary" data-i18n="finances.addHoney">+ Ernte buchen</button>
             </div>
             <div id="honey-list-container">
               <!-- Rendered via JS -->
@@ -274,8 +274,8 @@
           <!-- Section: Sponsorships -->
           <div id="section-sponsorships" class="hidden">
             <div class="view-toolbar">
-              <h2 class="section-title">Patenschaften</h2>
-              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary">+ Patenschaft</button>
+              <h2 class="section-title" data-i18n="finances.sponsorshipsTitle">Patenschaften</h2>
+              <button id="btn-add-sponsorship" class="btn btn-sm btn-primary" data-i18n="finances.addSponsorship">+ Patenschaft</button>
             </div>
             <div id="sponsorships-list-container">
               <!-- Rendered via JS -->
@@ -286,23 +286,23 @@
         <!-- View 5: Kalender -->
         <section id="view-calendar" class="view hidden">
           <div class="view-toolbar">
-            <h2 class="section-title">Saison-Kalender</h2>
-            <select id="calendar-month-select" class="form-control view-toolbar-select" aria-label="Monat wählen">
-              <option value="1">Januar</option>
-              <option value="2">Februar</option>
-              <option value="3">März</option>
-              <option value="4">April</option>
-              <option value="5">Mai</option>
-              <option value="6">Juni</option>
-              <option value="7">Juli</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">Oktober</option>
-              <option value="11">November</option>
-              <option value="12">Dezember</option>
+            <h2 class="section-title" data-i18n="calendar.title">Saison-Kalender</h2>
+            <select id="calendar-month-select" class="form-control view-toolbar-select" aria-label="Monat wählen" data-i18n-aria-label="calendar.monthAria">
+              <option value="1" data-i18n="calendar.months.1">Januar</option>
+              <option value="2" data-i18n="calendar.months.2">Februar</option>
+              <option value="3" data-i18n="calendar.months.3">März</option>
+              <option value="4" data-i18n="calendar.months.4">April</option>
+              <option value="5" data-i18n="calendar.months.5">Mai</option>
+              <option value="6" data-i18n="calendar.months.6">Juni</option>
+              <option value="7" data-i18n="calendar.months.7">Juli</option>
+              <option value="8" data-i18n="calendar.months.8">August</option>
+              <option value="9" data-i18n="calendar.months.9">September</option>
+              <option value="10" data-i18n="calendar.months.10">Oktober</option>
+              <option value="11" data-i18n="calendar.months.11">November</option>
+              <option value="12" data-i18n="calendar.months.12">Dezember</option>
             </select>
           </div>
-          <p class="view-lead">
+          <p class="view-lead" data-i18n="calendar.lead">
             Arbeitsschritte mit Richttermin und Textanleitung – an Wetter, Tracht und Betriebsweise anpassen.
           </p>
           
@@ -313,144 +313,157 @@
 
         <!-- View 6: Einstellungen -->
         <section id="view-settings" class="view hidden">
-          <h2 class="section-title">Einstellungen</h2>
-          <p class="settings-intro">Betrieb, Stände und Offline-Verhalten – und dein Hively-Pro-Abo.</p>
+          <h2 class="section-title" data-i18n="settings.title">Einstellungen</h2>
+          <p class="settings-intro" data-i18n="settings.intro">Betrieb, Stände und Offline-Verhalten – und dein Hively-Pro-Abo.</p>
 
           <div class="settings-group">
-            <h3 class="settings-group-label">Konto</h3>
+            <h3 class="settings-group-label" data-i18n="settings.groupAccount">Konto</h3>
             <div class="card settings-card">
-              <h4 class="settings-card-title">Hively Pro</h4>
-              <p id="billing-plan-summary" class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.language.label">Sprache</h4>
+              <p class="settings-card-lead" data-i18n="settings.language.autoHint">Wird beim ersten Start aus der Gerätesprache übernommen. Du kannst sie jederzeit hier ändern.</p>
+              <div class="form-group">
+                <label for="settings-locale" data-i18n="settings.language.label">Sprache</label>
+                <select id="settings-locale" class="form-control">
+                  <option value="de" data-i18n="settings.language.options.de">Deutsch</option>
+                  <option value="fr" data-i18n="settings.language.options.fr">Français</option>
+                  <option value="it" data-i18n="settings.language.options.it">Italiano</option>
+                  <option value="en" data-i18n="settings.language.options.en">English</option>
+                </select>
+              </div>
+            </div>
+            <div class="card settings-card">
+              <h4 class="settings-card-title" data-i18n="settings.proTitle">Hively Pro</h4>
+              <p id="billing-plan-summary" class="settings-card-lead" data-i18n="settings.proLead">
                 KI und Cloud-Sync für deinen Betrieb – 14 Tage testen.
               </p>
               <div class="settings-actions">
-                <button id="btn-open-pro" class="btn btn-primary" type="button">Pro aktivieren</button>
-                <button id="btn-manage-billing" class="btn btn-secondary" type="button" style="display: none;">Abo verwalten</button>
+                <button id="btn-open-pro" class="btn btn-primary" type="button" data-i18n="settings.activatePro">Pro aktivieren</button>
+                <button id="btn-manage-billing" class="btn btn-secondary" type="button" style="display: none;" data-i18n="settings.manageBilling">Abo verwalten</button>
               </div>
             </div>
           </div>
 
           <div class="settings-group">
-            <h3 class="settings-group-label">Betrieb</h3>
+            <h3 class="settings-group-label" data-i18n="settings.groupOperation">Betrieb</h3>
             <div class="card settings-card">
-              <h4 class="settings-card-title">Bienenbetrieb</h4>
-              <p class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.operationTitle">Bienenbetrieb</h4>
+              <p class="settings-card-lead" data-i18n="settings.operationLead">
                 Gemeinsamer Datenraum für mehrere Imker. Einträge gehören zum Betrieb.
               </p>
-              <div id="operation-settings-summary" class="settings-card-meta">
+              <div id="operation-settings-summary" class="settings-card-meta" data-i18n="settings.operationLocal">
                 Lokal-Modus – melde dich an, um Betriebe zu nutzen.
               </div>
               <div class="settings-actions">
-                <button id="btn-open-operations" class="btn btn-secondary" type="button">Betrieb wählen / verwalten</button>
-                <button id="btn-join-operation" class="btn btn-secondary" type="button">Mit Code beitreten</button>
+                <button id="btn-open-operations" class="btn btn-secondary" type="button" data-i18n="settings.openOperations">Betrieb wählen / verwalten</button>
+                <button id="btn-join-operation" class="btn btn-secondary" type="button" data-i18n="settings.joinWithCode">Mit Code beitreten</button>
               </div>
               <div id="operation-owner-panel" class="settings-panel" style="display: none;">
-                <h5 class="settings-panel-title">Adresse &amp; Einladung</h5>
+                <h5 class="settings-panel-title" data-i18n="settings.addressInvite">Adresse &amp; Einladung</h5>
                 <div class="form-group">
-                  <label for="op-settings-name">Name</label>
+                  <label for="op-settings-name" data-i18n="common.name">Name</label>
                   <input type="text" id="op-settings-name" class="form-control" />
                 </div>
                 <div class="form-group">
-                  <label for="op-settings-address">Adresszeile</label>
+                  <label for="op-settings-address" data-i18n="common.address">Adresszeile</label>
                   <input type="text" id="op-settings-address" class="form-control" placeholder="Strasse Nr." />
                 </div>
                 <div class="grid-2">
                   <div class="form-group">
-                    <label for="op-settings-zip">PLZ</label>
+                    <label for="op-settings-zip" data-i18n="common.zip">PLZ</label>
                     <input type="text" id="op-settings-zip" class="form-control" />
                   </div>
                   <div class="form-group">
-                    <label for="op-settings-city">Ort</label>
+                    <label for="op-settings-city" data-i18n="common.city">Ort</label>
                     <input type="text" id="op-settings-city" class="form-control" />
                   </div>
                 </div>
-                <button id="btn-save-operation" class="btn btn-primary" type="button">Betrieb speichern</button>
+                <button id="btn-save-operation" class="btn btn-primary" type="button" data-i18n="settings.saveOperation">Betrieb speichern</button>
                 <div class="form-group" style="margin-top: 12px;">
-                  <label for="op-invite-role">Einladung als</label>
+                  <label for="op-invite-role" data-i18n="settings.inviteAs">Einladung als</label>
                   <select id="op-invite-role" class="form-control">
-                    <option value="editor">Mitarbeiter (bearbeiten)</option>
-                    <option value="viewer">Betrachter / Patenschaft (nur lesen)</option>
+                    <option value="editor" data-i18n="settings.inviteEditor">Mitarbeiter (bearbeiten)</option>
+                    <option value="viewer" data-i18n="settings.inviteViewer">Betrachter / Patenschaft (nur lesen)</option>
                   </select>
                 </div>
-                <button id="btn-create-invite" class="btn btn-secondary" type="button">Einladungscode erzeugen</button>
+                <button id="btn-create-invite" class="btn btn-secondary" type="button" data-i18n="settings.createInvite">Einladungscode erzeugen</button>
                 <div id="operation-invite-result" class="settings-card-meta" style="display: none;"></div>
                 <div id="operation-members-list" class="settings-members"></div>
               </div>
             </div>
 
             <div class="card settings-card">
-              <h4 class="settings-card-title">Bienenstände</h4>
-              <p class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.apiariesTitle">Bienenstände</h4>
+              <p class="settings-card-lead" data-i18n="settings.apiariesLead">
                 Organisiere deine Völker nach Standorten (Ständen).
               </p>
               <div id="apiaries-list" class="settings-list">
                 <!-- Rendered via JS -->
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label for="apiary-name-input">Neuer Stand</label>
+                <label for="apiary-name-input" data-i18n="settings.newApiary">Neuer Stand</label>
                 <div class="settings-inline-add">
-                  <input type="text" id="apiary-name-input" class="form-control" placeholder="z.B. Lindenweg" />
-                  <button type="button" id="btn-add-apiary" class="btn btn-primary">Hinzufügen</button>
+                  <input type="text" id="apiary-name-input" class="form-control" placeholder="z.B. Lindenweg" data-i18n-placeholder="settings.apiaryPlaceholder" />
+                  <button type="button" id="btn-add-apiary" class="btn btn-primary" data-i18n="common.add">Hinzufügen</button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="settings-group">
-            <h3 class="settings-group-label">Feld</h3>
+            <h3 class="settings-group-label" data-i18n="settings.groupField">Feld</h3>
             <div class="card settings-card">
-              <h4 class="settings-card-title">Funkloch / Offline</h4>
-              <p class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.fieldTitle">Funkloch / Offline</h4>
+              <p class="settings-card-lead" data-i18n="settings.fieldLead">
                 Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
               </p>
               <label class="settings-toggle">
                 <input type="checkbox" id="pref-field-mode" />
                 <span>
-                  <strong>Funkloch-Modus</strong>
-                  <span class="settings-toggle-hint">Bei schwachem Netz nur lokal lesen/schreiben; Sync bei besserer Verbindung oder manuell.</span>
+                  <strong data-i18n="settings.fieldMode">Funkloch-Modus</strong>
+                  <span class="settings-toggle-hint" data-i18n="settings.fieldModeHint">Bei schwachem Netz nur lokal lesen/schreiben; Sync bei besserer Verbindung oder manuell.</span>
                 </span>
               </label>
               <label class="settings-toggle">
                 <input type="checkbox" id="pref-wifi-only-media" />
                 <span>
-                  <strong>KI-Medien nur bei gutem Netz</strong>
-                  <span class="settings-toggle-hint">Sprachnotizen und Belege werden lokal gespeichert und erst bei WLAN/4G an die KI gesendet.</span>
+                  <strong data-i18n="settings.wifiOnlyMedia">KI-Medien nur bei gutem Netz</strong>
+                  <span class="settings-toggle-hint" data-i18n="settings.wifiOnlyMediaHint">Sprachnotizen und Belege werden lokal gespeichert und erst bei WLAN/4G an die KI gesendet.</span>
                 </span>
               </label>
-              <button id="btn-sync-now" class="btn btn-primary" type="button" style="width: 100%;">Jetzt synchronisieren</button>
+              <button id="btn-sync-now" class="btn btn-primary" type="button" style="width: 100%;" data-i18n="common.syncNow">Jetzt synchronisieren</button>
               <p id="network-sync-status" class="settings-card-meta" style="margin-bottom: 0;"></p>
             </div>
           </div>
 
           <div class="settings-group">
-            <h3 class="settings-group-label">Hilfe</h3>
+            <h3 class="settings-group-label" data-i18n="settings.groupHelp">Hilfe</h3>
             <div class="card settings-card">
-              <h4 class="settings-card-title">Feedback</h4>
-              <p class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.feedbackTitle">Feedback</h4>
+              <p class="settings-card-lead" data-i18n="settings.feedbackLead">
                 Etwas funktioniert nicht? Melde den Fehler kurz – wir schauen uns das an.
               </p>
-              <button id="btn-report-bug" class="btn btn-secondary" type="button" style="width: 100%;">Fehler melden</button>
+              <button id="btn-report-bug" class="btn btn-secondary" type="button" style="width: 100%;" data-i18n="settings.reportBug">Fehler melden</button>
             </div>
             <div class="card settings-card">
-              <h4 class="settings-card-title">Daten zurücksetzen</h4>
-              <p class="settings-card-lead">
+              <h4 class="settings-card-title" data-i18n="settings.resetTitle">Daten zurücksetzen</h4>
+              <p class="settings-card-lead" data-i18n="settings.resetLead">
                 Löscht alle lokalen App-Daten auf diesem Gerät (Völker, Sync-Warteschlange, Offline-KI). Cloud-Daten im Betrieb bleiben unberührt.
               </p>
-              <button id="btn-reset-local-data" class="btn btn-secondary settings-btn-danger" type="button">Lokale Daten löschen</button>
+              <button id="btn-reset-local-data" class="btn btn-secondary settings-btn-danger" type="button" data-i18n="settings.resetLocal">Lokale Daten löschen</button>
             </div>
           </div>
 
           <footer class="settings-footer">
-            <p id="app-version-label">Hively</p>
-            <p>Für die Imkerei optimierte PWA</p>
+            <p id="app-version-label" data-i18n="common.appName">Hively</p>
+            <p data-i18n="settings.footerTagline">Für die Imkerei optimierte PWA</p>
             <p class="settings-legal-links">
-              <a href="https://hivelyy.netlify.app/impressum/" target="_blank" rel="noopener noreferrer">Impressum</a>
+              <a id="link-legal-impressum" href="https://hivelyy.netlify.app/impressum/" target="_blank" rel="noopener noreferrer" data-i18n="settings.legalImprint">Impressum</a>
               <span aria-hidden="true">·</span>
-              <a href="https://hivelyy.netlify.app/agb/" target="_blank" rel="noopener noreferrer">AGB</a>
+              <a id="link-legal-agb" href="https://hivelyy.netlify.app/agb/" target="_blank" rel="noopener noreferrer" data-i18n="settings.legalTerms">AGB</a>
               <span aria-hidden="true">·</span>
-              <a href="https://hivelyy.netlify.app/privacy/" target="_blank" rel="noopener noreferrer">Datenschutz</a>
+              <a id="link-legal-privacy" href="https://hivelyy.netlify.app/privacy/" target="_blank" rel="noopener noreferrer" data-i18n="settings.legalPrivacy">Datenschutz</a>
               <span aria-hidden="true">·</span>
-              <a href="https://hivelyy.netlify.app/delete-account/" target="_blank" rel="noopener noreferrer">Konto löschen</a>
+              <a id="link-legal-delete" href="https://hivelyy.netlify.app/delete-account/" target="_blank" rel="noopener noreferrer" data-i18n="settings.legalDelete">Konto löschen</a>
             </p>
           </footer>
         </section>
@@ -460,19 +473,19 @@
       <nav class="bottom-nav">
         <button class="nav-item active" data-view="dashboard">
           <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          Dashboard
+          <span data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button class="nav-item" data-view="hives">
           <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-          Kästen
+          <span data-i18n="nav.hives">Kästen</span>
         </button>
         <button class="nav-item" data-view="finances">
           <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-          Finanzen
+          <span data-i18n="nav.finances">Finanzen</span>
         </button>
         <button class="nav-item" data-view="calendar">
           <svg viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-          Kalender
+          <span data-i18n="nav.calendar">Kalender</span>
         </button>
       </nav>
 
@@ -480,32 +493,32 @@
       <div id="modal-hive" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2 id="modal-hive-title">Volk erfassen</h2>
+            <h2 id="modal-hive-title" data-i18n="hives.modalTitleNew">Neues Volk erfassen</h2>
             <button class="modal-close" data-close="modal-hive">&times;</button>
           </div>
           <form id="form-hive">
             <input type="hidden" id="hive-form-id" />
             <div class="form-group">
-              <label for="hive-form-name">Name / Kasten-Nummer</label>
-              <input type="text" id="hive-form-name" class="form-control" placeholder="z.B. Kasten 3 - Lindenweg" required />
+              <label for="hive-form-name" data-i18n="hives.nameLabel">Name / Kasten-Nummer</label>
+              <input type="text" id="hive-form-name" class="form-control" placeholder="z.B. Kasten 3 - Lindenweg" data-i18n-placeholder="hives.namePlaceholder" required />
             </div>
             <div class="form-group">
-              <label for="hive-form-apiary">Bienenstand</label>
+              <label for="hive-form-apiary" data-i18n="hives.apiaryLabel">Bienenstand</label>
               <select id="hive-form-apiary" class="form-control">
-                <option value="">— Kein Stand —</option>
+                <option value="" data-i18n="hives.apiaryNone">— Kein Stand —</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="hive-form-queen-name">Name der Königin</label>
-              <input type="text" id="hive-form-queen-name" class="form-control" placeholder="z.B. Beatrix" />
+              <label for="hive-form-queen-name" data-i18n="hives.queenName">Name der Königin</label>
+              <input type="text" id="hive-form-queen-name" class="form-control" placeholder="z.B. Beatrix" data-i18n-placeholder="hives.queenNamePlaceholder" />
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label for="hive-form-breed">Rasse / Linie</label>
-                <input type="text" id="hive-form-breed" class="form-control" placeholder="z.B. Carnica" />
+                <label for="hive-form-breed" data-i18n="hives.breed">Rasse / Linie</label>
+                <input type="text" id="hive-form-breed" class="form-control" placeholder="z.B. Carnica" data-i18n-placeholder="hives.breedPlaceholder" />
               </div>
               <div class="form-group">
-                <label for="hive-form-queen-year">Königinnen-Jahrgang</label>
+                <label for="hive-form-queen-year" data-i18n="hives.queenYear">Königinnen-Jahrgang</label>
                 <select id="hive-form-queen-year">
                   <option value="2026">2026 (Weiß)</option>
                   <option value="2025">2025 (Blau)</option>
@@ -517,35 +530,35 @@
               </div>
             </div>
             <div class="form-group">
-              <label for="hive-form-status">Status</label>
+              <label for="hive-form-status" data-i18n="hives.statusLabel">Status</label>
               <select id="hive-form-status">
-                <option value="Gesund">Gesund</option>
-                <option value="Varroa-Behandlung">Varroa-Behandlung</option>
-                <option value="Schwarmstimmung">Schwarmstimmung</option>
-                <option value="Aufgelöst">Aufgelöst</option>
+                <option value="Gesund" data-i18n="hives.statuses.healthy">Gesund</option>
+                <option value="Varroa-Behandlung" data-i18n="hives.statuses.varroa">Varroa-Behandlung</option>
+                <option value="Schwarmstimmung" data-i18n="hives.statuses.swarm">Schwarmstimmung</option>
+                <option value="Aufgelöst" data-i18n="hives.statuses.dissolved">Aufgelöst</option>
               </select>
             </div>
             <div class="grid-3">
               <div class="form-group">
-                <label for="hive-form-brood-frames">Brutraum (Waben)</label>
+                <label for="hive-form-brood-frames" data-i18n="hives.broodFrames">Brutraum (Waben)</label>
                 <input type="number" id="hive-form-brood-frames" class="form-control" min="0" placeholder="0" />
               </div>
               <div class="form-group">
-                <label for="hive-form-honey-frames-1">1. Honigraum (Waben)</label>
+                <label for="hive-form-honey-frames-1" data-i18n="hives.honeyFrames1">1. Honigraum (Waben)</label>
                 <input type="number" id="hive-form-honey-frames-1" class="form-control" min="0" placeholder="0" />
               </div>
               <div class="form-group">
-                <label for="hive-form-honey-frames-2">2. Honigraum (Waben)</label>
+                <label for="hive-form-honey-frames-2" data-i18n="hives.honeyFrames2">2. Honigraum (Waben)</label>
                 <input type="number" id="hive-form-honey-frames-2" class="form-control" min="0" placeholder="0" />
               </div>
             </div>
             <div class="form-group">
-              <label for="hive-form-notes">Notizen / Besonderheiten</label>
-              <textarea id="hive-form-notes" placeholder="z.B. Zuchtkönigin von Imkerverein..."></textarea>
+              <label for="hive-form-notes" data-i18n="hives.notesLabel">Notizen / Besonderheiten</label>
+              <textarea id="hive-form-notes" placeholder="z.B. Zuchtkönigin von Imkerverein…" data-i18n-placeholder="hives.notesPlaceholder"></textarea>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-hive" class="btn btn-danger" style="display: none; flex: 1;">Volk löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-hive" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="hives.deleteHive">Volk löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -555,26 +568,26 @@
       <div id="modal-inspection" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Durchsicht erfassen</h2>
+            <h2 data-i18n="inspections.title">Durchsicht erfassen</h2>
             <button class="modal-close" data-close="modal-inspection">&times;</button>
           </div>
           
           <!-- Weather Status Section -->
           <div id="weather-status-section" style="margin-bottom: 12px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
-            <span>Wetter: <span id="weather-display" style="font-weight: 600;">Wird ermittelt…</span></span>
-            <button type="button" id="btn-weather-retry" class="btn btn-secondary btn-sm" style="display: none; padding: 4px 8px; font-size: 0.75rem;">Neu laden</button>
+            <span><span data-i18n="inspections.weather">Wetter</span>: <span id="weather-display" style="font-weight: 600;">Wird ermittelt…</span></span>
+            <button type="button" id="btn-weather-retry" class="btn btn-secondary btn-sm" style="display: none; padding: 4px 8px; font-size: 0.75rem;" data-i18n="inspections.weatherRetry">Neu laden</button>
           </div>
 
           <!-- Voice Assistant Section -->
           <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">KI-Sprach-Assistent</span>
-              <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
+              <span style="font-size: 0.9rem; font-weight: 600;" data-i18n="ai.voiceTitle">KI-Sprach-Assistent</span>
+              <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);" data-i18n="ai.voiceReady">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-voice-record" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
                 <span id="voice-btn-icon" aria-hidden="true"></span>
-                <span id="voice-btn-text">Diktieren starten</span>
+                <span id="voice-btn-text" data-i18n="ai.voiceStart">Diktieren starten</span>
               </button>
             </div>
             <div id="voice-transcription-preview" style="display: none; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; max-height: 80px; overflow-y: auto; border-left: 3px solid var(--primary);"></div>
@@ -586,107 +599,107 @@
             <input type="hidden" id="insp-weather-temp" />
             <input type="hidden" id="insp-weather-condition" />
             <div class="form-group">
-              <label>Bienenvolk / Kästen</label>
+              <label data-i18n="inspections.hivesLabel">Bienenvolk / Kästen</label>
               <div id="insp-form-hives-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background-color: var(--bg-secondary); display: flex; flex-direction: column; gap: 8px;">
                 <!-- Rendered dynamically via JS -->
               </div>
             </div>
             <div class="form-group">
-              <label for="insp-form-date">Datum</label>
+              <label for="insp-form-date" data-i18n="inspections.dateLabel">Datum</label>
               <input type="date" id="insp-form-date" class="form-control" required />
             </div>
 
             <div id="insp-checklist" class="card" style="padding: 14px; margin-bottom: 16px; background: rgba(255,255,255,0.03);">
-              <h3 style="font-size: 0.95rem; margin-bottom: 12px;">Strukturierte Beobachtung</h3>
+              <h3 style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="inspections.checklistTitle">Strukturierte Beobachtung</h3>
               <div class="form-group">
-                <label for="insp-queen-seen">Königin gesehen</label>
+                <label for="insp-queen-seen" data-i18n="inspections.queenSeen">Königin gesehen</label>
                 <select id="insp-queen-seen" class="form-control">
-                  <option value="">—</option>
-                  <option value="yes">Ja</option>
-                  <option value="no">Nein</option>
-                  <option value="unsure">Unsicher</option>
+                  <option value="" data-i18n="common.none">—</option>
+                  <option value="yes" data-i18n="inspections.queenYes">Ja</option>
+                  <option value="no" data-i18n="inspections.queenNo">Nein</option>
+                  <option value="unsure" data-i18n="inspections.queenUnsure">Unsicher</option>
                 </select>
               </div>
               <div class="form-group" style="margin-bottom: 8px;">
-                <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);">Brut &amp; Zellen</span>
+                <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);" data-i18n="inspections.broodCells">Brut &amp; Zellen</span>
                 <div style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> Stifte
+                    <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> <span data-i18n="inspections.eggs">Stifte</span>
                   </label>
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-open-brood" style="width: auto; margin: 0;" /> Offene Brut
+                    <input type="checkbox" id="insp-open-brood" style="width: auto; margin: 0;" /> <span data-i18n="inspections.openBrood">Offene Brut</span>
                   </label>
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-capped-brood" style="width: auto; margin: 0;" /> Verdeckelte Brut
+                    <input type="checkbox" id="insp-capped-brood" style="width: auto; margin: 0;" /> <span data-i18n="inspections.cappedBrood">Verdeckelte Brut</span>
                   </label>
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-play-cups" style="width: auto; margin: 0;" /> Spielnäpfchen
+                    <input type="checkbox" id="insp-play-cups" style="width: auto; margin: 0;" /> <span data-i18n="inspections.playCups">Spielnäpfchen</span>
                   </label>
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-queen-cells" style="width: auto; margin: 0;" /> Weiselzellen
+                    <input type="checkbox" id="insp-queen-cells" style="width: auto; margin: 0;" /> <span data-i18n="inspections.queenCells">Weiselzellen</span>
                   </label>
                 </div>
               </div>
               <div class="grid-2">
                 <div class="form-group">
-                  <label for="insp-strength">Volkstärke</label>
+                  <label for="insp-strength" data-i18n="inspections.strength">Volkstärke</label>
                   <select id="insp-strength" class="form-control">
-                    <option value="">—</option>
-                    <option value="weak">Schwach</option>
-                    <option value="mid">Mittel</option>
-                    <option value="strong">Stark</option>
-                    <option value="na">n.b.</option>
+                    <option value="" data-i18n="common.none">—</option>
+                    <option value="weak" data-i18n="inspections.strengthWeak">Schwach</option>
+                    <option value="mid" data-i18n="inspections.strengthMid">Mittel</option>
+                    <option value="strong" data-i18n="inspections.strengthStrong">Stark</option>
+                    <option value="na" data-i18n="inspections.strengthNa">n.b.</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="insp-temperament">Sanftmut (1–5)</label>
+                  <label for="insp-temperament" data-i18n="inspections.temperament">Sanftmut (1–5)</label>
                   <select id="insp-temperament" class="form-control">
-                    <option value="5">5 – sehr sanft</option>
+                    <option value="5" data-i18n="inspections.temperament5">5 – sehr sanft</option>
                     <option value="4">4</option>
                     <option value="3">3</option>
                     <option value="2">2</option>
-                    <option value="1">1 – aggressiv</option>
+                    <option value="1" data-i18n="inspections.temperament1">1 – aggressiv</option>
                   </select>
                 </div>
               </div>
               <div class="grid-2">
                 <div class="form-group">
-                  <label for="insp-feeding">Fütterung</label>
+                  <label for="insp-feeding" data-i18n="inspections.feeding">Fütterung</label>
                   <select id="insp-feeding" class="form-control">
-                    <option value="">Nein</option>
+                    <option value="" data-i18n="inspections.feedingNo">Nein</option>
                     <option value="1:1">1:1</option>
                     <option value="3:2">3:2</option>
-                    <option value="Sonstiges">Sonstiges</option>
+                    <option value="Sonstiges" data-i18n="inspections.feedingOther">Sonstiges</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="insp-honey-super">Honigraum</label>
+                  <label for="insp-honey-super" data-i18n="inspections.honeySuper">Honigraum</label>
                   <select id="insp-honey-super" class="form-control">
-                    <option value="">Keiner</option>
+                    <option value="" data-i18n="inspections.honeySuperNone">Keiner</option>
                     <option value="1">1</option>
                     <option value="2+">2+</option>
                   </select>
                 </div>
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label for="insp-varroa-level">Varroa-Befall</label>
+                <label for="insp-varroa-level" data-i18n="inspections.varroaLevel">Varroa-Befall</label>
                 <select id="insp-varroa-level" class="form-control">
-                  <option value="">—</option>
-                  <option value="low">Niedrig</option>
-                  <option value="mid">Mittel</option>
-                  <option value="high">Hoch</option>
-                  <option value="na">n.b.</option>
+                  <option value="" data-i18n="common.none">—</option>
+                  <option value="low" data-i18n="inspections.varroaLow">Niedrig</option>
+                  <option value="mid" data-i18n="inspections.varroaMid">Mittel</option>
+                  <option value="high" data-i18n="inspections.varroaHigh">Hoch</option>
+                  <option value="na" data-i18n="inspections.varroaNa">n.b.</option>
                 </select>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="insp-form-notes">Arbeiten & Notizen</label>
-              <textarea id="insp-form-notes" placeholder="Detaillierte Beobachtungen, Arbeiten, Fütterung oder Varroabehandlung..." style="min-height: 120px;"></textarea>
+              <label for="insp-form-notes" data-i18n="inspections.notesLabel">Arbeiten &amp; Notizen</label>
+              <textarea id="insp-form-notes" placeholder="Detaillierte Beobachtungen, Arbeiten, Fütterung oder Varroabehandlung…" data-i18n-placeholder="inspections.notesPlaceholder" style="min-height: 120px;"></textarea>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-inspection" class="btn btn-danger" style="display: none; flex: 1;">Durchsicht löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-inspection" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="inspections.delete">Durchsicht löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -696,53 +709,53 @@
       <div id="modal-treatment" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2 id="modal-treatment-title">Behandlung erfassen</h2>
+            <h2 id="modal-treatment-title" data-i18n="treatments.title">Behandlung erfassen</h2>
             <button class="modal-close" data-close="modal-treatment">&times;</button>
           </div>
           <form id="form-treatment">
             <input type="hidden" id="treatment-form-id" />
             <div class="form-group">
-              <label>Völker</label>
+              <label data-i18n="treatments.hivesLabel">Völker</label>
               <div id="treatment-form-hives-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background-color: var(--bg-secondary); display: flex; flex-direction: column; gap: 8px;">
                 <!-- Rendered via JS -->
               </div>
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label for="treatment-form-date-start">Start</label>
+                <label for="treatment-form-date-start" data-i18n="treatments.start">Start</label>
                 <input type="date" id="treatment-form-date-start" class="form-control" required />
               </div>
               <div class="form-group">
-                <label for="treatment-form-date-end">Ende</label>
+                <label for="treatment-form-date-end" data-i18n="treatments.end">Ende</label>
                 <input type="date" id="treatment-form-date-end" class="form-control" />
               </div>
             </div>
             <div class="form-group">
-              <label for="treatment-form-product">Produkt</label>
+              <label for="treatment-form-product" data-i18n="treatments.product">Produkt</label>
               <select id="treatment-form-product" class="form-control" required>
                 <!-- Filled via JS -->
               </select>
             </div>
             <div class="form-group">
-              <label for="treatment-form-dose">Dosis / Menge</label>
-              <input type="text" id="treatment-form-dose" class="form-control" placeholder="z.B. 2 ml / Wabe" />
+              <label for="treatment-form-dose" data-i18n="treatments.dose">Dosis / Menge</label>
+              <input type="text" id="treatment-form-dose" class="form-control" placeholder="z.B. 2 ml / Wabe" data-i18n-placeholder="treatments.dosePlaceholder" />
             </div>
             <div class="form-group">
-              <label for="treatment-form-status">Status</label>
+              <label for="treatment-form-status" data-i18n="treatments.statusLabel">Status</label>
               <select id="treatment-form-status" class="form-control">
-                <option value="active">Aktiv</option>
-                <option value="done">Abgeschlossen</option>
-                <option value="cancelled">Abgebrochen</option>
+                <option value="active" data-i18n="treatments.statusActive">Aktiv</option>
+                <option value="done" data-i18n="treatments.statusDone">Abgeschlossen</option>
+                <option value="cancelled" data-i18n="treatments.statusCancelled">Abgebrochen</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="treatment-form-notes">Notizen</label>
-              <textarea id="treatment-form-notes" class="form-control" placeholder="z.B. Temperatur, Beobachtungen…"></textarea>
+              <label for="treatment-form-notes" data-i18n="common.notes">Notizen</label>
+              <textarea id="treatment-form-notes" class="form-control" placeholder="z.B. Temperatur, Beobachtungen…" data-i18n-placeholder="treatments.notesPlaceholder"></textarea>
             </div>
             <p id="treatment-form-phi-hint" class="text-secondary" style="font-size: 0.8rem; margin-bottom: 12px;"></p>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-treatment" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-treatment" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="treatments.delete">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -752,20 +765,20 @@
       <div id="modal-finance" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Kauf erfassen</h2>
+            <h2 data-i18n="finances.purchaseTitle">Kauf erfassen</h2>
             <button class="modal-close" data-close="modal-finance">&times;</button>
           </div>
           
           <!-- Receipt Scan Section -->
           <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.9rem; font-weight: 600;">KI-Beleg-Scanner</span>
-              <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);">Bereit</span>
+              <span style="font-size: 0.9rem; font-weight: 600;" data-i18n="ai.receiptTitle">KI-Beleg-Scanner</span>
+              <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);" data-i18n="ai.receiptReady">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-receipt-scan" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
                 <span id="receipt-btn-icon" aria-hidden="true"></span>
-                <span id="receipt-btn-text">Beleg hochladen / fotografieren</span>
+                <span id="receipt-btn-text" data-i18n="ai.receiptUpload">Beleg hochladen / fotografieren</span>
               </button>
               <input type="file" id="input-receipt-file" accept="image/*" style="display: none;" />
             </div>
@@ -775,32 +788,32 @@
           <form id="form-finance">
             <input type="hidden" id="finance-form-id" />
             <div class="form-group">
-              <label for="finance-form-date">Datum</label>
+              <label for="finance-form-date" data-i18n="common.date">Datum</label>
               <input type="date" id="finance-form-date" class="form-control" required />
             </div>
             <div class="form-group">
-              <label for="finance-form-description">Gegenstand / Beschreibung</label>
-              <input type="text" id="finance-form-description" class="form-control" placeholder="z.B. 10x Absperrgitter Zander" required />
+              <label for="finance-form-description" data-i18n="finances.description">Gegenstand / Beschreibung</label>
+              <input type="text" id="finance-form-description" class="form-control" placeholder="z.B. 10x Absperrgitter Zander" data-i18n-placeholder="finances.descriptionPlaceholder" required />
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label for="finance-form-category">Kategorie</label>
+                <label for="finance-form-category" data-i18n="finances.category">Kategorie</label>
                 <select id="finance-form-category">
-                  <option value="Hardware">Hardware / Beuten</option>
-                  <option value="Futter">Futter</option>
-                  <option value="Bienen">Bienen / Königinnen</option>
-                  <option value="Imkereibedarf">Imkereibedarf / Werkzeug</option>
-                  <option value="Sonstiges">Sonstiges</option>
+                  <option value="hardware" data-i18n="finances.categories.hardware">Hardware / Beuten</option>
+                  <option value="feed" data-i18n="finances.categories.feed">Futter</option>
+                  <option value="bees" data-i18n="finances.categories.bees">Bienen / Königinnen</option>
+                  <option value="equipment" data-i18n="finances.categories.equipment">Imkereibedarf / Werkzeug</option>
+                  <option value="other" data-i18n="finances.categories.other">Sonstiges</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="finance-form-price">Preis (CHF)</label>
+                <label for="finance-form-price" data-i18n="finances.priceChf">Preis (CHF)</label>
                 <input type="number" step="0.01" id="finance-form-price" class="form-control" placeholder="0.00" required />
               </div>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-finance" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-finance" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="common.delete">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -810,34 +823,34 @@
       <div id="modal-honey" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Honigernte erheben</h2>
+            <h2 data-i18n="finances.honeyModalTitle">Honigernte erheben</h2>
             <button class="modal-close" data-close="modal-honey">&times;</button>
           </div>
           <form id="form-honey">
             <input type="hidden" id="honey-form-id" />
             <div class="form-group">
-              <label for="honey-form-hive-id">Bienenvolk</label>
+              <label for="honey-form-hive-id" data-i18n="finances.hiveLabel">Bienenvolk</label>
               <select id="honey-form-hive-id" required>
                 <!-- Rendered via JS -->
               </select>
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label for="honey-form-date">Erntedatum</label>
+                <label for="honey-form-date" data-i18n="finances.harvestDate">Erntedatum</label>
                 <input type="date" id="honey-form-date" class="form-control" required />
               </div>
               <div class="form-group">
-                <label for="honey-form-amount">Gewicht (kg)</label>
+                <label for="honey-form-amount" data-i18n="finances.weightKg">Gewicht (kg)</label>
                 <input type="number" step="0.1" id="honey-form-amount" class="form-control" placeholder="0.0" required />
               </div>
             </div>
             <div class="form-group">
-              <label for="honey-form-type">Trachtart / Sorte</label>
-              <input type="text" id="honey-form-type" class="form-control" placeholder="z.B. Frühtracht, Raps, Waldhonig" required />
+              <label for="honey-form-type" data-i18n="finances.honeyType">Trachtart / Sorte</label>
+              <input type="text" id="honey-form-type" class="form-control" placeholder="z.B. Frühtracht, Raps, Waldhonig" data-i18n-placeholder="finances.honeyTypePlaceholder" required />
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-honey" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-honey" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="common.delete">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -847,36 +860,36 @@
       <div id="modal-sponsorship" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2 id="modal-sponsorship-title">Patenschaft erfassen</h2>
+            <h2 id="modal-sponsorship-title" data-i18n="finances.sponsorshipTitle">Patenschaft erfassen</h2>
             <button class="modal-close" data-close="modal-sponsorship">&times;</button>
           </div>
           <form id="form-sponsorship">
             <input type="hidden" id="sponsorship-form-id" />
             <div class="form-group">
-              <label for="sponsorship-form-date">Datum</label>
+              <label for="sponsorship-form-date" data-i18n="common.date">Datum</label>
               <input type="date" id="sponsorship-form-date" class="form-control" required />
             </div>
             <div class="form-group">
-              <label for="sponsorship-form-sponsor">Pate / Patin (Name)</label>
-              <input type="text" id="sponsorship-form-sponsor" class="form-control" placeholder="z.B. Max Mustermann" required />
+              <label for="sponsorship-form-sponsor" data-i18n="finances.sponsorName">Pate / Patin (Name)</label>
+              <input type="text" id="sponsorship-form-sponsor" class="form-control" placeholder="z.B. Max Mustermann" data-i18n-placeholder="finances.sponsorPlaceholder" required />
             </div>
             <div class="form-group">
-              <label for="sponsorship-form-hive-id">Zugeordneter Kasten / Volk</label>
+              <label for="sponsorship-form-hive-id" data-i18n="finances.assignedHive">Zugeordneter Kasten / Volk</label>
               <select id="sponsorship-form-hive-id" class="form-control" required>
                 <!-- Rendered via JS -->
               </select>
             </div>
             <div class="form-group">
-              <label for="sponsorship-form-price">Ertrag / Beitrag (CHF)</label>
+              <label for="sponsorship-form-price" data-i18n="finances.contribution">Ertrag / Beitrag (CHF)</label>
               <input type="number" step="0.01" id="sponsorship-form-price" class="form-control" placeholder="e.g. 150.00" required />
             </div>
             <div class="form-group">
-              <label for="sponsorship-form-notes">Bemerkungen</label>
-              <textarea id="sponsorship-form-notes" placeholder="z.B. Urkunde übergeben, Honiganteil vereinbart..."></textarea>
+              <label for="sponsorship-form-notes" data-i18n="finances.remarks">Bemerkungen</label>
+              <textarea id="sponsorship-form-notes" placeholder="z.B. Urkunde übergeben, Honiganteil vereinbart…" data-i18n-placeholder="finances.remarksPlaceholder"></textarea>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="button" id="btn-delete-sponsorship" class="btn btn-danger" style="display: none; flex: 1;">Löschen</button>
-              <button type="submit" class="btn btn-primary" style="flex: 2;">Speichern</button>
+              <button type="button" id="btn-delete-sponsorship" class="btn btn-danger" style="display: none; flex: 1;" data-i18n="common.delete">Löschen</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;" data-i18n="common.save">Speichern</button>
             </div>
           </form>
         </div>
@@ -886,26 +899,26 @@
       <div id="modal-auth" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2 id="auth-modal-title">Bei Hively anmelden</h2>
+            <h2 id="auth-modal-title" data-i18n="auth.titleLogin">Bei Hively anmelden</h2>
             <button class="modal-close" data-close="modal-auth">&times;</button>
           </div>
           <div class="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-            <button id="tab-auth-login" class="btn btn-sm btn-primary" style="flex: 1; padding: 8px;">Login</button>
-            <button id="tab-auth-register" class="btn btn-sm btn-secondary" style="flex: 1; padding: 8px;">Registrieren</button>
+            <button id="tab-auth-login" class="btn btn-sm btn-primary" style="flex: 1; padding: 8px;" data-i18n="auth.tabLogin">Login</button>
+            <button id="tab-auth-register" class="btn btn-sm btn-secondary" style="flex: 1; padding: 8px;" data-i18n="auth.tabRegister">Registrieren</button>
           </div>
           <form id="form-auth">
             <div class="form-group">
-              <label for="auth-email">E-Mail Adresse</label>
-              <input type="email" id="auth-email" class="form-control" placeholder="ihre.email@example.com" required />
+              <label for="auth-email" data-i18n="auth.email">E-Mail Adresse</label>
+              <input type="email" id="auth-email" class="form-control" placeholder="ihre.email@example.com" data-i18n-placeholder="auth.emailPlaceholder" required />
             </div>
             <div class="form-group">
-              <label for="auth-password">Passwort</label>
+              <label for="auth-password" data-i18n="auth.password">Passwort</label>
               <input type="password" id="auth-password" class="form-control" placeholder="••••••••" required />
             </div>
             <div id="auth-error-msg" class="text-danger" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
             <div id="auth-success-msg" class="text-success" style="display: none; margin-bottom: 12px; font-size: 0.85rem;"></div>
             <div style="display: flex; gap: 12px; margin-top: 24px;">
-              <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%;">Anmelden</button>
+              <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%;" data-i18n="auth.submitLogin">Anmelden</button>
             </div>
           </form>
         </div>
@@ -915,13 +928,13 @@
       <div id="modal-operations" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Bienenbetrieb</h2>
+            <h2 data-i18n="settings.operationTitle">Bienenbetrieb</h2>
             <button class="modal-close" data-close="modal-operations">&times;</button>
           </div>
           <div id="operations-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <button id="btn-op-create-open" class="btn btn-primary" type="button">Neuen Betrieb anlegen</button>
-            <button id="btn-op-join-open" class="btn btn-secondary" type="button">Mit Code beitreten</button>
+            <button id="btn-op-join-open" class="btn btn-secondary" type="button" data-i18n="settings.joinWithCode">Mit Code beitreten</button>
           </div>
         </div>
       </div>
@@ -935,24 +948,24 @@
           </div>
           <form id="form-operation-create">
             <div class="form-group">
-              <label for="op-create-name">Name</label>
+              <label for="op-create-name" data-i18n="common.name">Name</label>
               <input type="text" id="op-create-name" class="form-control" placeholder="z.B. Imkerei Muster" required />
             </div>
             <div class="form-group">
-              <label for="op-create-address">Adresszeile</label>
+              <label for="op-create-address" data-i18n="common.address">Adresszeile</label>
               <input type="text" id="op-create-address" class="form-control" placeholder="Strasse Nr." />
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label for="op-create-zip">PLZ</label>
+                <label for="op-create-zip" data-i18n="common.zip">PLZ</label>
                 <input type="text" id="op-create-zip" class="form-control" />
               </div>
               <div class="form-group">
-                <label for="op-create-city">Ort</label>
+                <label for="op-create-city" data-i18n="common.city">Ort</label>
                 <input type="text" id="op-create-city" class="form-control" />
               </div>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Anlegen</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;" data-i18n="common.create">Anlegen</button>
           </form>
         </div>
       </div>
@@ -970,7 +983,7 @@
               <input type="text" id="op-join-code" class="form-control" placeholder="z.B. ABCD2345" required autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.08em;" />
             </div>
             <p id="op-join-preview" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 12px; display: none;"></p>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Beitreten</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;" data-i18n="common.join">Beitreten</button>
           </form>
         </div>
       </div>
@@ -979,7 +992,7 @@
       <div id="modal-bug-report" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Fehler melden</h2>
+            <h2 data-i18n="settings.reportBug">Fehler melden</h2>
             <button class="modal-close" data-close="modal-bug-report" type="button">&times;</button>
           </div>
           <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
@@ -1006,7 +1019,7 @@
       <div id="modal-pro" class="modal-overlay">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Hively Pro</h2>
+            <h2 data-i18n="billing.upsellTitle">Hively Pro</h2>
             <button class="modal-close" data-close="modal-pro" type="button">&times;</button>
           </div>
           <p id="pro-modal-lead" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
@@ -1017,14 +1030,14 @@
             <label class="pro-plan-option">
               <input type="radio" name="pro-interval" value="year" checked />
               <span>
-                <strong>Jährlich – CHF 10</strong>
+                <strong data-i18n="billing.yearly">Jährlich · CHF 10</strong>
                 <span class="text-secondary" style="display:block; font-size:0.8rem;">Empfohlen · ca. CHF 0.83 / Monat</span>
               </span>
             </label>
             <label class="pro-plan-option" style="margin-top: 10px;">
               <input type="radio" name="pro-interval" value="month" />
               <span>
-                <strong>Monatlich – CHF 1.99</strong>
+                <strong data-i18n="billing.monthly">Monatlich · CHF 1.99</strong>
                 <span class="text-secondary" style="display:block; font-size:0.8rem;">Flexibel kündbar</span>
               </span>
             </label>

@@ -11,9 +11,11 @@ import { getActiveOperationId, getActiveOperationMeta, isOperationOwner } from '
 import { isNetworkError } from './network.js';
 import {
   formatBillingPlanSummary,
+  formatPlanPeriodEnd,
   isProEntitlement,
   TRIAL_DAYS
 } from '../server/billing.js';
+import { formatDate, getLocaleTag, t } from './i18n/index.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
 const PENDING_CHECKOUT_KEY = 'hively_billing_checkout_pending';
@@ -25,6 +27,54 @@ export function isBillingEnabled() {
 }
 
 export { TRIAL_DAYS, isProEntitlement, formatBillingPlanSummary };
+
+/** Localized Settings summary (client). Server helper stays German for unit tests. */
+export function formatLocalizedBillingSummary(plan = {}) {
+  const status = String(plan.planStatus || 'none');
+  const interval = plan.planInterval || null;
+  const endLabel = plan.planPeriodEnd
+    ? formatDate(plan.planPeriodEnd) || formatPlanPeriodEnd(plan.planPeriodEnd, getLocaleTag())
+    : null;
+  const cancelAtPeriodEnd = Boolean(plan.planCancelAtPeriodEnd);
+  const sep = t('billing.separator');
+  const intervalLabel =
+    interval === 'year'
+      ? t('billing.intervalYear')
+      : interval === 'month'
+        ? t('billing.intervalMonth')
+        : '';
+
+  if (plan.hasPro) {
+    const bits = [];
+    if (cancelAtPeriodEnd) {
+      if (status === 'trialing') bits.push(t('billing.proTrialCanceled'));
+      else if (status === 'past_due') bits.push(t('billing.proCanceledPastDue'));
+      else bits.push(t('billing.proCanceled'));
+      if (endLabel) bits.push(t('billing.accessUntil', { date: endLabel }));
+      else bits.push(t('billing.endsAfterPeriod'));
+    } else if (status === 'trialing') {
+      bits.push(t('billing.proTrial'));
+      if (endLabel) bits.push(t('billing.endsOn', { date: endLabel }));
+    } else if (status === 'past_due') {
+      bits.push(t('billing.proPastDue'));
+      if (endLabel) bits.push(t('billing.accessUntilShort', { date: endLabel }));
+    } else {
+      bits.push(t('billing.proActive'));
+      if (intervalLabel) bits.push(intervalLabel);
+      if (endLabel) bits.push(t('billing.renewsOn', { date: endLabel }));
+    }
+    return `${bits.join(sep)}.`;
+  }
+
+  if (status === 'canceled') {
+    return endLabel
+      ? t('billing.freeCanceledWithDate', { date: endLabel })
+      : t('billing.freeCanceled');
+  }
+  if (status === 'paused') return t('billing.freePaused');
+  if (status === 'unpaid' || status === 'incomplete') return t('billing.freeUnpaid');
+  return t('billing.freeDefault', { trialDays: TRIAL_DAYS });
+}
 
 export function getActivePlanMeta() {
   const meta = getActiveOperationMeta();

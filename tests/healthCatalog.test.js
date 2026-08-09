@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   TREATMENT_PRODUCTS,
   getTreatmentProduct,
@@ -7,8 +7,13 @@ import {
   formatChecklistChips,
   VARROA_LEVEL_LABELS
 } from '../src/healthCatalog.js';
+import { setLocale } from '../src/i18n/index.js';
 
 describe('healthCatalog', () => {
+  beforeEach(() => {
+    setLocale('de', { persist: false });
+  });
+
   it('exposes CH treatment products including formic acid', () => {
     expect(TREATMENT_PRODUCTS.length).toBeGreaterThanOrEqual(4);
     expect(getTreatmentProduct('formic_60')?.label).toMatch(/Ameisensäure/);
