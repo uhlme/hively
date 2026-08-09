@@ -706,6 +706,8 @@
     "recommendationLoading": "Caricamento consiglio…",
     "recommendationUnavailable": "Consiglio non disponibile al momento.",
     "weatherUnavailable": "Valutazione meteo non disponibile al momento.",
+    "insightDataSaver": "Meteo caricato (senza valutazione IA – modalità risparmio dati).",
+    "recommendationNoInspections": "Nessuna visita ancora. Aggiungi una prima visita per ricevere consigli.",
     "upsellInsight": "La valutazione IA fa parte di Hively Pro.",
     "featureVoice": "Dettatura vocale",
     "featureReceipt": "Scansione scontrino",

@@ -706,6 +706,8 @@
     "recommendationLoading": "Loading recommendation…",
     "recommendationUnavailable": "Recommendation unavailable right now.",
     "weatherUnavailable": "Weather insight unavailable right now.",
+    "insightDataSaver": "Weather loaded (no AI insight – data-saver mode).",
+    "recommendationNoInspections": "No inspections yet. Add a first inspection to get recommendations.",
     "upsellInsight": "AI insight is part of Hively Pro.",
     "featureVoice": "Voice dictation",
     "featureReceipt": "Receipt scan",

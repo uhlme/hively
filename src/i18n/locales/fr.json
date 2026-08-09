@@ -706,6 +706,8 @@
     "recommendationLoading": "Chargement du conseil…",
     "recommendationUnavailable": "Conseil indisponible pour le moment.",
     "weatherUnavailable": "Avis météo indisponible pour le moment.",
+    "insightDataSaver": "Météo chargée (sans avis IA – mode économie de données).",
+    "recommendationNoInspections": "Pas encore de visites. Ajoute une première visite pour obtenir des conseils.",
     "upsellInsight": "L’avis IA fait partie de Hively Pro.",
     "featureVoice": "Dictée vocale",
     "featureReceipt": "Scan de reçu",

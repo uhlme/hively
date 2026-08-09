@@ -114,7 +114,11 @@ Current weather at the apiary:
 Task:
 In at most 2 short sentences, explain what this means for bee behaviour or the beekeeper's work.
 Practical, motivating, direct (no greeting).
-Respond ONLY in ${lang.name}.`;
+
+Language (strict):
+- Write the entire answer in ${lang.name} only.
+- Do not use German, French, Italian, or English unless that is ${lang.short}.
+- Even if weather/pollen labels above look like another language, still answer only in ${lang.short}.`;
 }
 
 export function buildHiveRecommendationPrompt(locale, { hiveInfo, inspectionsSummary, todayLabel }) {
@@ -131,7 +135,8 @@ Task:
 Give a SHORT recommendation in ${lang.name} (max 4–5 sentences) with the most important next steps.
 
 Rules:
-- Respond ONLY in ${lang.short}
+- Write the entire recommendation in ${lang.name} only
+- Do not mix in other languages
 - Max 4–5 sentences total
 - Focus on 2–3 concrete actions
 - Consider the current season (today: ${todayLabel})
