@@ -775,7 +775,7 @@
     "stale": "Zwischengespeicherte Wetterdaten",
     "locating": "Standort ermitteln…",
     "locateError": "Standort-Fehler",
-    "locateDisabled": "StandortDienste sind aus. Bitte in den Systemeinstellungen aktivieren.",
+    "locateDisabled": "Standortdienste sind aus. Bitte in den Systemeinstellungen aktivieren.",
     "locateDeniedHint": "Standortzugriff verweigert. Bitte in den App-Einstellungen erlauben und erneut versuchen."
   },
   "confirms": {

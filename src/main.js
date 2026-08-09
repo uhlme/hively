@@ -991,20 +991,15 @@ async function loadDashboardRadar() {
         applyRadarData(data);
       } catch (err) {
         const stale = readRadarCache();
-        if (stale && !(err instanceof LocationPermissionError)) {
-          applyRadarData(stale, { stale: true });
-          return;
-        }
-        if (err instanceof LocationPermissionError || !stale) {
+        if (err instanceof LocationPermissionError) {
           showRadarSetupError(err);
           return;
         }
-        radarLoading.innerText = t('radar.locateError');
-        radarContent.style.opacity = '1';
-        setTimeout(() => {
-          radarLoading.style.display = 'none';
-          btnLocate.style.display = 'block';
-        }, 3000);
+        if (stale) {
+          applyRadarData(stale, { stale: true });
+          return;
+        }
+        showRadarSetupError(err);
       }
     };
   }

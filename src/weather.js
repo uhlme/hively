@@ -99,8 +99,13 @@ function isLocationDeniedError(err) {
     /OS-PLUG-GLOC-0003/i.test(msg) ||
     /OS-PLUG-GLOC-0003/i.test(code) ||
     /permission .*denied/i.test(msg) ||
-    /location permission/i.test(msg)
+    /location permission request was denied/i.test(msg)
   );
+}
+
+/** True if fine or coarse location was granted (Android 12+ approximate OK). */
+export function hasGrantedLocationPermission(status) {
+  return status?.location === 'granted' || status?.coarseLocation === 'granted';
 }
 
 /**
@@ -121,8 +126,7 @@ export async function ensureNativeLocationPermission() {
     status = { location: 'prompt', coarseLocation: 'prompt' };
   }
 
-  const current = status?.location || status?.coarseLocation;
-  if (current === 'granted') return 'granted';
+  if (hasGrantedLocationPermission(status)) return 'granted';
 
   let requested;
   try {
@@ -139,8 +143,7 @@ export async function ensureNativeLocationPermission() {
     throw new LocationPermissionError('unavailable', String(err?.message || err));
   }
 
-  const next = requested?.location || requested?.coarseLocation;
-  if (next === 'granted') return 'granted';
+  if (hasGrantedLocationPermission(requested)) return 'granted';
   throw new LocationPermissionError('denied', 'Location permission denied');
 }
 
@@ -239,10 +242,11 @@ async function resolveUserCoords(forceRefresh) {
       if (isLocationDeniedError(error)) {
         throw new LocationPermissionError('denied', String(error?.message || error));
       }
-      throw new LocationPermissionError(
-        'unavailable',
-        String(error?.message || error || 'location unavailable')
-      );
+      // GPS timeout / Play Services issues are not permission failures —
+      // keep them as generic Errors so the UI can fall back to stale radar.
+      throw error instanceof Error
+        ? error
+        : new Error(String(error || 'location unavailable'));
     }
   }
 
