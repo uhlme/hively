@@ -75,6 +75,11 @@ describe('navigationHistory', () => {
       hiveId: null,
       nested: false
     });
+    expect(viewFromHistoryState({ view: 'not-a-real-view' })).toEqual({
+      view: 'dashboard',
+      hiveId: null,
+      nested: false
+    });
   });
 
   it('only history-backs from nested hively states', () => {

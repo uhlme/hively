@@ -550,7 +550,9 @@ function setupRouting() {
     }
     const { view, hiveId } = viewFromHistoryState(event.state, 'dashboard');
     if (hiveId) activeHiveIdForDetail = hiveId;
+    else if (view !== 'hive-detail') activeHiveIdForDetail = null;
     await navigate(view, { historyMode: 'skip' });
+    applyRoleBasedUI();
   });
 
   // View specific quick actions
@@ -621,6 +623,14 @@ async function navigate(viewName, options = {}) {
   const gen = ++navigateGeneration;
   currentView = viewName;
 
+  // Push/replace History BEFORE async render so Android hardware Back already
+  // has a stack entry while hive-detail (or any nested view) is on screen.
+  const historyAction = resolveHistoryAction(fromView, viewName, historyMode);
+  applyHistoryAction(
+    historyAction,
+    buildHistoryState(viewName, { hiveId: activeHiveIdForDetail })
+  );
+
   // Toggle active tab in bottom nav
   const navItems = document.querySelectorAll('nav.bottom-nav .nav-item');
   navItems.forEach(item => {
@@ -690,14 +700,6 @@ async function navigate(viewName, options = {}) {
 
   // Stale navigate (rapid tab switches) must not update analytics / finish late
   if (!stillCurrent()) return;
-
-  // Sync History so Android hardware Back can leave nested views without exiting.
-  const historyAction = resolveHistoryAction(fromView, viewName, historyMode);
-  applyHistoryAction(
-    historyAction,
-    buildHistoryState(viewName, { hiveId: activeHiveIdForDetail })
-  );
-
   trackPageView(viewName);
 }
 

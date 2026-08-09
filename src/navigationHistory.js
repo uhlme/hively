@@ -6,10 +6,23 @@
  * so Back returns to the previous screen instead of closing the app.
  */
 
+export const KNOWN_VIEWS = Object.freeze([
+  'dashboard',
+  'hives',
+  'hive-detail',
+  'finances',
+  'settings',
+  'calendar'
+]);
+
 export const NESTED_VIEWS = new Set(['hive-detail']);
 
 export function isNestedView(viewName) {
   return NESTED_VIEWS.has(viewName);
+}
+
+export function isKnownView(viewName) {
+  return KNOWN_VIEWS.includes(viewName);
 }
 
 /**
@@ -60,11 +73,16 @@ export function applyHistoryAction(action, state, historyApi = globalThis.histor
  * @param {string} [fallbackView='dashboard']
  */
 export function viewFromHistoryState(state, fallbackView = 'dashboard') {
-  if (state && typeof state === 'object' && typeof state.view === 'string' && state.view) {
+  if (
+    state
+    && typeof state === 'object'
+    && typeof state.view === 'string'
+    && isKnownView(state.view)
+  ) {
     return {
       view: state.view,
       hiveId: state.hiveId || null,
-      nested: Boolean(state.nested)
+      nested: Boolean(state.nested) || isNestedView(state.view)
     };
   }
   return { view: fallbackView, hiveId: null, nested: false };
