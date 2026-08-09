@@ -520,7 +520,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setQuickAddLabel(label) {
   const btn = document.getElementById('btn-quick-add');
   if (!btn) return;
-  btn.innerText = label;
+  // Circular FAB always shows "+"; context lives in aria-label only.
+  btn.textContent = '+';
   btn.setAttribute('aria-label', label);
 }
 

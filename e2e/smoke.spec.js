@@ -15,12 +15,14 @@ test.describe('Hively smoke', () => {
     await expect(page.locator('#view-hives .section-title')).toHaveText('Bienenstände');
     await expect(page.locator('#btn-quick-add')).toBeVisible();
     await expect(page.locator('#btn-quick-add')).toHaveClass(/fab-quick-add/);
-    await expect(page.locator('#btn-quick-add')).toHaveText('+ Volk');
+    await expect(page.locator('#btn-quick-add')).toHaveText('+');
+    await expect(page.locator('#btn-quick-add')).toHaveAttribute('aria-label', '+ Volk');
     await expect(page.locator('body')).toHaveClass(/has-fab/);
 
     await page.locator('.nav-item[data-view="finances"]').click();
     await expect(page.locator('#view-finances')).toBeVisible();
-    await expect(page.locator('#btn-quick-add')).toHaveText('+ Kauf');
+    await expect(page.locator('#btn-quick-add')).toHaveText('+');
+    await expect(page.locator('#btn-quick-add')).toHaveAttribute('aria-label', '+ Kauf');
     await expect(page.locator('body')).toHaveClass(/has-fab/);
 
     await page.locator('.nav-item[data-view="calendar"]').click();
