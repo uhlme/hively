@@ -87,6 +87,13 @@ test.describe('Hive detail back navigation', () => {
     await page.reload();
     await expect(page.locator('#view-dashboard')).toBeVisible();
 
+    // Viewer: FAB hidden, no extra has-fab padding on Kästen
+    await page.locator('.nav-item[data-view="hives"]').click();
+    await expect(page.locator('#view-hives')).toBeVisible();
+    await expect(page.locator('#btn-quick-add')).toHaveClass(/is-readonly-hidden/);
+    await expect(page.locator('body')).not.toHaveClass(/has-fab/);
+    await page.locator('.nav-item[data-view="dashboard"]').click();
+
     const activity = page.locator('.recent-activity-card', { hasText: hiveName }).first();
     await expect(activity).toBeVisible();
     await activity.click();

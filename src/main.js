@@ -524,6 +524,16 @@ function setQuickAddLabel(label) {
   btn.setAttribute('aria-label', label);
 }
 
+/** Extra main padding only when the FAB is actually visible (not hidden / not viewer). */
+function syncFabLayout() {
+  const btn = document.getElementById('btn-quick-add');
+  const visible =
+    Boolean(btn) &&
+    !btn.classList.contains('hidden') &&
+    !btn.classList.contains('is-readonly-hidden');
+  document.body.classList.toggle('has-fab', visible);
+}
+
 function setupRouting() {
   const navItems = document.querySelectorAll('nav.bottom-nav .nav-item');
   navItems.forEach(item => {
@@ -675,8 +685,6 @@ async function navigate(viewName, options = {}) {
 
   // Floating quick-add sync (Kästen / Finanzen)
   const quickAddBtn = document.getElementById('btn-quick-add');
-  const showFab = viewName === 'hives' || viewName === 'finances';
-  document.body.classList.toggle('has-fab', showFab);
   if (quickAddBtn) {
     if (viewName === 'hives') {
       quickAddBtn.classList.remove('hidden');
@@ -691,6 +699,7 @@ async function navigate(viewName, options = {}) {
       quickAddBtn.classList.add('hidden');
     }
   }
+  syncFabLayout();
 
   const stillCurrent = () => gen === navigateGeneration;
 
@@ -3227,6 +3236,7 @@ function applyRoleBasedUI() {
   if (quickAdd) {
     quickAdd.classList.toggle('is-readonly-hidden', !canEdit);
   }
+  syncFabLayout();
   const dashInsp = document.getElementById('dash-btn-insp');
   const dashHoney = document.getElementById('dash-btn-honey');
   const dashTreatment = document.getElementById('dash-btn-treatment');
