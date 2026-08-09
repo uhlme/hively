@@ -17,7 +17,8 @@ import {
   normalizePromptLocale
 } from './i18n/promptLocale.js';
 
-const MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash is blocked for new API keys (404). Prefer stable Gemini 3.5 Flash.
+const MODEL = 'gemini-3.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMITS = {
@@ -206,13 +207,40 @@ function requireBase64Data(data, emptyMessage, tooLargeMessage) {
   }
 }
 
-function getModel(ai) {
-  return ai.getGenerativeModel({ model: MODEL });
+function getModel(ai, generationConfig = {}) {
+  return ai.getGenerativeModel({
+    model: MODEL,
+    generationConfig: {
+      // Gemini Flash may spend tokens on "thinking"; keep headroom for visible text.
+      maxOutputTokens: 2048,
+      ...generationConfig
+    }
+  });
+}
+
+/**
+ * Safely read model text. `response.text()` throws when candidates are empty/blocked;
+ * Flash models may also leave the primary text empty while parts still hold content.
+ */
+export function extractGeminiText(response) {
+  if (!response) return '';
+  try {
+    const direct = typeof response.text === 'function' ? response.text() : '';
+    if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  } catch {
+    // fall through to candidates/parts
+  }
+  const parts = response?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return '';
+  return parts
+    .map((p) => (typeof p?.text === 'string' ? p.text : ''))
+    .join('')
+    .trim();
 }
 
 async function generateJson(ai, parts) {
   const result = await getModel(ai).generateContent(parts);
-  const parsed = parseGeminiJson(result.response.text());
+  const parsed = parseGeminiJson(extractGeminiText(result.response));
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('Ungültiges Antwortformat der KI');
   }
@@ -225,8 +253,10 @@ async function weatherInsight(ai, weatherData, locale) {
   }
 
   const prompt = buildWeatherInsightPrompt(locale, weatherData);
-  const result = await getModel(ai).generateContent(prompt);
-  return { text: result.response.text().trim() };
+  const result = await getModel(ai, { maxOutputTokens: 1024 }).generateContent(prompt);
+  const text = extractGeminiText(result.response);
+  if (!text) throw new Error('Ungültiges Antwortformat der KI');
+  return { text };
 }
 
 async function parseAudio(ai, payload = {}, locale = 'de') {
@@ -326,22 +356,7 @@ Notes: ${hive.notes || 'None'}
   `.trim();
 
   const inspectionsSummary = recentInspections
-    .map((insp, idx) => {
-      return `
-Inspection ${idx + 1} (${insp.date}):
-- Feeding: ${insp.feeding || 'n/a'}
-- Varroa: ${insp.varroa || 'n/a'}
-- Brood: ${insp.broodStatus || 'n/a'}
-- Honey super: ${insp.honeySuper || 'n/a'}
-- Temperament: ${insp.temperament || 'n/a'}/5
-- Weather: ${insp.weatherCondition || 'unknown'}, ${
-        insp.weatherTemp !== undefined && insp.weatherTemp !== null && insp.weatherTemp !== ''
-          ? `${insp.weatherTemp}°C`
-          : 'temp n/a'
-      }
-- Notes: ${insp.notes || 'None'}
-    `.trim();
-    })
+    .map((insp, idx) => formatInspectionForPrompt(insp, idx + 1))
     .join('\n\n');
 
   const todayLabel = new Date().toLocaleDateString(lang.localeTag);
@@ -351,8 +366,60 @@ Inspection ${idx + 1} (${insp.date}):
     todayLabel
   });
 
-  const result = await getModel(ai).generateContent(prompt);
-  return { recommendation: result.response.text().trim() };
+  const result = await getModel(ai, { maxOutputTokens: 4096 }).generateContent(prompt);
+  // Empty model text → soft client fallback (not a hard 502)
+  return { recommendation: extractGeminiText(result.response) };
+}
+
+/** @param {Record<string, unknown>|null|undefined} checklist */
+export function formatChecklistForPrompt(checklist) {
+  if (!checklist || typeof checklist !== 'object') return 'n/a';
+  const bits = [];
+  const keys = [
+    'queenSeen',
+    'eggs',
+    'openBrood',
+    'cappedBrood',
+    'playCups',
+    'queenCells',
+    'strength',
+    'varroaLevel'
+  ];
+  for (const key of keys) {
+    const val = checklist[key];
+    if (val !== undefined && val !== null && val !== '') {
+      bits.push(`${key}=${val}`);
+    }
+  }
+  return bits.length ? bits.join(', ') : 'n/a';
+}
+
+/** @param {Record<string, unknown>} insp @param {number} index */
+export function formatInspectionForPrompt(insp, index) {
+  const c = insp?.checklist;
+  const varroa =
+    insp?.varroa ||
+    (c && typeof c === 'object' && c.varroaLevel ? `level:${c.varroaLevel}` : null) ||
+    'n/a';
+  const brood =
+    insp?.broodStatus ||
+    (c && typeof c === 'object' ? formatChecklistForPrompt(c) : null) ||
+    'n/a';
+  return `
+Inspection ${index} (${insp?.date || 'unknown date'}):
+- Feeding: ${insp?.feeding || 'n/a'}
+- Varroa: ${varroa}
+- Brood: ${brood}
+- Checklist: ${formatChecklistForPrompt(c)}
+- Honey super: ${insp?.honeySuper || 'n/a'}
+- Temperament: ${insp?.temperament ?? 'n/a'}/5
+- Weather: ${insp?.weatherCondition || 'unknown'}, ${
+    insp?.weatherTemp !== undefined && insp?.weatherTemp !== null && insp?.weatherTemp !== ''
+      ? `${insp.weatherTemp}°C`
+      : 'temp n/a'
+  }
+- Notes: ${insp?.notes || 'None'}
+  `.trim();
 }
 
 const ACTIONS = {

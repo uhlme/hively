@@ -91,4 +91,37 @@ describe('handleGeminiRequest', () => {
     expect(result.status).toBe(401);
     expect(result.body.error).toMatch(/Ungültiger oder abgelaufener Login/);
   });
+
+  it('extracts Gemini text from parts when response.text throws', async () => {
+    const { extractGeminiText } = await import('../server/geminiProxy.js');
+    const text = extractGeminiText({
+      text: () => {
+        throw new Error('no text');
+      },
+      candidates: [{ content: { parts: [{ text: '  Nächste Schritte: Varroa.  ' }] } }]
+    });
+    expect(text).toBe('Nächste Schritte: Varroa.');
+  });
+
+  it('formats checklist-aware inspection summaries', async () => {
+    const { formatInspectionForPrompt, formatChecklistForPrompt } = await import(
+      '../server/geminiProxy.js'
+    );
+    expect(formatChecklistForPrompt({ varroaLevel: 'high', queenSeen: 'yes' })).toBe(
+      'queenSeen=yes, varroaLevel=high'
+    );
+    const summary = formatInspectionForPrompt(
+      {
+        date: '2026-09-06',
+        checklist: { varroaLevel: 'mid', eggs: 'yes' },
+        weatherTemp: 17.7,
+        weatherCondition: 'Heiter',
+        notes: 'Jungvolk'
+      },
+      1
+    );
+    expect(summary).toMatch(/Varroa: level:mid/);
+    expect(summary).toMatch(/Checklist: eggs=yes, varroaLevel=mid/);
+    expect(summary).toMatch(/Jungvolk/);
+  });
 });

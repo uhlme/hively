@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAudioPrompt,
+  buildHiveRecommendationPrompt,
   buildReceiptPrompt,
   buildWeatherInsightPrompt,
   normalizeFinanceCategory,
@@ -33,6 +34,14 @@ describe('promptLocale', () => {
     });
     expect(weatherEn).toMatch(/Write the entire answer in English/i);
     expect(weatherEn).toMatch(/Do not use German/i);
+
+    const hiveDe = buildHiveRecommendationPrompt('de', {
+      hiveInfo: 'Hive: Kasten 1',
+      inspectionsSummary: 'Inspection 1',
+      todayLabel: '09.08.2026'
+    });
+    expect(hiveDe).toMatch(/Plain text only/i);
+    expect(hiveDe).toMatch(/checklist/i);
   });
 
   it('normalizes finance categories to stable ids', () => {

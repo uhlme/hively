@@ -3,6 +3,10 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+# Gemini 2.5 can exceed the default 10s (thinking + recommendation text).
+[functions."gemini"]
+  timeout = 26
+
 # AI proxy — keep the Gemini key server-side only
 [[redirects]]
   from = "/api/gemini"

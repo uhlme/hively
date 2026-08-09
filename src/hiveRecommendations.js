@@ -1,5 +1,41 @@
 import { callGemini } from './geminiApi.js';
+import { isNetworkError } from './network.js';
 import { t } from './i18n/index.js';
+
+/** Fields the proxy needs — avoid shipping unrelated localStorage noise. */
+export function slimHiveForAi(hive) {
+  if (!hive || typeof hive !== 'object') return hive;
+  return {
+    id: hive.id,
+    name: hive.name,
+    queenName: hive.queenName,
+    queenYear: hive.queenYear,
+    queenColor: hive.queenColor,
+    breed: hive.breed,
+    status: hive.status,
+    broodFrames: hive.broodFrames,
+    honeyFrames1: hive.honeyFrames1,
+    honeyFrames2: hive.honeyFrames2,
+    notes: hive.notes
+  };
+}
+
+/** Keep checklist; drop creator ids / timestamps that bloat the request. */
+export function slimInspectionForAi(insp) {
+  if (!insp || typeof insp !== 'object') return insp;
+  return {
+    date: insp.date,
+    feeding: insp.feeding,
+    varroa: insp.varroa,
+    broodStatus: insp.broodStatus,
+    honeySuper: insp.honeySuper,
+    temperament: insp.temperament,
+    weatherTemp: insp.weatherTemp,
+    weatherCondition: insp.weatherCondition,
+    notes: insp.notes,
+    checklist: insp.checklist || null
+  };
+}
 
 /**
  * Generiere KI-basierte Empfehlungen für ein Volk basierend auf seinen Durchsichten.
@@ -13,12 +49,24 @@ export async function getHiveRecommendation(hive, inspections) {
   }
 
   try {
-    const result = await callGemini('hive_recommendation', { hive, inspections }, 30000);
+    const recent = [...inspections]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10)
+      .map(slimInspectionForAi);
+
+    const result = await callGemini(
+      'hive_recommendation',
+      { hive: slimHiveForAi(hive), inspections: recent },
+      45000
+    );
     const text = typeof result?.recommendation === 'string' ? result.recommendation.trim() : '';
     return text || t('ai.recommendationUnavailable');
   } catch (e) {
     console.error('Fehler bei Gemini Empfehlung:', e);
-    return t('ai.recommendationUnavailable');
+    // CORS / offline / proxy unreachable → soft message (never raw "Failed to fetch")
+    if (isNetworkError(e)) return t('ai.recommendationUnavailable');
+    // Auth / Pro / rate-limit / proxy errors → let UI show danger + ok:false analytics
+    throw e;
   }
 }
 
