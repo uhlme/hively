@@ -1520,17 +1520,22 @@ async function renderHiveDetailView() {
     try {
       recommendationContent.innerHTML = `<span>${escapeHtml(t('ai.recommendationLoading'))}</span>`;
       const recommendation = await getHiveRecommendation(hive, inspections);
-      trackEvent('ai_recommendation_loaded', { ok: true });
-      
-      // Simple text formatting
-      const formattedRecommendation = escapeHtml(recommendation)
-        .replace(/\n/g, '<br>');
-      
-      recommendationContent.innerHTML = `<div>${formattedRecommendation}</div>`;
+      const softFail =
+        recommendation === t('ai.recommendationUnavailable') ||
+        recommendation === t('ai.recommendationNoInspections');
+      trackEvent('ai_recommendation_loaded', { ok: !softFail });
+
+      // Simple text formatting (proxy/auth errors are returned as plain text)
+      const formattedRecommendation = escapeHtml(recommendation).replace(/\n/g, '<br>');
+      const cls = softFail ? 'text-secondary' : '';
+      recommendationContent.innerHTML = `<div class="${cls}">${formattedRecommendation}</div>`;
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
       trackEvent('ai_recommendation_loaded', { ok: false });
-      recommendationContent.innerHTML = '<span class="text-danger">' + escapeHtml(t('ai.recommendationLoadError')) + '</span>';
+      recommendationContent.innerHTML =
+        '<span class="text-danger">' +
+        escapeHtml(err?.message || t('ai.recommendationLoadError')) +
+        '</span>';
     }
   }
 

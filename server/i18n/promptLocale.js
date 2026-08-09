@@ -133,10 +133,12 @@ ${inspectionsSummary}
 
 Task:
 Give a SHORT recommendation in ${lang.name} (max 4–5 sentences) with the most important next steps.
+Use hive notes and inspection checklist fields (queenSeen, eggs, brood, varroaLevel, strength) when present.
 
 Rules:
 - Write the entire recommendation in ${lang.name} only
 - Do not mix in other languages
+- Plain text only (no JSON, no markdown fences, no bullet-only dump)
 - Max 4–5 sentences total
 - Focus on 2–3 concrete actions
 - Consider the current season (today: ${todayLabel})
