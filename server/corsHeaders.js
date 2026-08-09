@@ -8,9 +8,13 @@ const LOCAL_ORIGINS = [
   'http://127.0.0.1:5173',
   'http://localhost:4173',
   'http://127.0.0.1:4173',
+  // Capacitor iOS (WKWebView) and older Android http scheme
   'capacitor://localhost',
   'http://localhost',
-  'ionic://localhost'
+  'ionic://localhost',
+  // Capacitor Android with androidScheme: "https" (default Cap 5+)
+  'https://localhost',
+  'https://127.0.0.1'
 ];
 
 function stripTrailingSlash(url) {
