@@ -30,6 +30,7 @@ import {
   fetchCurrentWeather,
   fetchDashboardWeatherAndPollen,
   getCachedLocation,
+  hasGrantedLocationPermission,
   LocationPermissionError,
   saveCachedLocation,
   weatherIconKind,
@@ -138,6 +139,19 @@ describe('native location permission', () => {
     expect(requestPermissions).not.toHaveBeenCalled();
   });
 
+  it('treats coarse-only grant as granted on Android 12+', async () => {
+    expect(
+      hasGrantedLocationPermission({ location: 'denied', coarseLocation: 'granted' })
+    ).toBe(true);
+
+    checkPermissions.mockResolvedValueOnce({
+      location: 'denied',
+      coarseLocation: 'granted'
+    });
+    await expect(ensureNativeLocationPermission()).resolves.toBe('granted');
+    expect(requestPermissions).not.toHaveBeenCalled();
+  });
+
   it('maps denied permission to LocationPermissionError', async () => {
     checkPermissions.mockResolvedValueOnce({ location: 'denied' });
     requestPermissions.mockResolvedValueOnce({ location: 'denied' });
@@ -202,6 +216,22 @@ describe('native location permission', () => {
       code: 'denied'
     });
     expect(getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('rethrows GPS timeout as normal Error so stale radar cache can show', async () => {
+    checkPermissions.mockResolvedValueOnce({ location: 'granted' });
+    getCurrentPosition.mockRejectedValueOnce(new Error('Location timeout'));
+    stubOpenMeteoOk();
+
+    let caught;
+    try {
+      await fetchCurrentWeather(true);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught).not.toBeInstanceOf(LocationPermissionError);
+    expect(caught.message).toBe('Location timeout');
   });
 
   it('keeps ensureNativeLocationPermission ahead of getCurrentPosition in source', () => {
