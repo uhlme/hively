@@ -211,7 +211,7 @@ function getModel(ai, generationConfig = {}) {
   return ai.getGenerativeModel({
     model: MODEL,
     generationConfig: {
-      // Gemini 2.5 Flash may spend tokens on "thinking"; keep headroom for visible text.
+      // Gemini Flash may spend tokens on "thinking"; keep headroom for visible text.
       maxOutputTokens: 2048,
       ...generationConfig
     }
@@ -220,7 +220,7 @@ function getModel(ai, generationConfig = {}) {
 
 /**
  * Safely read model text. `response.text()` throws when candidates are empty/blocked;
- * Gemini 2.5 may also leave the primary text empty while parts still hold content.
+ * Flash models may also leave the primary text empty while parts still hold content.
  */
 export function extractGeminiText(response) {
   if (!response) return '';
@@ -367,9 +367,8 @@ Notes: ${hive.notes || 'None'}
   });
 
   const result = await getModel(ai, { maxOutputTokens: 4096 }).generateContent(prompt);
-  const recommendation = extractGeminiText(result.response);
-  if (!recommendation) throw new Error('Ungültiges Antwortformat der KI');
-  return { recommendation };
+  // Empty model text → soft client fallback (not a hard 502)
+  return { recommendation: extractGeminiText(result.response) };
 }
 
 /** @param {Record<string, unknown>|null|undefined} checklist */

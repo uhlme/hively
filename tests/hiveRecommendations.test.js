@@ -124,14 +124,12 @@ describe('hiveRecommendations', () => {
       expect(text).toBe('Empfehlung gerade nicht verfügbar.');
     });
 
-    it('surfaces proxy/auth error messages', async () => {
+    it('rethrows proxy/auth errors for the UI', async () => {
       callGeminiMock.mockRejectedValueOnce(new Error('Login erforderlich für KI-Anfragen.'));
       const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
-      const text = await getHiveRecommendation(
-        { id: 'h1' },
-        [{ id: 'i1', hiveId: 'h1', date: '2026-01-01' }]
-      );
-      expect(text).toBe('Login erforderlich für KI-Anfragen.');
+      await expect(
+        getHiveRecommendation({ id: 'h1' }, [{ id: 'i1', hiveId: 'h1', date: '2026-01-01' }])
+      ).rejects.toThrow(/Login erforderlich/);
     });
   });
 

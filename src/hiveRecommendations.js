@@ -65,8 +65,8 @@ export async function getHiveRecommendation(hive, inspections) {
     console.error('Fehler bei Gemini Empfehlung:', e);
     // CORS / offline / proxy unreachable → soft message (never raw "Failed to fetch")
     if (isNetworkError(e)) return t('ai.recommendationUnavailable');
-    // Auth / Pro / rate-limit / proxy errors → show server message (like weather insight)
-    return e?.message || t('ai.recommendationUnavailable');
+    // Auth / Pro / rate-limit / proxy errors → let UI show danger + ok:false analytics
+    throw e;
   }
 }
 
