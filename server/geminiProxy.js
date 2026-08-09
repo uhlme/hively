@@ -17,7 +17,8 @@ import {
   normalizePromptLocale
 } from './i18n/promptLocale.js';
 
-const MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash is blocked for new API keys (404). Prefer stable Gemini 3.5 Flash.
+const MODEL = 'gemini-3.5-flash';
 const MAX_INLINE_BYTES = 8 * 1024 * 1024;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMITS = {
