@@ -94,6 +94,13 @@ import { CALENDAR_TASKS, CALENDAR_MONTH_NAMES } from './calendarTasks.js';
 import { escapeHtml, statusToCssClass, withButtonLoading, safeJsonParse } from './utils.js';
 import { getProUpsellInsight, isProUpsellInsight } from './radarInsight.js';
 import {
+  applyHistoryAction,
+  buildHistoryState,
+  resolveHistoryAction,
+  shouldHistoryBackFromNested,
+  viewFromHistoryState
+} from './navigationHistory.js';
+import {
   applyDomI18n,
   formatDate,
   getLocale,
@@ -224,6 +231,8 @@ function getQueenColorInfo(year) {
 }
 
 function canEditActiveOp() {
+  // E2E-only seam: simulate Betrachter without a live Supabase session
+  if (typeof window !== 'undefined' && window.__HIVELY_E2E_FORCE_VIEWER__) return false;
   return !supabase || !getActiveOperationId() || canEditOperation();
 }
 
@@ -524,9 +533,24 @@ function setupRouting() {
     await navigate('settings');
   });
 
-  // Back button on detail view
+  // Back button on detail view — prefer browser/Android history so Back returns
+  // to the screen we came from (dashboard for viewers, Kästen otherwise).
   document.getElementById('btn-back-to-hives').addEventListener('click', async () => {
-    await navigate('hives');
+    if (shouldHistoryBackFromNested(window.history.state)) {
+      window.history.back();
+      return;
+    }
+    await navigate('hives', { historyMode: 'replace' });
+  });
+
+  window.addEventListener('popstate', async (event) => {
+    const openModalEl = document.querySelector('.modal-overlay.active');
+    if (openModalEl) {
+      closeModal(openModalEl.id);
+    }
+    const { view, hiveId } = viewFromHistoryState(event.state, 'dashboard');
+    if (hiveId) activeHiveIdForDetail = hiveId;
+    await navigate(view, { historyMode: 'skip' });
   });
 
   // View specific quick actions
@@ -587,7 +611,13 @@ function setupRouting() {
 
 let navigateGeneration = 0;
 
-async function navigate(viewName) {
+/**
+ * @param {string} viewName
+ * @param {{ historyMode?: 'auto' | 'push' | 'replace' | 'skip' }} [options]
+ */
+async function navigate(viewName, options = {}) {
+  const { historyMode = 'auto' } = options;
+  const fromView = currentView;
   const gen = ++navigateGeneration;
   currentView = viewName;
 
@@ -660,6 +690,14 @@ async function navigate(viewName) {
 
   // Stale navigate (rapid tab switches) must not update analytics / finish late
   if (!stillCurrent()) return;
+
+  // Sync History so Android hardware Back can leave nested views without exiting.
+  const historyAction = resolveHistoryAction(fromView, viewName, historyMode);
+  applyHistoryAction(
+    historyAction,
+    buildHistoryState(viewName, { hiveId: activeHiveIdForDetail })
+  );
+
   trackPageView(viewName);
 }
 
