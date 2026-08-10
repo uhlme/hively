@@ -114,6 +114,7 @@
     "wind": "Wind",
     "pollen": "Pollen",
     "aiInsight": "AI insight",
+    "refreshInsight": "Reload AI insight",
     "offlineMemosTitle": "Pending offline memos",
     "activeTreatments": "Active treatments",
     "nextSteps": "Next steps",

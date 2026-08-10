@@ -1034,6 +1034,39 @@ async function loadDashboardRadar() {
     };
   }
 
+  // Manual KI-insight refresh (e.g. after being offline) — bypasses fresh-cache short-circuit
+  const btnInsightRefresh = document.getElementById('btn-radar-insight-refresh');
+  if (btnInsightRefresh) {
+    btnInsightRefresh.onclick = async (e) => {
+      e.stopPropagation();
+      if (btnInsightRefresh.disabled) return;
+
+      const previousInsight = elInsight?.innerText || '';
+      btnInsightRefresh.disabled = true;
+      btnInsightRefresh.classList.add('is-loading');
+      btnInsightRefresh.setAttribute('aria-busy', 'true');
+      if (elInsight) elInsight.innerText = t('common.loading');
+
+      try {
+        const data = await buildRadarPayload(false);
+        writeRadarCache(data);
+        applyRadarData(data);
+      } catch (err) {
+        console.warn('KI-Einschätzung-Refresh fehlgeschlagen:', err);
+        const stale = readRadarCache();
+        if (stale) {
+          applyRadarData(stale, { stale: true });
+        } else if (elInsight) {
+          elInsight.innerText = previousInsight || t('ai.weatherUnavailable');
+        }
+      } finally {
+        btnInsightRefresh.disabled = false;
+        btnInsightRefresh.classList.remove('is-loading');
+        btnInsightRefresh.removeAttribute('aria-busy');
+      }
+    };
+  }
+
   // Check if we have cached coordinates
   const cachedLoc = getCachedLocation();
   if (!cachedLoc) {
