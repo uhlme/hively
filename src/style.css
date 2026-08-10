@@ -1862,6 +1862,14 @@ button {
   border-radius: var(--radius-sm);
 }
 
+.radar-insight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .radar-insight-label {
   font-weight: 600;
   font-size: 0.72rem;
@@ -1869,7 +1877,43 @@ button {
   text-transform: uppercase;
   color: var(--primary);
   display: block;
-  margin-bottom: 4px;
+  margin: 0;
+}
+
+.radar-insight-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.radar-insight-refresh svg {
+  display: block;
+}
+
+.radar-insight-refresh:hover,
+.radar-insight-refresh:focus-visible {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.28);
+  outline: none;
+}
+
+.radar-insight-refresh:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.radar-insight-refresh.is-loading svg {
+  animation: btn-spin 0.8s linear infinite;
 }
 
 

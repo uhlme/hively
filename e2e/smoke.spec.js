@@ -6,6 +6,11 @@ test.describe('Hively smoke', () => {
     await expect(page).toHaveTitle(/Hively/);
     await expect(page.locator('#view-dashboard .stat-label', { hasText: 'Völker' })).toBeVisible();
     await expect(page.locator('#view-dashboard')).toBeVisible();
+    await expect(page.locator('#btn-radar-insight-refresh')).toBeAttached();
+    await expect(page.locator('#btn-radar-insight-refresh')).toHaveAttribute(
+      'aria-label',
+      'KI-Einschätzung neu laden'
+    );
   });
 
   test('bottom navigation switches views', async ({ page }) => {

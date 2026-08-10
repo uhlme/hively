@@ -134,7 +134,24 @@
               </div>
 
               <div class="radar-insight">
-                <span class="radar-insight-label" data-i18n="dashboard.aiInsight">KI-Einschätzung</span>
+                <div class="radar-insight-header">
+                  <span class="radar-insight-label" data-i18n="dashboard.aiInsight">KI-Einschätzung</span>
+                  <button
+                    type="button"
+                    id="btn-radar-insight-refresh"
+                    class="radar-insight-refresh"
+                    title="KI-Einschätzung neu laden"
+                    aria-label="KI-Einschätzung neu laden"
+                    data-i18n-title="dashboard.refreshInsight"
+                    data-i18n-aria-label="dashboard.refreshInsight"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <polyline points="1 20 1 14 7 14"></polyline>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                  </button>
+                </div>
                 <span id="radar-insight" style="font-size: 0.9rem; line-height: 1.45; color: var(--text-secondary);">--</span>
               </div>
             </div>
