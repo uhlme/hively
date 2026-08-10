@@ -30,5 +30,12 @@ describe('system light / dark theme', () => {
     expect(indexHtml).toContain('media="(prefers-color-scheme: dark)"');
     expect(indexHtml).toContain('content="#e8eaed"');
     expect(indexHtml).toContain('content="#08090a"');
+    // Media-scoped metas must come before the unscoped fallback so browsers
+    // that honor media= can pick light without the first match locking dark.
+    const themeMetas = [...indexHtml.matchAll(/<meta name="theme-color"[^>]*>/g)].map((m) => m[0]);
+    expect(themeMetas.length).toBeGreaterThanOrEqual(2);
+    expect(themeMetas[0]).toContain('prefers-color-scheme: light');
+    expect(themeMetas[1]).toContain('prefers-color-scheme: dark');
   });
 });
+
