@@ -259,16 +259,39 @@ function readInspectionChecklistFromForm() {
   const queenSeen = document.getElementById('insp-queen-seen')?.value || '';
   const strength = document.getElementById('insp-strength')?.value || '';
   const varroaLevel = document.getElementById('insp-varroa-level')?.value || '';
+  const broodNotInspected = !!document.getElementById('insp-brood-not-inspected')?.checked;
   return {
     queenSeen: queenSeen || null,
-    eggs: !!document.getElementById('insp-eggs')?.checked,
-    openBrood: !!document.getElementById('insp-open-brood')?.checked,
-    cappedBrood: !!document.getElementById('insp-capped-brood')?.checked,
-    playCups: !!document.getElementById('insp-play-cups')?.checked,
-    queenCells: !!document.getElementById('insp-queen-cells')?.checked,
+    broodNotInspected,
+    eggs: broodNotInspected ? false : !!document.getElementById('insp-eggs')?.checked,
+    openBrood: broodNotInspected ? false : !!document.getElementById('insp-open-brood')?.checked,
+    cappedBrood: broodNotInspected ? false : !!document.getElementById('insp-capped-brood')?.checked,
+    playCups: broodNotInspected ? false : !!document.getElementById('insp-play-cups')?.checked,
+    queenCells: broodNotInspected ? false : !!document.getElementById('insp-queen-cells')?.checked,
     strength: strength || null,
     varroaLevel: varroaLevel || null
   };
+}
+
+const BROOD_CHECKLIST_IDS = [
+  'insp-eggs',
+  'insp-open-brood',
+  'insp-capped-brood',
+  'insp-play-cups',
+  'insp-queen-cells'
+];
+
+function syncBroodInspectionUi() {
+  const skipEl = document.getElementById('insp-brood-not-inspected');
+  const skip = !!skipEl?.checked;
+  const fields = document.getElementById('insp-brood-fields');
+  if (fields) fields.style.opacity = skip ? '0.45' : '';
+  for (const id of BROOD_CHECKLIST_IDS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.disabled = skip;
+    if (skip) el.checked = false;
+  }
 }
 
 function fillInspectionChecklistForm(insp) {
@@ -281,12 +304,17 @@ function fillInspectionChecklistForm(insp) {
     const el = document.getElementById(id);
     if (el) el.checked = !!val;
   };
+  // New inspections default to «no brood check»; existing rows keep stored value (missing → false).
+  const broodNotInspected = insp
+    ? Boolean(c.broodNotInspected)
+    : true;
   setVal('insp-queen-seen', c.queenSeen || '');
-  setChk('insp-eggs', c.eggs);
-  setChk('insp-open-brood', c.openBrood);
-  setChk('insp-capped-brood', c.cappedBrood);
-  setChk('insp-play-cups', c.playCups);
-  setChk('insp-queen-cells', c.queenCells);
+  setChk('insp-brood-not-inspected', broodNotInspected);
+  setChk('insp-eggs', !broodNotInspected && c.eggs);
+  setChk('insp-open-brood', !broodNotInspected && c.openBrood);
+  setChk('insp-capped-brood', !broodNotInspected && c.cappedBrood);
+  setChk('insp-play-cups', !broodNotInspected && c.playCups);
+  setChk('insp-queen-cells', !broodNotInspected && c.queenCells);
   setVal('insp-strength', c.strength || '');
   setVal('insp-varroa-level', c.varroaLevel || '');
 
@@ -294,6 +322,7 @@ function fillInspectionChecklistForm(insp) {
   setVal('insp-temperament', insp?.temperament != null ? String(insp.temperament) : '5');
   setVal('insp-feeding', insp?.feeding || '');
   setVal('insp-honey-super', insp?.honeySuper || '');
+  syncBroodInspectionUi();
 }
 
 async function populateApiarySelect(selectEl, selectedId = null) {
@@ -2032,6 +2061,7 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
   }
 
   openModal('modal-inspection');
+  syncBroodInspectionUi();
 }
 
 async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
@@ -2260,6 +2290,11 @@ function setupForms() {
         await renderDashboardView();
       }, t('common.deleting'));
     }
+  });
+
+  // Brood fields stay disabled while «Keine Brutkontrolle» is checked (default for new).
+  document.getElementById('insp-brood-not-inspected')?.addEventListener('change', () => {
+    syncBroodInspectionUi();
   });
 
   // Inspection Form Submit

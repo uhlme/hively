@@ -191,6 +191,8 @@
     "queenNo": "No",
     "queenUnsure": "Unsure",
     "broodCells": "Brood & cells",
+    "broodNotInspected": "No brood inspection done",
+    "broodNotInspectedHint": "Default – empty brood fields then do not mean «no brood».",
     "eggs": "Eggs",
     "openBrood": "Open brood",
     "cappedBrood": "Capped brood",
@@ -242,6 +244,7 @@
     },
     "chips": {
       "queen": "Queen: {value}",
+      "broodNotInspected": "No brood inspection",
       "eggs": "Eggs",
       "openBrood": "open brood",
       "cappedBrood": "capped brood",
@@ -258,7 +261,8 @@
       "presentTwo": "{a} and {b} present",
       "presentThree": "{a}, {b} and {c} present",
       "queenCells": "Queen cells present",
-      "playCups": "Play cups present"
+      "playCups": "Play cups present",
+      "broodNotInspected": "No brood inspection"
     }
   },
   "treatments": {

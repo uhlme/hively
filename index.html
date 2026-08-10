@@ -664,7 +664,14 @@
               </div>
               <div class="form-group" style="margin-bottom: 8px;">
                 <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);" data-i18n="inspections.broodCells">Brut &amp; Zellen</span>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; font-weight: normal; margin: 0 0 10px; cursor: pointer;">
+                  <input type="checkbox" id="insp-brood-not-inspected" checked style="width: auto; margin: 2px 0 0;" />
+                  <span>
+                    <span data-i18n="inspections.broodNotInspected">Keine Brutkontrolle gemacht</span>
+                    <span class="text-muted" style="display: block; font-size: 0.75rem; margin-top: 2px;" data-i18n="inspections.broodNotInspectedHint">Standard – leere Brutfelder zählen dann nicht als «keine Brut».</span>
+                  </span>
+                </label>
+                <div id="insp-brood-fields" style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
                     <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> <span data-i18n="inspections.eggs">Stifte</span>
                   </label>

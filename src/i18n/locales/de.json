@@ -191,6 +191,8 @@
     "queenNo": "Nein",
     "queenUnsure": "Unsicher",
     "broodCells": "Brut & Zellen",
+    "broodNotInspected": "Keine Brutkontrolle gemacht",
+    "broodNotInspectedHint": "Standard – leere Brutfelder zählen dann nicht als «keine Brut».",
     "eggs": "Stifte",
     "openBrood": "Offene Brut",
     "cappedBrood": "Verdeckelte Brut",
@@ -242,6 +244,7 @@
     },
     "chips": {
       "queen": "Königin: {value}",
+      "broodNotInspected": "Keine Brutkontrolle",
       "eggs": "Stifte",
       "openBrood": "offene Brut",
       "cappedBrood": "verdeckelte Brut",
@@ -258,7 +261,8 @@
       "presentTwo": "{a} und {b} vorhanden",
       "presentThree": "{a}, {b} und {c} vorhanden",
       "queenCells": "Weiselzellen vorhanden",
-      "playCups": "Spielnäpfchen vorhanden"
+      "playCups": "Spielnäpfchen vorhanden",
+      "broodNotInspected": "Keine Brutkontrolle"
     }
   },
   "treatments": {
