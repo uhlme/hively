@@ -191,6 +191,8 @@
     "queenNo": "No",
     "queenUnsure": "Incerto",
     "broodCells": "Covata e celle",
+    "broodNotInspected": "Nessun controllo della covata",
+    "broodNotInspectedHint": "Predefinito – i campi covata vuoti non significano «nessuna covata».",
     "eggs": "Uova",
     "openBrood": "Covata aperta",
     "cappedBrood": "Covata opercolata",
@@ -242,6 +244,7 @@
     },
     "chips": {
       "queen": "Regina: {value}",
+      "broodNotInspected": "Nessun controllo covata",
       "eggs": "Uova",
       "openBrood": "covata aperta",
       "cappedBrood": "covata opercolata",
@@ -258,7 +261,8 @@
       "presentTwo": "{a} e {b} presenti",
       "presentThree": "{a}, {b} e {c} presenti",
       "queenCells": "Celle reali presenti",
-      "playCups": "Celle di gioco presenti"
+      "playCups": "Celle di gioco presenti",
+      "broodNotInspected": "Nessun controllo covata"
     }
   },
   "treatments": {

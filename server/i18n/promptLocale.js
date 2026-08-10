@@ -133,7 +133,8 @@ ${inspectionsSummary}
 
 Task:
 Give a SHORT recommendation in ${lang.name} (max 4–5 sentences) with the most important next steps.
-Use hive notes and inspection checklist fields (queenSeen, eggs, brood, varroaLevel, strength) when present.
+Use hive notes and inspection checklist fields (queenSeen, eggs, brood, broodNotInspected, varroaLevel, strength) when present.
+If broodNotInspected=true, do NOT treat missing eggs/open/capped brood as absent brood — brood was simply not checked.
 
 Rules:
 - Write the entire recommendation in ${lang.name} only

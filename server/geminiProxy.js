@@ -375,16 +375,21 @@ Notes: ${hive.notes || 'None'}
 export function formatChecklistForPrompt(checklist) {
   if (!checklist || typeof checklist !== 'object') return 'n/a';
   const bits = [];
-  const keys = [
-    'queenSeen',
-    'eggs',
-    'openBrood',
-    'cappedBrood',
-    'playCups',
-    'queenCells',
-    'strength',
-    'varroaLevel'
-  ];
+  if (checklist.broodNotInspected) {
+    bits.push('broodNotInspected=true');
+  }
+  const keys = checklist.broodNotInspected
+    ? ['queenSeen', 'strength', 'varroaLevel']
+    : [
+        'queenSeen',
+        'eggs',
+        'openBrood',
+        'cappedBrood',
+        'playCups',
+        'queenCells',
+        'strength',
+        'varroaLevel'
+      ];
   for (const key of keys) {
     const val = checklist[key];
     if (val !== undefined && val !== null && val !== '') {
@@ -402,6 +407,9 @@ export function formatInspectionForPrompt(insp, index) {
     (c && typeof c === 'object' && c.varroaLevel ? `level:${c.varroaLevel}` : null) ||
     'n/a';
   const brood =
+    (c && typeof c === 'object' && c.broodNotInspected
+      ? 'not inspected (broodNotInspected=true — do not infer missing brood)'
+      : null) ||
     insp?.broodStatus ||
     (c && typeof c === 'object' ? formatChecklistForPrompt(c) : null) ||
     'n/a';

@@ -141,13 +141,15 @@ function mapHiveFromDB(h) {
 
 function normalizeChecklist(c) {
   if (!c || typeof c !== 'object') return null;
+  const broodNotInspected = Boolean(c.broodNotInspected ?? c.brood_not_inspected);
   return {
     queenSeen: c.queenSeen ?? c.queen_seen ?? null,
-    eggs: c.eggs ?? null,
-    openBrood: c.openBrood ?? c.open_brood ?? null,
-    cappedBrood: c.cappedBrood ?? c.capped_brood ?? null,
-    playCups: c.playCups ?? c.play_cups ?? null,
-    queenCells: c.queenCells ?? c.queen_cells ?? null,
+    broodNotInspected,
+    eggs: broodNotInspected ? false : (c.eggs ?? null),
+    openBrood: broodNotInspected ? false : (c.openBrood ?? c.open_brood ?? null),
+    cappedBrood: broodNotInspected ? false : (c.cappedBrood ?? c.capped_brood ?? null),
+    playCups: broodNotInspected ? false : (c.playCups ?? c.play_cups ?? null),
+    queenCells: broodNotInspected ? false : (c.queenCells ?? c.queen_cells ?? null),
     strength: c.strength ?? null,
     varroaLevel: c.varroaLevel ?? c.varroa_level ?? null
   };

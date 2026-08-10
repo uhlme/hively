@@ -191,6 +191,8 @@
     "queenNo": "Non",
     "queenUnsure": "Incertain",
     "broodCells": "Couvain & cellules",
+    "broodNotInspected": "Pas de contrôle du couvain",
+    "broodNotInspectedHint": "Par défaut – les champs de couvain vides ne signifient alors pas « pas de couvain ».",
     "eggs": "Œufs",
     "openBrood": "Couvain ouvert",
     "cappedBrood": "Couvain operculé",
@@ -242,6 +244,7 @@
     },
     "chips": {
       "queen": "Reine : {value}",
+      "broodNotInspected": "Pas de contrôle du couvain",
       "eggs": "Œufs",
       "openBrood": "couvain ouvert",
       "cappedBrood": "couvain operculé",
@@ -258,7 +261,8 @@
       "presentTwo": "{a} et {b} présents",
       "presentThree": "{a}, {b} et {c} présents",
       "queenCells": "Cellules royales présentes",
-      "playCups": "Cupules de jeu présentes"
+      "playCups": "Cupules de jeu présentes",
+      "broodNotInspected": "Pas de contrôle du couvain"
     }
   },
   "treatments": {

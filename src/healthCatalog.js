@@ -182,6 +182,7 @@ export const STRENGTH_LABELS = {
  */
 export function summarizeChecklist(checklist) {
   if (!checklist || typeof checklist !== 'object') return '';
+  if (checklist.broodNotInspected) return t('inspections.summary.broodNotInspected');
 
   const parts = [];
   if (checklist.eggs) parts.push(t('inspections.summary.eggs'));
@@ -218,11 +219,15 @@ export function formatChecklistChips(inspection) {
     const value = getQueenSeenLabel(c.queenSeen);
     if (value) chips.push(t('inspections.chips.queen', { value }));
   }
-  if (c.eggs) chips.push(t('inspections.chips.eggs'));
-  if (c.openBrood) chips.push(t('inspections.chips.openBrood'));
-  if (c.cappedBrood) chips.push(t('inspections.chips.cappedBrood'));
-  if (c.playCups) chips.push(t('inspections.chips.playCups'));
-  if (c.queenCells) chips.push(t('inspections.chips.queenCells'));
+  if (c.broodNotInspected) {
+    chips.push(t('inspections.chips.broodNotInspected'));
+  } else {
+    if (c.eggs) chips.push(t('inspections.chips.eggs'));
+    if (c.openBrood) chips.push(t('inspections.chips.openBrood'));
+    if (c.cappedBrood) chips.push(t('inspections.chips.cappedBrood'));
+    if (c.playCups) chips.push(t('inspections.chips.playCups'));
+    if (c.queenCells) chips.push(t('inspections.chips.queenCells'));
+  }
   if (c.strength) {
     const value = getStrengthLabel(c.strength);
     if (value) chips.push(t('inspections.chips.strength', { value }));

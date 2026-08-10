@@ -6,6 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Hively" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8eaed" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#08090a" />
     <meta name="theme-color" content="#08090a" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -26,6 +28,21 @@
               'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
             );
           }
+        }
+
+        // Sync iOS status-bar style with system color scheme (default: dark).
+        var statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        function syncStatusBarStyle() {
+          if (!statusBarMeta) return;
+          var prefersLight =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+          statusBarMeta.setAttribute('content', prefersLight ? 'default' : 'black');
+        }
+        syncStatusBarStyle();
+        if (window.matchMedia) {
+          var mq = window.matchMedia('(prefers-color-scheme: light)');
+          if (mq.addEventListener) mq.addEventListener('change', syncStatusBarStyle);
+          else if (mq.addListener) mq.addListener(syncStatusBarStyle);
         }
       })();
     </script>
@@ -598,16 +615,16 @@
           </div>
           
           <!-- Weather Status Section -->
-          <div id="weather-status-section" style="margin-bottom: 12px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+          <div id="weather-status-section" style="margin-bottom: 12px; padding: 10px; background: var(--bg-muted); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
             <span><span data-i18n="inspections.weather">Wetter</span>: <span id="weather-display" style="font-weight: 600;">Wird ermittelt…</span></span>
             <button type="button" id="btn-weather-retry" class="btn btn-secondary btn-sm" style="display: none; padding: 4px 8px; font-size: 0.75rem;" data-i18n="inspections.weatherRetry">Neu laden</button>
           </div>
 
           <!-- Voice Assistant Section -->
-          <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+          <div class="voice-assistant-section" style="margin-bottom: 16px; padding: 12px; background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.9rem; font-weight: 600;" data-i18n="ai.voiceTitle">KI-Sprach-Assistent</span>
-              <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);" data-i18n="ai.voiceReady">Bereit</span>
+              <span id="voice-status-badge" class="voice-badge-idle" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: var(--bg-muted-badge);" data-i18n="ai.voiceReady">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-voice-record" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
@@ -615,7 +632,7 @@
                 <span id="voice-btn-text" data-i18n="ai.voiceStart">Diktieren starten</span>
               </button>
             </div>
-            <div id="voice-transcription-preview" style="display: none; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; max-height: 80px; overflow-y: auto; border-left: 3px solid var(--primary);"></div>
+            <div id="voice-transcription-preview" style="display: none; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; background: var(--bg-muted-strong); padding: 8px; border-radius: 4px; max-height: 80px; overflow-y: auto; border-left: 3px solid var(--primary);"></div>
             <div id="voice-assistant-error" class="text-danger" style="display: none; font-size: 0.8rem; margin-top: 4px;"></div>
           </div>
 
@@ -634,7 +651,7 @@
               <input type="date" id="insp-form-date" class="form-control" required />
             </div>
 
-            <div id="insp-checklist" class="card" style="padding: 14px; margin-bottom: 16px; background: rgba(255,255,255,0.03);">
+            <div id="insp-checklist" class="card" style="padding: 14px; margin-bottom: 16px; background: var(--bg-muted);">
               <h3 style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="inspections.checklistTitle">Strukturierte Beobachtung</h3>
               <div class="form-group">
                 <label for="insp-queen-seen" data-i18n="inspections.queenSeen">Königin gesehen</label>
@@ -647,7 +664,14 @@
               </div>
               <div class="form-group" style="margin-bottom: 8px;">
                 <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);" data-i18n="inspections.broodCells">Brut &amp; Zellen</span>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; font-weight: normal; margin: 0 0 10px; cursor: pointer;">
+                  <input type="checkbox" id="insp-brood-not-inspected" checked style="width: auto; margin: 2px 0 0;" />
+                  <span>
+                    <span data-i18n="inspections.broodNotInspected">Keine Brutkontrolle gemacht</span>
+                    <span class="text-muted" style="display: block; font-size: 0.75rem; margin-top: 2px;" data-i18n="inspections.broodNotInspectedHint">Standard – leere Brutfelder zählen dann nicht als «keine Brut».</span>
+                  </span>
+                </label>
+                <div id="insp-brood-fields" style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
                   <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
                     <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> <span data-i18n="inspections.eggs">Stifte</span>
                   </label>
@@ -795,10 +819,10 @@
           </div>
           
           <!-- Receipt Scan Section -->
-          <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+          <div class="receipt-scanner-section" style="margin-bottom: 16px; padding: 12px; background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.9rem; font-weight: 600;" data-i18n="ai.receiptTitle">KI-Beleg-Scanner</span>
-              <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: rgba(255,255,255,0.1);" data-i18n="ai.receiptReady">Bereit</span>
+              <span id="receipt-status-badge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; background: var(--bg-muted-badge);" data-i18n="ai.receiptReady">Bereit</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" id="btn-receipt-scan" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 10px; width: 100%;">
@@ -927,7 +951,7 @@
             <h2 id="auth-modal-title" data-i18n="auth.titleLogin">Bei Hively anmelden</h2>
             <button class="modal-close" data-close="modal-auth">&times;</button>
           </div>
-          <div class="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+          <div class="auth-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
             <button id="tab-auth-login" class="btn btn-sm btn-primary" style="flex: 1; padding: 8px;" data-i18n="auth.tabLogin">Login</button>
             <button id="tab-auth-register" class="btn btn-sm btn-secondary" style="flex: 1; padding: 8px;" data-i18n="auth.tabRegister">Registrieren</button>
           </div>

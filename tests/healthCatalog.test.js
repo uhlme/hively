@@ -31,6 +31,9 @@ describe('healthCatalog', () => {
       summarizeChecklist({ eggs: true, openBrood: true, cappedBrood: true })
     ).toMatch(/Stifte/);
     expect(summarizeChecklist({})).toBe('');
+    expect(summarizeChecklist({ broodNotInspected: true, eggs: true })).toBe(
+      'Keine Brutkontrolle'
+    );
   });
 
   it('builds checklist chips for UI', () => {
@@ -45,5 +48,11 @@ describe('healthCatalog', () => {
     expect(chips.some((c) => c.includes('Königin'))).toBe(true);
     expect(chips).toContain('Stifte');
     expect(chips.some((c) => c.includes(VARROA_LEVEL_LABELS.low))).toBe(true);
+
+    const skipped = formatChecklistChips({
+      checklist: { broodNotInspected: true, eggs: true, varroaLevel: 'mid' }
+    });
+    expect(skipped).toContain('Keine Brutkontrolle');
+    expect(skipped).not.toContain('Stifte');
   });
 });

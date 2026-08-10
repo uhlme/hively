@@ -110,6 +110,14 @@ describe('handleGeminiRequest', () => {
     expect(formatChecklistForPrompt({ varroaLevel: 'high', queenSeen: 'yes' })).toBe(
       'queenSeen=yes, varroaLevel=high'
     );
+    expect(
+      formatChecklistForPrompt({
+        broodNotInspected: true,
+        eggs: true,
+        openBrood: false,
+        varroaLevel: 'low'
+      })
+    ).toBe('broodNotInspected=true, varroaLevel=low');
     const summary = formatInspectionForPrompt(
       {
         date: '2026-09-06',
@@ -123,5 +131,16 @@ describe('handleGeminiRequest', () => {
     expect(summary).toMatch(/Varroa: level:mid/);
     expect(summary).toMatch(/Checklist: eggs=yes, varroaLevel=mid/);
     expect(summary).toMatch(/Jungvolk/);
+
+    const skipped = formatInspectionForPrompt(
+      {
+        date: '2026-09-07',
+        checklist: { broodNotInspected: true, eggs: false },
+        notes: 'Nur Flugloch'
+      },
+      2
+    );
+    expect(skipped).toMatch(/broodNotInspected=true/);
+    expect(skipped).toMatch(/do not infer missing brood/);
   });
 });
