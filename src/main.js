@@ -2681,7 +2681,7 @@ async function renderApiariesSettings() {
   }
 
   list.innerHTML = apiaries.map((a) => `
-    <div class="apiary-settings-row" data-id="${escapeHtml(a.id)}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid var(--border-color);">
+    <div class="apiary-settings-row" data-id="${escapeHtml(a.id)}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-muted); border-radius: 8px; border: 1px solid var(--border-color);">
       <span style="font-weight: 500; font-size: 0.95rem;">${escapeHtml(a.name)}</span>
       ${canEdit ? `<button type="button" class="btn btn-sm btn-danger btn-delete-apiary" data-id="${escapeHtml(a.id)}" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">${escapeHtml(t('common.delete'))}</button>` : ''}
     </div>
@@ -3758,7 +3758,7 @@ function setupVoiceAssistant() {
     btnIcon.innerText = '';
     btnText.innerText = 'Diktieren starten';
     statusBadge.innerText = 'Bereit';
-    statusBadge.style.background = 'rgba(255,255,255,0.1)';
+    statusBadge.style.background = 'var(--bg-muted-badge)';
     statusBadge.style.color = 'var(--text)';
     btnRecord.classList.remove('btn-danger');
     btnRecord.classList.add('btn-secondary');
@@ -4003,7 +4003,7 @@ function setupReceiptScanner() {
       btnIcon.innerText = '';
       btnText.innerText = t('ai.receiptUpload');
       statusBadge.innerText = 'Bereit';
-      statusBadge.style.background = 'rgba(255,255,255,0.1)';
+      statusBadge.style.background = 'var(--bg-muted-badge)';
       statusBadge.style.color = 'var(--text-primary)';
     }
   }
@@ -4148,7 +4148,7 @@ async function renderOfflineMemos() {
     else if (navigator.onLine) actionLabel = 'Wartet auf WLAN';
 
     return `
-      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(0,0,0,0.15);">
+      <div class="card" style="padding: 10px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--bg-muted);">
         <div style="min-width: 0;">
           <div style="font-weight: 600; font-size: 0.9rem;">${typeLabel}</div>
           <div class="text-secondary" style="font-size: 0.8rem; margin-top: 2px;">${detailText}</div>
