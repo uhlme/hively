@@ -656,7 +656,11 @@
     "signOutFailed": "Déconnexion échouée : {name}",
     "confirmLogoutLong": "Te déconnecter ? Les données cloud locales seront retirées de cet appareil.",
     "inviteLoginAlert": "Tu as été invité(e) à {name}.\n\nConnecte-toi ou inscris-toi via Login — tu seras ensuite ajouté(e) automatiquement au rucher.",
-    "inviteFallbackName": "un rucher"
+    "inviteFallbackName": "un rucher",
+    "or": "ou",
+    "continueWithApple": "Continuer avec Apple",
+    "appleOnlyIos": "« Continuer avec Apple » est disponible dans l’app iOS.",
+    "appleFailed": "Connexion Apple échouée."
   },
   "errors": {
     "saveHive": "Erreur lors de l’enregistrement de la colonie : {name}",

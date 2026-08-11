@@ -897,6 +897,53 @@ body.has-fab main {
   background-color: var(--bg-raised);
 }
 
+.auth-apple-section {
+  margin-top: 16px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.btn-apple {
+  width: 100%;
+  background: #000;
+  color: #fff;
+  border: 1px solid #000;
+  font-weight: 600;
+}
+
+.btn-apple:hover,
+.btn-apple:focus-visible {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+.btn-apple:active {
+  transform: translateY(1px);
+  filter: brightness(1.08);
+}
+
+@media (prefers-color-scheme: light) {
+  .btn-apple {
+    background: #000;
+    color: #fff;
+  }
+}
+
 .btn-danger {
   background-color: var(--danger);
   color: #fff;

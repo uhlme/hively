@@ -656,7 +656,11 @@
     "signOutFailed": "Sign-out failed: {name}",
     "confirmLogoutLong": "Sign out? Local cloud data on this device will be removed.",
     "inviteLoginAlert": "You were invited to {name}.\n\nPlease sign in or register with the Login button — you will then be added to the operation automatically.",
-    "inviteFallbackName": "an operation"
+    "inviteFallbackName": "an operation",
+    "or": "or",
+    "continueWithApple": "Continue with Apple",
+    "appleOnlyIos": "«Continue with Apple» is available in the iOS app.",
+    "appleFailed": "Apple sign-in failed."
   },
   "errors": {
     "saveHive": "Error saving colony: {name}",

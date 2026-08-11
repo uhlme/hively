@@ -656,7 +656,11 @@
     "signOutFailed": "Abmelden fehlgeschlagen: {name}",
     "confirmLogoutLong": "Möchtest du dich abmelden? Lokale Cloud-Daten auf diesem Gerät werden entfernt.",
     "inviteLoginAlert": "Du wurdest zu {name} eingeladen.\n\nBitte melde dich an oder registriere dich mit dem Login-Button — danach wirst du automatisch dem Betrieb hinzugefügt.",
-    "inviteFallbackName": "einem Bienenbetrieb"
+    "inviteFallbackName": "einem Bienenbetrieb",
+    "or": "oder",
+    "continueWithApple": "Mit Apple fortfahren",
+    "appleOnlyIos": "«Mit Apple» ist in der iOS-App verfügbar.",
+    "appleFailed": "Apple-Anmeldung fehlgeschlagen."
   },
   "errors": {
     "saveHive": "Fehler beim Speichern des Volks: {name}",

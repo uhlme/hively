@@ -656,7 +656,11 @@
     "signOutFailed": "Uscita non riuscita: {name}",
     "confirmLogoutLong": "Uscire? I dati cloud locali verranno rimossi da questo dispositivo.",
     "inviteLoginAlert": "Sei stato/a invitato/a a {name}.\n\nAccedi o registrati con Login — poi verrai aggiunto/a automaticamente all’apiario.",
-    "inviteFallbackName": "un apiario"
+    "inviteFallbackName": "un apiario",
+    "or": "oppure",
+    "continueWithApple": "Continua con Apple",
+    "appleOnlyIos": "«Continua con Apple» è disponibile nell’app iOS.",
+    "appleFailed": "Accesso con Apple non riuscito."
   },
   "errors": {
     "saveHive": "Errore nel salvare la famiglia: {name}",
