@@ -9,5 +9,6 @@ scheme("AppUITests")
 workspace("./ios/App/App.xcworkspace")
 
 output_directory("./fastlane/screenshots")
+derived_data_path("./fastlane/DerivedData")
 clear_previous_screenshots(true)
 override_status_bar(true)

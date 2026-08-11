@@ -15,6 +15,7 @@ final class AppUITests: XCTestCase {
     func testScreenshots() throws {
         let app = XCUIApplication()
         setupSnapshot(app)
+        app.launchArguments += ["-AppleLanguages", "(de-DE)", "-AppleLocale", "de_DE"]
         app.launch()
 
         // The app is a Capacitor WebView app; give the WebView time to load
