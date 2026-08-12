@@ -52,6 +52,8 @@ import { supabase } from './supabase.js';
 import {
   isAppleSignInAvailable,
   signInWithAppleNative,
+  linkAppleIdentityNative,
+  isAppleIdentityLinked,
   isAppleSignInCancelled
 } from './appleAuth.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
@@ -751,6 +753,7 @@ async function navigate(viewName, options = {}) {
     await renderCalendarView();
   } else if (viewName === 'settings') {
     refreshNetworkSettingsUI();
+    refreshAppleLinkSettingsUI();
     try {
       if (supabase && isBillingEnabled()) {
         await refreshActiveOperationBilling();
@@ -2885,6 +2888,29 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
   }
 }
 
+async function refreshAppleLinkSettingsUI() {
+  const card = document.getElementById('settings-apple-link-card');
+  const lead = document.getElementById('settings-apple-link-lead');
+  const status = document.getElementById('settings-apple-link-status');
+  const btn = document.getElementById('btn-link-apple');
+  if (!card) return;
+
+  const showCard = Boolean(supabase && isAppleSignInAvailable());
+  card.hidden = !showCard;
+  if (!showCard) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    card.hidden = true;
+    return;
+  }
+
+  const linked = await isAppleIdentityLinked();
+  if (lead) lead.style.display = linked ? 'none' : '';
+  if (status) status.style.display = linked ? '' : 'none';
+  if (btn) btn.style.display = linked ? 'none' : '';
+}
+
 function refreshBillingSettingsUI() {
   const summary = document.getElementById('billing-plan-summary');
   const openBtn = document.getElementById('btn-open-pro');
@@ -3127,6 +3153,23 @@ function setupSettings() {
       if (input) input.value = '';
       await renderApiariesSettings();
     }, 'Speichern…');
+  });
+
+  document.getElementById('btn-link-apple')?.addEventListener('click', async () => {
+    if (!supabase) return;
+    const btn = document.getElementById('btn-link-apple');
+    await withButtonLoading(btn, async () => {
+      try {
+        await linkAppleIdentityNative();
+        trackEvent('auth_apple_linked');
+        alert(t('settings.appleLinkSuccess'));
+        await refreshAppleLinkSettingsUI();
+      } catch (err) {
+        if (isAppleSignInCancelled(err)) return;
+        console.warn('Apple identity linking failed:', err);
+        alert(t('settings.appleLinkFailed'));
+      }
+    }, t('settings.linkWithApple'));
   });
 
   document.getElementById('btn-reset-local-data')?.addEventListener('click', async () => {
@@ -3628,6 +3671,7 @@ function setupAuth() {
       await navigate(currentView);
       updateOperationChrome();
       applyRoleBasedUI();
+      refreshAppleLinkSettingsUI();
     } else {
       if (event === 'SIGNED_OUT') {
         trackEvent('auth_signed_out');

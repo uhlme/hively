@@ -50,13 +50,10 @@ export function appleDisplayName(parts = {}) {
 }
 
 /**
- * Run native Apple auth and exchange the identity token with Supabase.
- * @returns {Promise<{ session: object, user: object, displayName: string|null }>}
+ * Run the native Apple authorization sheet and return tokens + nonce.
+ * @returns {Promise<{ response: object, rawNonce: string, hashedNonce: string }>}
  */
-export async function signInWithAppleNative() {
-  if (!supabase) {
-    throw new Error('Supabase is not configured');
-  }
+export async function authorizeAppleNative() {
   if (!isAppleSignInAvailable()) {
     throw new Error('Sign in with Apple is only available on iOS');
   }
@@ -74,6 +71,39 @@ export async function signInWithAppleNative() {
   if (!response?.identityToken) {
     throw new Error('Apple did not return an identity token');
   }
+
+  return { response, rawNonce, hashedNonce };
+}
+
+/** @param {Array<{ provider?: string }>|null|undefined} identities */
+export function hasAppleIdentityLinked(identities) {
+  return (identities || []).some((identity) => identity?.provider === 'apple');
+}
+
+/**
+ * Whether the signed-in user already linked Sign in with Apple.
+ * @returns {Promise<boolean>}
+ */
+export async function isAppleIdentityLinked() {
+  if (!supabase) return false;
+  const { data, error } = await supabase.auth.getUserIdentities();
+  if (error) {
+    console.warn('Apple identity lookup failed:', error);
+    return false;
+  }
+  return hasAppleIdentityLinked(data?.identities);
+}
+
+/**
+ * Run native Apple auth and exchange the identity token with Supabase.
+ * @returns {Promise<{ session: object, user: object, displayName: string|null }>}
+ */
+export async function signInWithAppleNative() {
+  if (!supabase) {
+    throw new Error('Supabase is not configured');
+  }
+
+  const { response, rawNonce } = await authorizeAppleNative();
 
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
@@ -111,6 +141,35 @@ export async function signInWithAppleNative() {
   }
 
   return { session: data.session, user: data.user, displayName };
+}
+
+/**
+ * Link Sign in with Apple to the currently signed-in account (manual identity linking).
+ * @returns {Promise<{ session: object|null, user: object }>}
+ */
+export async function linkAppleIdentityNative() {
+  if (!supabase) {
+    throw new Error('Supabase is not configured');
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Must be signed in to link Apple');
+  }
+
+  const { response, rawNonce } = await authorizeAppleNative();
+
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: 'apple',
+    token: response.identityToken,
+    nonce: rawNonce
+  });
+  if (error) throw error;
+  if (!data?.user) {
+    throw new Error('Apple linking returned no user');
+  }
+
+  return { session: data.session, user: data.user };
 }
 
 /** True when the user cancelled the Apple sheet (not a real failure). */

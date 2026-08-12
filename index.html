@@ -365,6 +365,28 @@
                 </select>
               </div>
             </div>
+            <div id="settings-apple-link-card" class="card settings-card" hidden>
+              <h4 class="settings-card-title" data-i18n="settings.appleLinkTitle">Mit Apple verknüpfen</h4>
+              <p id="settings-apple-link-lead" class="settings-card-lead" data-i18n="settings.appleLinkLead">
+                Verknüpfe dein bestehendes Konto mit Sign in with Apple – für schnelleren Login in der iOS-App.
+              </p>
+              <p id="settings-apple-link-status" class="settings-card-meta" style="display: none;" data-i18n="settings.appleLinked">
+                Mit Apple verknüpft.
+              </p>
+              <div class="settings-actions">
+                <button
+                  id="btn-link-apple"
+                  class="btn btn-apple"
+                  type="button"
+                  data-i18n-aria-label="settings.linkWithApple"
+                >
+                  <svg class="btn-apple-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.48-.152-1.08.46-2.21 1.085-2.98.75-.89 2.066-1.56 3.08-1.58zM20.8 17.19c-.64 1.47-1.42 2.93-2.57 2.93-1.15 0-1.46-.75-2.72-.75-1.27 0-1.66.77-2.71.8-1.09.04-1.92-1.1-2.56-2.56-1.39-3.19-1.54-6.94-.68-8.95.61-1.4 1.58-2.27 2.68-2.27 1.25 0 2.03.81 3.11.81 1.05 0 1.68-.81 3.13-.81 1.12 0 2.3.77 2.91 1.99-2.55 1.39-2.14 5.01.43 5.91z"/>
+                  </svg>
+                  <span class="btn-apple-label" data-i18n="settings.linkWithApple">Mit Apple verknüpfen</span>
+                </button>
+              </div>
+            </div>
             <div class="card settings-card">
               <h4 class="settings-card-title" data-i18n="settings.proTitle">Hively Pro</h4>
               <p id="billing-plan-summary" class="settings-card-lead" data-i18n="settings.proLead">
@@ -972,8 +994,16 @@
           </form>
           <div id="auth-apple-section" class="auth-apple-section" hidden>
             <div class="auth-divider" aria-hidden="true"><span data-i18n="auth.or">oder</span></div>
-            <button type="button" id="btn-auth-apple" class="btn btn-apple" data-i18n="auth.continueWithApple">
-              Mit Apple fortfahren
+            <button
+              type="button"
+              id="btn-auth-apple"
+              class="btn btn-apple"
+              data-i18n-aria-label="auth.continueWithApple"
+            >
+              <svg class="btn-apple-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.48-.152-1.08.46-2.21 1.085-2.98.75-.89 2.066-1.56 3.08-1.58zM20.8 17.19c-.64 1.47-1.42 2.93-2.57 2.93-1.15 0-1.46-.75-2.72-.75-1.27 0-1.66.77-2.71.8-1.09.04-1.92-1.1-2.56-2.56-1.39-3.19-1.54-6.94-.68-8.95.61-1.4 1.58-2.27 2.68-2.27 1.25 0 2.03.81 3.11.81 1.05 0 1.68-.81 3.13-.81 1.12 0 2.3.77 2.91 1.99-2.55 1.39-2.14 5.01.43 5.91z"/>
+              </svg>
+              <span class="btn-apple-label" data-i18n="auth.continueWithApple">Mit Apple fortfahren</span>
             </button>
           </div>
         </div>
