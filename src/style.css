@@ -897,8 +897,13 @@ body.has-fab main {
   background-color: var(--bg-raised);
 }
 
+.auth-social-section,
 .auth-apple-section {
   margin-top: 16px;
+}
+
+.auth-social-section .google-sign-in-host + .apple-sign-in-host {
+  margin-top: 10px;
 }
 
 .auth-divider {
@@ -1003,6 +1008,135 @@ body.has-fab main {
   justify-content: center;
   box-sizing: border-box;
   padding: 0 max(8%, 12px);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Sign in with Google — per Google Identity branding guidelines
+   https://developers.google.com/identity/branding-guidelines */
+.google-sign-in-host {
+  display: block;
+  width: 100%;
+  min-width: 140px;
+  min-height: 40px;
+  margin: 4px 0;
+}
+
+.google-sign-in-host.is-loading {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.gsi-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 140px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border-style: solid;
+  border-width: 1px;
+  cursor: pointer;
+  /* Google Sans Medium 14/20 — fallbacks for offline PWA */
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Light theme: Fill #FFFFFF, Stroke #747775, Font #1F1F1F */
+.gsi-button--light {
+  background: #ffffff;
+  border-color: #747775;
+  color: #1f1f1f;
+}
+
+.gsi-button--light:hover,
+.gsi-button--light:focus-visible {
+  background: #f8f9fa;
+  border-color: #747775;
+  box-shadow: none;
+}
+
+.gsi-button--light:active {
+  background: #f1f3f4;
+}
+
+/* Dark theme: Fill #131314, Stroke #8E918F, Font #E3E3E3 */
+.gsi-button--dark {
+  background: #131314;
+  border-color: #8e918f;
+  color: #e3e3e3;
+}
+
+.gsi-button--dark:hover,
+.gsi-button--dark:focus-visible {
+  background: #1e1f20;
+  border-color: #8e918f;
+}
+
+.gsi-button--dark:active {
+  background: #2a2b2c;
+}
+
+.gsi-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.gsi-button:disabled {
+  cursor: wait;
+}
+
+/* G must sit on a white background (required) */
+.gsi-button__icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.gsi-button__icon-bg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+.gsi-button__logo {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.gsi-button__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 12px;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;

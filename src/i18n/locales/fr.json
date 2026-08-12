@@ -596,6 +596,12 @@
     "appleLinked": "Lié avec Apple.",
     "appleLinkSuccess": "Compte Apple lié avec succès.",
     "appleLinkFailed": "Échec de la liaison avec Apple.",
+    "googleLinkTitle": "Lier avec Google",
+    "googleLinkLead": "Lie ton compte existant à Google pour une connexion plus rapide sur le web et dans l’app.",
+    "linkWithGoogle": "Lier avec Google",
+    "googleLinked": "Lié avec Google.",
+    "googleLinkSuccess": "Compte Google lié avec succès.",
+    "googleLinkFailed": "Échec de la liaison avec Google.",
     "footerTagline": "PWA optimisée pour l’apiculture",
     "legalImprint": "Mentions légales",
     "legalTerms": "CG",
@@ -666,7 +672,10 @@
     "or": "ou",
     "continueWithApple": "Continuer avec Apple",
     "appleOnlyIos": "« Continuer avec Apple » est disponible dans l’app iOS.",
-    "appleFailed": "Connexion Apple échouée."
+    "appleFailed": "Connexion Apple échouée.",
+    "signInWithGoogle": "Se connecter avec Google",
+    "continueWithGoogle": "Continuer avec Google",
+    "googleFailed": "Connexion Google échouée."
   },
   "errors": {
     "saveHive": "Erreur lors de l’enregistrement de la colonie : {name}",

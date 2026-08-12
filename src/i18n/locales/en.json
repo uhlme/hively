@@ -596,6 +596,12 @@
     "appleLinked": "Linked with Apple.",
     "appleLinkSuccess": "Apple account linked successfully.",
     "appleLinkFailed": "Linking with Apple failed.",
+    "googleLinkTitle": "Link with Google",
+    "googleLinkLead": "Link your existing account to Google for faster login on web and in the app.",
+    "linkWithGoogle": "Link with Google",
+    "googleLinked": "Linked with Google.",
+    "googleLinkSuccess": "Google account linked successfully.",
+    "googleLinkFailed": "Linking with Google failed.",
     "footerTagline": "PWA optimised for beekeeping",
     "legalImprint": "Imprint",
     "legalTerms": "Terms",
@@ -666,7 +672,10 @@
     "or": "or",
     "continueWithApple": "Continue with Apple",
     "appleOnlyIos": "«Continue with Apple» is available in the iOS app.",
-    "appleFailed": "Apple sign-in failed."
+    "appleFailed": "Apple sign-in failed.",
+    "signInWithGoogle": "Sign in with Google",
+    "continueWithGoogle": "Continue with Google",
+    "googleFailed": "Google sign-in failed."
   },
   "errors": {
     "saveHive": "Error saving colony: {name}",
