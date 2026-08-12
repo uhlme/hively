@@ -919,28 +919,69 @@ body.has-fab main {
 }
 
 .btn-apple {
+  position: relative;
+  justify-content: center;
   width: 100%;
-  background: #000;
-  color: #fff;
-  border: 1px solid #000;
-  font-weight: 600;
+  min-height: 44px;
+  padding: 11px 16px;
+  border-radius: 6px;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', var(--font-family), sans-serif;
+  background: #fff;
+  color: #000;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.btn-apple-logo {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.btn-apple-label {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding-right: 32px;
 }
 
 .btn-apple:hover,
 .btn-apple:focus-visible {
-  background: #1a1a1a;
-  border-color: #1a1a1a;
+  background: #f2f2f2;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #000;
 }
 
 .btn-apple:active {
   transform: translateY(1px);
-  filter: brightness(1.08);
+  background: #e8e8e8;
 }
 
 @media (prefers-color-scheme: light) {
   .btn-apple {
     background: #000;
     color: #fff;
+    border-color: #000;
+    box-shadow: none;
+  }
+
+  .btn-apple:hover,
+  .btn-apple:focus-visible {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
+    color: #fff;
+  }
+
+  .btn-apple:active {
+    background: #333;
   }
 }
 
