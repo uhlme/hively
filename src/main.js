@@ -49,6 +49,11 @@ import {
   normalizeFinanceCategoryId
 } from './financeCategories.js';
 import { supabase } from './supabase.js';
+import {
+  isAppleSignInAvailable,
+  signInWithAppleNative,
+  isAppleSignInCancelled
+} from './appleAuth.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import {
@@ -3736,6 +3741,27 @@ function setupAuth() {
       }
     }, loadingLabel);
   });
+
+  const appleSection = document.getElementById('auth-apple-section');
+  const appleBtn = document.getElementById('btn-auth-apple');
+  if (appleSection && appleBtn && isAppleSignInAvailable()) {
+    appleSection.hidden = false;
+    appleBtn.addEventListener('click', async () => {
+      errorMsg.style.display = 'none';
+      successMsg.style.display = 'none';
+      await withButtonLoading(appleBtn, async () => {
+        try {
+          await signInWithAppleNative();
+          trackEvent('auth_apple_submitted');
+          closeModal('modal-auth');
+        } catch (err) {
+          if (isAppleSignInCancelled(err)) return;
+          errorMsg.innerText = t('auth.appleFailed');
+          errorMsg.style.display = 'block';
+        }
+      }, t('auth.continueWithApple'));
+    });
+  }
 }
 
 // --- KI Voice Assistant Integration ---
