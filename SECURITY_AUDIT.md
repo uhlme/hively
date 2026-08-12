@@ -165,7 +165,7 @@ Whitelist (`audio/webm`, `audio/ogg`, `audio/mp4`, `audio/wav`, `audio/mpeg`, `a
 
 ## Empfohlene Priorisierung (aktuell)
 
-1. **Vor/bei Go-Live:** H2 Rest (Invite Rate-Limit und/oder kein `anon` auf Lookup)
+1. **Vor/bei Go-Live:** H2 Rest (Invite Rate-Limit und/oder kein `anon` auf Lookup) — Residual **Mittel**
 2. **Kurz danach:** M2 CSP (mit Staging-Test gegen AI/Sync/Analytics/Stripe)
 3. **Nice-to-have:** M3 Status-Whitelist; N3 nur bei Shared-Device-Szenarien neu bewerten
 
