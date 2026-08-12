@@ -17,6 +17,9 @@ vi.mock('../src/supabase.js', () => ({
   supabase: {
     auth: {
       signInWithIdToken: vi.fn(),
+      linkIdentity: vi.fn(),
+      getSession: vi.fn(async () => ({ data: { session: { access_token: 'sess' } } })),
+      getUserIdentities: vi.fn(async () => ({ data: { identities: [] }, error: null })),
       updateUser: vi.fn()
     },
     from: vi.fn(() => ({
@@ -30,9 +33,13 @@ import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from '../src/supabase.js';
 import {
   appleDisplayName,
+  authorizeAppleNative,
   createAppleNoncePair,
+  hasAppleIdentityLinked,
+  isAppleIdentityLinked,
   isAppleSignInAvailable,
   isAppleSignInCancelled,
+  linkAppleIdentityNative,
   sha256Hex,
   signInWithAppleNative
 } from '../src/appleAuth.js';
@@ -135,5 +142,50 @@ describe('appleAuth helpers', () => {
       error: new Error('invalid_grant')
     });
     await expect(signInWithAppleNative()).rejects.toThrow(/invalid_grant/i);
+  });
+
+  it('detects linked Apple identities', () => {
+    expect(hasAppleIdentityLinked([])).toBe(false);
+    expect(hasAppleIdentityLinked([{ provider: 'email' }])).toBe(false);
+    expect(hasAppleIdentityLinked([{ provider: 'apple' }])).toBe(true);
+  });
+
+  it('checks linked Apple identity via Supabase', async () => {
+    supabase.auth.getUserIdentities.mockResolvedValue({
+      data: { identities: [{ provider: 'apple' }] },
+      error: null
+    });
+    await expect(isAppleIdentityLinked()).resolves.toBe(true);
+  });
+
+  it('links Apple identity to the signed-in user', async () => {
+    Capacitor.isNativePlatform.mockReturnValue(true);
+    Capacitor.getPlatform.mockReturnValue('ios');
+    SignInWithApple.authorize.mockResolvedValue({
+      response: { identityToken: 'apple.jwt.token' }
+    });
+    supabase.auth.linkIdentity.mockResolvedValue({
+      data: { user: { id: 'u1' }, session: { access_token: 'x' } },
+      error: null
+    });
+
+    const result = await linkAppleIdentityNative();
+    expect(supabase.auth.linkIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'apple',
+        token: 'apple.jwt.token',
+        nonce: expect.any(String)
+      })
+    );
+    expect(result.user.id).toBe('u1');
+  });
+
+  it('rejects Apple linking without an active session', async () => {
+    supabase.auth.getSession.mockResolvedValueOnce({ data: { session: null } });
+    await expect(linkAppleIdentityNative()).rejects.toThrow(/signed in/i);
+  });
+
+  it('authorizeAppleNative rejects outside native iOS', async () => {
+    await expect(authorizeAppleNative()).rejects.toThrow(/only available on iOS/i);
   });
 });
