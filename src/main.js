@@ -3756,7 +3756,7 @@ function setupAuth() {
           closeModal('modal-auth');
         } catch (err) {
           if (isAppleSignInCancelled(err)) return;
-          errorMsg.innerText = err?.message || t('auth.appleFailed');
+          errorMsg.innerText = t('auth.appleFailed');
           errorMsg.style.display = 'block';
         }
       }, t('auth.continueWithApple'));

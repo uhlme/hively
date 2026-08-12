@@ -5,6 +5,11 @@ import { supabase } from './supabase.js';
 /** Bundle ID — must match Apple App ID + Supabase Apple Client IDs. */
 export const APPLE_CLIENT_ID = 'ch.hively.app';
 
+function supabaseAuthCallbackUrl() {
+  const base = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  return base ? `${base}/auth/v1/callback` : 'https://xvxqjkkhmybvimslylmf.supabase.co/auth/v1/callback';
+}
+
 /**
  * Native Sign in with Apple is only available on iOS (Capacitor).
  * Web OAuth would need a separate Services ID + secret rotation.
@@ -25,11 +30,10 @@ export async function sha256Hex(value) {
 }
 
 export async function createAppleNoncePair() {
-  const rawNonce =
-    (typeof crypto !== 'undefined' && crypto.randomUUID
-      ? `${crypto.randomUUID()}${crypto.randomUUID()}`
-      : `${Date.now()}-${Math.random()}`
-    ).replace(/-/g, '');
+  if (typeof crypto === 'undefined' || !crypto.randomUUID || !crypto.subtle) {
+    throw new Error('Secure nonce unavailable');
+  }
+  const rawNonce = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, '');
   const hashedNonce = await sha256Hex(rawNonce);
   return { rawNonce, hashedNonce };
 }
@@ -62,7 +66,7 @@ export async function signInWithAppleNative() {
   const { response } = await SignInWithApple.authorize({
     clientId: APPLE_CLIENT_ID,
     // Required by the plugin types; unused for native ASAuthorization on iOS.
-    redirectURI: 'https://xvxqjkkhmybvimslylmf.supabase.co/auth/v1/callback',
+    redirectURI: supabaseAuthCallbackUrl(),
     scopes: 'email name',
     nonce: hashedNonce
   });
@@ -77,6 +81,9 @@ export async function signInWithAppleNative() {
     nonce: rawNonce
   });
   if (error) throw error;
+  if (!data?.user) {
+    throw new Error('Apple sign-in returned no user');
+  }
 
   const displayName = appleDisplayName({
     givenName: response.givenName,
@@ -94,15 +101,12 @@ export async function signInWithAppleNative() {
     });
     if (metaErr) console.warn('Apple display name update failed:', metaErr);
     else {
-      try {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          display_name: displayName,
-          email: data.user.email || response.email || null
-        });
-      } catch (e) {
-        console.warn('Apple profile upsert failed:', e);
-      }
+      const { error: upsertErr } = await supabase.from('profiles').upsert({
+        id: data.user.id,
+        display_name: displayName,
+        email: data.user.email || response.email || null
+      });
+      if (upsertErr) console.warn('Apple profile upsert failed:', upsertErr);
     }
   }
 
@@ -111,14 +115,13 @@ export async function signInWithAppleNative() {
 
 /** True when the user cancelled the Apple sheet (not a real failure). */
 export function isAppleSignInCancelled(err) {
-  const msg = String(err?.message || err || '').toLowerCase();
   const code = err?.code ?? err?.errorCode;
+  if (code === '1001' || code === 1001) return true;
+  const msg = String(err?.message || err || '').toLowerCase();
   return (
-    code === '1001' ||
-    code === 1001 ||
-    msg.includes('cancel') ||
-    msg.includes('canceled') ||
-    msg.includes('cancelled') ||
-    msg.includes('error 1001')
+    msg.includes('error 1001') ||
+    /\bcancell?ed?\b/.test(msg) ||
+    msg.includes('user canceled') ||
+    msg.includes('user cancelled')
   );
 }

@@ -62,6 +62,7 @@ describe('appleAuth helpers', () => {
   it('detects user cancellation', () => {
     expect(isAppleSignInCancelled({ message: 'User cancelled Apple Sign In.' })).toBe(true);
     expect(isAppleSignInCancelled({ code: 1001 })).toBe(true);
+    expect(isAppleSignInCancelled({ errorCode: '1001' })).toBe(true);
     expect(isAppleSignInCancelled({ message: 'network error' })).toBe(false);
   });
 
@@ -72,9 +73,15 @@ describe('appleAuth helpers', () => {
     expect(hashedNonce).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it('rejects Apple sign-in outside native iOS', async () => {
+    await expect(signInWithAppleNative()).rejects.toThrow(/only available on iOS/i);
+  });
+
   it('exchanges Apple identity token with Supabase', async () => {
     Capacitor.isNativePlatform.mockReturnValue(true);
     Capacitor.getPlatform.mockReturnValue('ios');
+    const upsert = vi.fn(async () => ({ error: null }));
+    supabase.from.mockReturnValue({ upsert });
     SignInWithApple.authorize.mockResolvedValue({
       response: {
         identityToken: 'apple.jwt.token',
@@ -108,6 +115,25 @@ describe('appleAuth helpers', () => {
     expect(await sha256Hex(idTokenNonce)).toBe(authorizeArgs.nonce);
 
     expect(supabase.auth.updateUser).toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'u1', display_name: 'Ada Lovelace' })
+    );
     expect(result.displayName).toBe('Ada Lovelace');
+  });
+
+  it('propagates missing identity token and auth errors', async () => {
+    Capacitor.isNativePlatform.mockReturnValue(true);
+    Capacitor.getPlatform.mockReturnValue('ios');
+    SignInWithApple.authorize.mockResolvedValue({ response: {} });
+    await expect(signInWithAppleNative()).rejects.toThrow(/identity token/i);
+
+    SignInWithApple.authorize.mockResolvedValue({
+      response: { identityToken: 'tok' }
+    });
+    supabase.auth.signInWithIdToken.mockResolvedValue({
+      data: {},
+      error: new Error('invalid_grant')
+    });
+    await expect(signInWithAppleNative()).rejects.toThrow(/invalid_grant/i);
   });
 });
