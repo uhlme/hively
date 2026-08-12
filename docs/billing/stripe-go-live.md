@@ -104,7 +104,7 @@ Tipp für ersten Live-Test: eigenes Betrieb, danach Abo im Portal kündigen (Zug
 - [x] Account charges/payouts aktiv
 - [x] Supabase Billing-Schema + Gates
 - [x] Netlify Production: Live Price-IDs, Webhook-Secret, Billing-Flags, `APP_ORIGIN`, `VITE_STRIPE_API_ORIGIN`
-- [ ] Netlify Production: `STRIPE_SECRET_KEY=sk_live_…` (Secret ist via API nicht les-/erstellbar — einmalig setzen)
-- [ ] Customer Portal (Live) im Dashboard (MCP unterstützt Create-Portal nicht; Login nötig)
-- [ ] Production Redeploy nach `sk_live`
-- [ ] Smoke-Test Checkout → Webhook → Portal
+- [x] Netlify Production: `STRIPE_SECRET_KEY=sk_live_…` (manuell gesetzt)
+- [x] Customer Portal (Live) aktiv (`bpc_1U3W0j0S42cslpuhs0cQulWC`, cancel at period end)
+- [x] Production Redeploy nach Key-Wechsel
+- [ ] Smoke-Test Checkout → Webhook → Portal (mit eingeloggtem Owner)
