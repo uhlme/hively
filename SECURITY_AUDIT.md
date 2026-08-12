@@ -11,11 +11,11 @@
 | Schweregrad | Offen | Behoben seit Erst-Audit | Teilweise |
 |-------------|-------|-------------------------|-----------|
 | Kritisch    | 0     | 1 (K1)                  | —         |
-| Hoch        | 1 (H2 Rest) | 1 (H3); H1 akzeptiert | H2 Länge |
+| Hoch        | 0 | 1 (H3); H1 akzeptiert; H2 Länge | H2 Rest → Mittel (anon Lookup / Rate-Limit) |
 | Mittel      | 2 (M2 CSP, M3) | 2 (M1, M4)           | M2 Header |
 | Niedrig     | 0–1 (N3 Rest) | 2 (N1, N2)            | N3 `/api/` |
 
-**Go-Live-Rest (Security):** Invite-RPC Rate-Limit / `anon`-Zugriff (H2), Content-Security-Policy (M2), optional Status-Whitelist (M3).
+**Go-Live-Rest (Security):** Invite-RPC Rate-Limit / `anon`-Zugriff (H2 Rest, Mittel), Content-Security-Policy (M2), optional Status-Whitelist (M3).
 
 ---
 
@@ -25,7 +25,7 @@
 |----|--------|--------|
 | K1 | Gemini ohne Auth | **Behoben** – Supabase-JWT via `authenticateRequest` |
 | H1 | Client-AuthZ vs. RLS | **Akzeptiert / Design** – RLS ist Source of Truth; Cache-Clear bei Logout/Op-Wechsel vorhanden |
-| H2 | Invite Brute-Force | **Teilweise** – Code 12 Zeichen + `crypto.getRandomValues`; RPC weiter `anon`, kein Rate-Limit |
+| H2 | Invite Brute-Force | **Teilweise** – Code 12 Zeichen + `crypto.getRandomValues` (~32^12); Rest **Mittel**: RPC weiter `anon`, kein Rate-Limit |
 | H3 | Gemini Body-Size | **Behoben** – max. 10 MB (Vite + Netlify Function) |
 | M1 | CORS Gemini | **Behoben** – Allowlist in `server/corsHeaders.js` |
 | M2 | Security-Headers / CSP | **Teilweise** – XFO, nosniff, HSTS, Referrer, Permissions-Policy gesetzt; **CSP fehlt** |
@@ -66,7 +66,8 @@
 **Dateien:** `src/operations.js` (`generateInviteCode`), `supabase/migration_security_hardening.sql` (`get_invite_by_code`)
 
 **Behoben seit Erst-Audit:**
-- Länge **12** Zeichen (statt 8), Alphabet weiterhin ~31 Zeichen → ~31^12 Kombinationen
+- Länge **12** Zeichen (statt 8), Alphabet **32** Zeichen → ~32^12 Kombinationen
+  (Brute-Force praktisch nicht mehr „Hoch“; verbleibendes Risiko: Enumeration/`anon`-Lookup ohne Rate-Limit → **Mittel**)
 - Generierung mit `crypto.getRandomValues`
 
 **Noch offen:**
@@ -122,7 +123,7 @@ Weiterhin Sanitizer auf `[a-z0-9_-]`. XSS unwahrscheinlich; Risiko beschränkt a
 
 **Datei:** `server/geminiProxy.js`
 
-Whitelist (`audio/webm`, `audio/ogg`, `audio/mp4`, `audio/wav`, `audio/mpeg`); Fallback `audio/webm`. Receipt-Images weiterhin separat MIME-/Grössen-geprüft.
+Whitelist (`audio/webm`, `audio/ogg`, `audio/mp4`, `audio/wav`, `audio/mpeg`, `audio/mp3`); Fallback `audio/webm`. Receipt-Images weiterhin separat MIME-/Grössen-geprüft.
 
 ---
 
