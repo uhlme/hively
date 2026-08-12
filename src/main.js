@@ -56,6 +56,11 @@ import {
   isAppleIdentityLinked,
   isAppleSignInCancelled
 } from './appleAuth.js';
+import {
+  mountAppleSignInButton,
+  unmountAppleSignInButton,
+  withAppleSignInButtonLoading
+} from './appleSignInButton.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import {
@@ -2892,23 +2897,53 @@ async function refreshAppleLinkSettingsUI() {
   const card = document.getElementById('settings-apple-link-card');
   const lead = document.getElementById('settings-apple-link-lead');
   const status = document.getElementById('settings-apple-link-status');
-  const btn = document.getElementById('btn-link-apple');
+  const host = document.getElementById('settings-apple-sign-in-host');
   if (!card) return;
 
   const showCard = Boolean(supabase && isAppleSignInAvailable());
   card.hidden = !showCard;
-  if (!showCard) return;
+  if (!showCard) {
+    unmountAppleSignInButton(host);
+    return;
+  }
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     card.hidden = true;
+    unmountAppleSignInButton(host);
     return;
   }
 
   const linked = await isAppleIdentityLinked();
   if (lead) lead.style.display = linked ? 'none' : '';
   if (status) status.style.display = linked ? '' : 'none';
-  if (btn) btn.style.display = linked ? 'none' : '';
+  if (host) host.style.display = linked ? 'none' : '';
+
+  if (!linked && host) {
+    await mountAppleSignInButton(host, {
+      type: 'continue',
+      onClick: handleSettingsAppleLink
+    });
+  } else {
+    unmountAppleSignInButton(host);
+  }
+}
+
+async function handleSettingsAppleLink() {
+  const host = document.getElementById('settings-apple-sign-in-host');
+  if (!supabase || !host) return;
+  await withAppleSignInButtonLoading(host, async () => {
+    try {
+      await linkAppleIdentityNative();
+      trackEvent('auth_apple_linked');
+      alert(t('settings.appleLinkSuccess'));
+      await refreshAppleLinkSettingsUI();
+    } catch (err) {
+      if (isAppleSignInCancelled(err)) return;
+      console.warn('Apple identity linking failed:', err);
+      alert(t('settings.appleLinkFailed'));
+    }
+  });
 }
 
 function refreshBillingSettingsUI() {
@@ -3153,23 +3188,6 @@ function setupSettings() {
       if (input) input.value = '';
       await renderApiariesSettings();
     }, 'Speichern…');
-  });
-
-  document.getElementById('btn-link-apple')?.addEventListener('click', async () => {
-    if (!supabase) return;
-    const btn = document.getElementById('btn-link-apple');
-    await withButtonLoading(btn, async () => {
-      try {
-        await linkAppleIdentityNative();
-        trackEvent('auth_apple_linked');
-        alert(t('settings.appleLinkSuccess'));
-        await refreshAppleLinkSettingsUI();
-      } catch (err) {
-        if (isAppleSignInCancelled(err)) return;
-        console.warn('Apple identity linking failed:', err);
-        alert(t('settings.appleLinkFailed'));
-      }
-    }, t('settings.linkWithApple'));
   });
 
   document.getElementById('btn-reset-local-data')?.addEventListener('click', async () => {
@@ -3787,23 +3805,26 @@ function setupAuth() {
   });
 
   const appleSection = document.getElementById('auth-apple-section');
-  const appleBtn = document.getElementById('btn-auth-apple');
-  if (appleSection && appleBtn && isAppleSignInAvailable()) {
+  const appleHost = document.getElementById('auth-apple-sign-in-host');
+  if (appleSection && appleHost && isAppleSignInAvailable()) {
     appleSection.hidden = false;
-    appleBtn.addEventListener('click', async () => {
-      errorMsg.style.display = 'none';
-      successMsg.style.display = 'none';
-      await withButtonLoading(appleBtn, async () => {
-        try {
-          await signInWithAppleNative();
-          trackEvent('auth_apple_submitted');
-          closeModal('modal-auth');
-        } catch (err) {
-          if (isAppleSignInCancelled(err)) return;
-          errorMsg.innerText = t('auth.appleFailed');
-          errorMsg.style.display = 'block';
-        }
-      }, t('auth.continueWithApple'));
+    void mountAppleSignInButton(appleHost, {
+      type: 'sign-in',
+      onClick: async () => {
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+        await withAppleSignInButtonLoading(appleHost, async () => {
+          try {
+            await signInWithAppleNative();
+            trackEvent('auth_apple_submitted');
+            closeModal('modal-auth');
+          } catch (err) {
+            if (isAppleSignInCancelled(err)) return;
+            errorMsg.innerText = t('auth.appleFailed');
+            errorMsg.style.display = 'block';
+          }
+        });
+      }
     });
   }
 }
