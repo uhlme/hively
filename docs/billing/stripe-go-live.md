@@ -106,5 +106,6 @@ Tipp für ersten Live-Test: eigenes Betrieb, danach Abo im Portal kündigen (Zug
 - [x] Netlify Production: Live Price-IDs, Webhook-Secret, Billing-Flags, `APP_ORIGIN`, `VITE_STRIPE_API_ORIGIN`
 - [x] Netlify Production: `STRIPE_SECRET_KEY=sk_live_…` (manuell gesetzt)
 - [x] Customer Portal (Live) aktiv (`bpc_1U3W0j0S42cslpuhs0cQulWC`, cancel at period end)
+- [x] Portal Legal-URLs: Privacy `https://hivelyy.netlify.app/privacy/`, AGB `https://hivelyy.netlify.app/agb/`
 - [x] Production Redeploy nach Key-Wechsel
 - [ ] Smoke-Test Checkout → Webhook → Portal (mit eingeloggtem Owner)
