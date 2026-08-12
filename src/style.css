@@ -918,71 +918,89 @@ body.has-fab main {
   background: var(--border-color);
 }
 
-.btn-apple {
-  position: relative;
-  justify-content: center;
+.apple-sign-in-host {
+  display: block;
   width: 100%;
+  min-width: 140px;
   min-height: 44px;
-  padding: 11px 16px;
-  border-radius: 6px;
-  font-size: 1.0625rem;
-  font-weight: 500;
-  letter-spacing: -0.022em;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', var(--font-family), sans-serif;
-  background: #fff;
-  color: #000;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  margin: 4px 0;
 }
 
-.btn-apple-logo {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  width: 20px;
-  height: 20px;
-  transform: translateY(-50%);
-  flex-shrink: 0;
+.apple-sign-in-host.is-loading {
+  opacity: 0.72;
   pointer-events: none;
 }
 
-.btn-apple-label {
-  display: block;
+/* Sign in with Apple — custom button per Apple HIG */
+.siwa-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  text-align: center;
-  padding-right: 32px;
+  min-width: 140px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', var(--font-family), sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.022em;
+  -webkit-font-smoothing: antialiased;
 }
 
-.btn-apple:hover,
-.btn-apple:focus-visible {
-  background: #f2f2f2;
-  border-color: rgba(255, 255, 255, 0.2);
+.siwa-button--black {
+  background: #000;
+  color: #fff;
+}
+
+.siwa-button--white {
+  background: #fff;
   color: #000;
 }
 
-.btn-apple:active {
-  transform: translateY(1px);
-  background: #e8e8e8;
+.siwa-button--white.siwa-button--outlined {
+  border: 1px solid #000;
 }
 
-@media (prefers-color-scheme: light) {
-  .btn-apple {
-    background: #000;
-    color: #fff;
-    border-color: #000;
-    box-shadow: none;
-  }
+.siwa-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 
-  .btn-apple:hover,
-  .btn-apple:focus-visible {
-    background: #1a1a1a;
-    border-color: #1a1a1a;
-    color: #fff;
-  }
+.siwa-button:disabled {
+  cursor: wait;
+}
 
-  .btn-apple:active {
-    background: #333;
-  }
+.siwa-button__logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 44px;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.siwa-button__logo-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.siwa-button__label {
+  display: block;
+  width: 100%;
+  padding: 0 12% 0 44px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-danger {
