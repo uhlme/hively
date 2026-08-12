@@ -530,6 +530,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         trackEvent('auth_google_submitted');
         closeModal('modal-auth');
       }
+    },
+    onAuthError: async (err) => {
+      if (isGoogleSignInCancelled(err)) return;
+      console.warn('Google auth deep-link failed:', err);
+      alert(t('auth.googleFailed'));
     }
   };
   setupNativeAuthLifecycle(nativeAuthHandlers).catch((err) =>
@@ -2972,11 +2977,14 @@ async function handleSettingsGoogleLink() {
   await withGoogleSignInButtonLoading(host, async () => {
     try {
       const result = await linkGoogleIdentity();
-      if (!result.openedBrowser) {
-        trackEvent('auth_google_linked');
-        alert(t('settings.googleLinkSuccess'));
-        await refreshGoogleLinkSettingsUI();
+      // Native: completion via deep link. Web: redirect away.
+      if (result.openedBrowser || result.redirected) {
+        trackEvent('auth_google_link_started');
+        return;
       }
+      trackEvent('auth_google_linked');
+      alert(t('settings.googleLinkSuccess'));
+      await refreshGoogleLinkSettingsUI();
     } catch (err) {
       if (isGoogleSignInCancelled(err)) return;
       console.warn('Google identity linking failed:', err);
@@ -3917,9 +3925,10 @@ function setupAuth() {
         await withGoogleSignInButtonLoading(googleHost, async () => {
           try {
             const result = await signInWithGoogle();
-            if (!result.openedBrowser) {
-              trackEvent('auth_google_submitted');
-              closeModal('modal-auth');
+            // Native opens in-app browser; web redirects away. Completion is async.
+            if (result.openedBrowser || result.redirected) {
+              trackEvent('auth_google_started');
+              return;
             }
           } catch (err) {
             if (isGoogleSignInCancelled(err)) return;

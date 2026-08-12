@@ -106,6 +106,7 @@ describe('googleAuth', () => {
 
     const result = await signInWithGoogle();
     expect(result.openedBrowser).toBe(false);
+    expect(result.redirected).toBe(true);
     expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: expect.objectContaining({
@@ -125,6 +126,7 @@ describe('googleAuth', () => {
 
     const result = await signInWithGoogle();
     expect(result.openedBrowser).toBe(true);
+    expect(result.redirected).toBe(false);
     expect(Browser.open).toHaveBeenCalledWith({
       url: 'https://accounts.google.com/o/oauth2/v2/auth',
       presentationStyle: 'fullscreen'

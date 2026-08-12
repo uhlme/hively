@@ -154,7 +154,6 @@ export async function createSessionFromOAuthUrl(url) {
   if (error) throw error;
 
   const pending = consumeGoogleAuthPending();
-  clearGoogleAuthPending();
 
   return {
     handled: true,
@@ -206,10 +205,12 @@ async function startGoogleOAuth({ link = false } = {}) {
       throw new Error('Google OAuth URL missing');
     }
     await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
-    return { openedBrowser: true, mode: link ? 'link' : 'sign-in' };
+    return { openedBrowser: true, redirected: false, mode: link ? 'link' : 'sign-in' };
   }
 
-  return { openedBrowser: false, mode: link ? 'link' : 'sign-in' };
+  // Web: Supabase navigates away; completion arrives via detectSessionInUrl / onAuthStateChange.
+  clearGoogleAuthPending();
+  return { openedBrowser: false, redirected: true, mode: link ? 'link' : 'sign-in' };
 }
 
 /** Start Google OAuth sign-in (web redirect or native in-app browser). */
@@ -308,18 +309,42 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
   const unsubscribers = [];
 
   const appUrlSub = await App.addListener('appUrlOpen', async ({ url }) => {
-    await handleNativeAuthOpenUrl(url, handlers);
+    try {
+      await handleNativeAuthOpenUrl(url, handlers);
+    } catch (err) {
+      console.warn('Native Google auth return failed:', err);
+      if (handlers.onAuthError) {
+        try {
+          await handlers.onAuthError(err);
+        } catch {
+          /* ignore handler errors */
+        }
+      }
+    }
   });
   unsubscribers.push(() => appUrlSub.remove());
 
   const browserSub = await Browser.addListener('browserFinished', async () => {
-    const pending = consumeGoogleAuthPending();
-    if (!pending) return;
-    // User closed the sheet without completing OAuth — treat as cancel.
-    clearGoogleAuthPending();
-    if (handlers.onAuthCancelled) {
-      await handlers.onAuthCancelled(pending.mode);
+    // Peek only — appUrlOpen may still exchange the code after the sheet closes.
+    try {
+      const raw = sessionStorage.getItem(PENDING_GOOGLE_AUTH_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.at || Date.now() - parsed.at > 30 * 60 * 1000) {
+        clearGoogleAuthPending();
+        return;
+      }
+    } catch {
+      return;
     }
+    // Give the deep-link handler a moment before treating this as cancel.
+    setTimeout(() => {
+      const pending = consumeGoogleAuthPending();
+      if (!pending) return;
+      if (handlers.onAuthCancelled) {
+        void handlers.onAuthCancelled(pending.mode);
+      }
+    }, 750);
   });
   unsubscribers.push(() => browserSub.remove());
 
