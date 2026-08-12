@@ -9,6 +9,12 @@ import { getLocale, onLocaleChange } from './i18n/index.js';
 const BORDER_RADIUS = 12;
 const BUTTON_HEIGHT = 44;
 
+/** Official left-aligned logo files (Apple Design Resources, 44pt medium). */
+const APPLE_LOGO_ASSETS = {
+  black: '/assets/sign-in-with-apple/logo-left-white-medium.svg',
+  white: '/assets/sign-in-with-apple/logo-left-black-medium.svg'
+};
+
 /** Approved button titles per Apple HIG (localized). */
 const APPLE_BUTTON_TITLES = {
   'sign-in': {
@@ -45,10 +51,9 @@ export function appleButtonColorScheme() {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'black' : 'white';
 }
 
-function appleLogoSvg() {
-  return `<svg class="siwa-button__logo-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.48-.152-1.08.46-2.21 1.085-2.98.75-.89 2.066-1.56 3.08-1.58zM20.8 17.19c-.64 1.47-1.42 2.93-2.57 2.93-1.15 0-1.46-.75-2.72-.75-1.27 0-1.66.77-2.71.8-1.09.04-1.92-1.1-2.56-2.56-1.39-3.19-1.54-6.94-.68-8.95.61-1.4 1.58-2.27 2.68-2.27 1.25 0 2.03.81 3.11.81 1.05 0 1.68-.81 3.13-.81 1.12 0 2.3.77 2.91 1.99-2.55 1.39-2.14 5.01.43 5.91z"/>
-  </svg>`;
+function appleLogoMarkup(scheme) {
+  const src = APPLE_LOGO_ASSETS[scheme] || APPLE_LOGO_ASSETS.black;
+  return `<img class="siwa-button__logo-asset" src="${src}" width="31" height="44" alt="" aria-hidden="true" decoding="async">`;
 }
 
 function renderAppleButtonMarkup(type) {
@@ -57,7 +62,7 @@ function renderAppleButtonMarkup(type) {
   const outlined = scheme === 'white';
   return `
     <button type="button" class="siwa-button siwa-button--${scheme}${outlined ? ' siwa-button--outlined' : ''}">
-      <span class="siwa-button__logo">${appleLogoSvg()}</span>
+      <span class="siwa-button__logo">${appleLogoMarkup(scheme)}</span>
       <span class="siwa-button__label">${escapeHtml(title)}</span>
     </button>
   `;

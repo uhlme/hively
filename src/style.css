@@ -981,22 +981,22 @@ body.has-fab main {
   left: 0;
   top: 0;
   height: 44px;
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 31px;
+  display: block;
   pointer-events: none;
+  flex-shrink: 0;
 }
 
-.siwa-button__logo-mark {
-  width: 20px;
-  height: 20px;
+.siwa-button__logo-asset {
+  display: block;
+  width: 31px;
+  height: 44px;
 }
 
 .siwa-button__label {
   display: block;
   width: 100%;
-  padding: 0 12% 0 44px;
+  padding: 0 12% 0 31px;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;

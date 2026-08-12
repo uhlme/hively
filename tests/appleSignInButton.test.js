@@ -41,7 +41,8 @@ describe('appleSignInButton', () => {
     expect(btn.classList.contains('siwa-button--white')).toBe(true);
     expect(btn.classList.contains('siwa-button--outlined')).toBe(true);
     expect(host.querySelector('.siwa-button__label')?.textContent).toBe('Mit Apple anmelden');
-    expect(host.querySelector('.siwa-button__logo-mark')).toBeTruthy();
+    expect(host.querySelector('.siwa-button__logo-asset')).toBeTruthy();
+    expect(host.querySelector('.siwa-button__logo-asset')?.getAttribute('src')).toContain('logo-left-black-medium.svg');
   });
 
   it('renders black button on light theme', async () => {
@@ -54,6 +55,7 @@ describe('appleSignInButton', () => {
     const btn = host.querySelector('.siwa-button');
     expect(btn.classList.contains('siwa-button--black')).toBe(true);
     expect(host.querySelector('.siwa-button__label')?.textContent).toBe('Mit Apple fortfahren');
+    expect(host.querySelector('.siwa-button__logo-asset')?.getAttribute('src')).toContain('logo-left-white-medium.svg');
   });
 
   it('uses English approved titles', async () => {
