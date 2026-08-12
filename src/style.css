@@ -934,23 +934,25 @@ body.has-fab main {
 /* Sign in with Apple — custom button per Apple HIG */
 .siwa-button {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: 100%;
   min-width: 140px;
   height: 44px;
   min-height: 44px;
   padding: 0;
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   border: none;
   cursor: pointer;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', var(--font-family), sans-serif;
   font-size: 19px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.022em;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .siwa-button--black {
@@ -980,11 +982,11 @@ body.has-fab main {
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 1;
   height: 44px;
   width: 31px;
   display: block;
   pointer-events: none;
-  flex-shrink: 0;
 }
 
 .siwa-button__logo-asset {
@@ -994,13 +996,18 @@ body.has-fab main {
 }
 
 .siwa-button__label {
-  display: block;
-  width: 100%;
-  padding: 0 12% 0 31px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 max(8%, 12px);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .btn-danger {
