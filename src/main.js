@@ -61,6 +61,20 @@ import {
   unmountAppleSignInButton,
   withAppleSignInButtonLoading
 } from './appleSignInButton.js';
+import {
+  isGoogleSignInAvailable,
+  signInWithGoogle,
+  linkGoogleIdentity,
+  isGoogleIdentityLinked,
+  isGoogleSignInCancelled,
+  setupNativeAuthLifecycle,
+  consumeNativeAuthLaunchUrl
+} from './googleAuth.js';
+import {
+  mountGoogleSignInButton,
+  unmountGoogleSignInButton,
+  withGoogleSignInButtonLoading
+} from './googleSignInButton.js';
 import { startAudioRecording, stopAudioRecording, parseAudioWithGemini } from './voiceAssistant.js';
 import { parseReceiptWithGemini } from './receiptScanner.js';
 import {
@@ -506,6 +520,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Native Billing-Lifecycle fehlgeschlagen:', err)
   );
 
+  const nativeAuthHandlers = {
+    onAuthComplete: async ({ mode }) => {
+      if (mode === 'link') {
+        trackEvent('auth_google_linked');
+        alert(t('settings.googleLinkSuccess'));
+        await refreshGoogleLinkSettingsUI();
+      } else {
+        trackEvent('auth_google_submitted');
+        closeModal('modal-auth');
+      }
+    }
+  };
+  setupNativeAuthLifecycle(nativeAuthHandlers).catch((err) =>
+    console.warn('Native Auth-Lifecycle fehlgeschlagen:', err)
+  );
+
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
   // each break in one of the two environments.
@@ -549,6 +579,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     handledNativeLaunchBilling = Boolean(launchParsed?.billing);
   } catch (err) {
     console.warn('Native Launch-URL für Billing fehlgeschlagen:', err);
+  }
+
+  try {
+    await consumeNativeAuthLaunchUrl(nativeAuthHandlers);
+  } catch (err) {
+    console.warn('Native Launch-URL für Auth fehlgeschlagen:', err);
   }
 
   const billingParam = urlParams.get('billing');
@@ -759,6 +795,7 @@ async function navigate(viewName, options = {}) {
   } else if (viewName === 'settings') {
     refreshNetworkSettingsUI();
     refreshAppleLinkSettingsUI();
+    refreshGoogleLinkSettingsUI();
     try {
       if (supabase && isBillingEnabled()) {
         await refreshActiveOperationBilling();
@@ -2893,6 +2930,61 @@ async function handleBillingReturn(result, { fromDeepLink = false } = {}) {
   }
 }
 
+async function refreshGoogleLinkSettingsUI() {
+  const card = document.getElementById('settings-google-link-card');
+  const lead = document.getElementById('settings-google-link-lead');
+  const status = document.getElementById('settings-google-link-status');
+  const host = document.getElementById('settings-google-sign-in-host');
+  if (!card) return;
+
+  const showCard = Boolean(supabase && isGoogleSignInAvailable());
+  card.hidden = !showCard;
+  if (!showCard) {
+    unmountGoogleSignInButton(host);
+    return;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    card.hidden = true;
+    unmountGoogleSignInButton(host);
+    return;
+  }
+
+  const linked = await isGoogleIdentityLinked();
+  if (lead) lead.style.display = linked ? 'none' : '';
+  if (status) status.style.display = linked ? '' : 'none';
+  if (host) host.style.display = linked ? 'none' : '';
+
+  if (!linked && host) {
+    await mountGoogleSignInButton(host, {
+      type: 'continue',
+      onClick: handleSettingsGoogleLink
+    });
+  } else {
+    unmountGoogleSignInButton(host);
+  }
+}
+
+async function handleSettingsGoogleLink() {
+  const host = document.getElementById('settings-google-sign-in-host');
+  if (!supabase || !host) return;
+  await withGoogleSignInButtonLoading(host, async () => {
+    try {
+      const result = await linkGoogleIdentity();
+      if (!result.openedBrowser) {
+        trackEvent('auth_google_linked');
+        alert(t('settings.googleLinkSuccess'));
+        await refreshGoogleLinkSettingsUI();
+      }
+    } catch (err) {
+      if (isGoogleSignInCancelled(err)) return;
+      console.warn('Google identity linking failed:', err);
+      alert(t('settings.googleLinkFailed'));
+    }
+  });
+}
+
 async function refreshAppleLinkSettingsUI() {
   const card = document.getElementById('settings-apple-link-card');
   const lead = document.getElementById('settings-apple-link-lead');
@@ -3690,6 +3782,7 @@ function setupAuth() {
       updateOperationChrome();
       applyRoleBasedUI();
       refreshAppleLinkSettingsUI();
+      refreshGoogleLinkSettingsUI();
     } else {
       if (event === 'SIGNED_OUT') {
         trackEvent('auth_signed_out');
@@ -3804,10 +3897,42 @@ function setupAuth() {
     }, loadingLabel);
   });
 
-  const appleSection = document.getElementById('auth-apple-section');
+  const socialSection = document.getElementById('auth-social-section');
+  const googleHost = document.getElementById('auth-google-sign-in-host');
   const appleHost = document.getElementById('auth-apple-sign-in-host');
-  if (appleSection && appleHost && isAppleSignInAvailable()) {
-    appleSection.hidden = false;
+  const showGoogle = Boolean(supabase && isGoogleSignInAvailable());
+  const showApple = Boolean(isAppleSignInAvailable());
+
+  if (socialSection && (showGoogle || showApple)) {
+    socialSection.hidden = false;
+  }
+
+  if (googleHost && showGoogle) {
+    googleHost.hidden = false;
+    void mountGoogleSignInButton(googleHost, {
+      type: 'sign-in',
+      onClick: async () => {
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+        await withGoogleSignInButtonLoading(googleHost, async () => {
+          try {
+            const result = await signInWithGoogle();
+            if (!result.openedBrowser) {
+              trackEvent('auth_google_submitted');
+              closeModal('modal-auth');
+            }
+          } catch (err) {
+            if (isGoogleSignInCancelled(err)) return;
+            errorMsg.innerText = t('auth.googleFailed');
+            errorMsg.style.display = 'block';
+          }
+        });
+      }
+    });
+  }
+
+  if (appleHost && showApple) {
+    appleHost.hidden = false;
     void mountAppleSignInButton(appleHost, {
       type: 'sign-in',
       onClick: async () => {

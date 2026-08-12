@@ -596,6 +596,12 @@
     "appleLinked": "Collegato con Apple.",
     "appleLinkSuccess": "Account Apple collegato con successo.",
     "appleLinkFailed": "Collegamento con Apple non riuscito.",
+    "googleLinkTitle": "Collega con Google",
+    "googleLinkLead": "Collega il tuo account esistente a Google per un accesso più rapido sul web e nell’app.",
+    "linkWithGoogle": "Collega con Google",
+    "googleLinked": "Collegato con Google.",
+    "googleLinkSuccess": "Account Google collegato con successo.",
+    "googleLinkFailed": "Collegamento con Google non riuscito.",
     "footerTagline": "PWA ottimizzata per l’apicoltura",
     "legalImprint": "Colophon",
     "legalTerms": "CG",
@@ -666,7 +672,10 @@
     "or": "oppure",
     "continueWithApple": "Continua con Apple",
     "appleOnlyIos": "«Continua con Apple» è disponibile nell’app iOS.",
-    "appleFailed": "Accesso con Apple non riuscito."
+    "appleFailed": "Accesso con Apple non riuscito.",
+    "signInWithGoogle": "Accedi con Google",
+    "continueWithGoogle": "Continua con Google",
+    "googleFailed": "Accesso con Google non riuscito."
   },
   "errors": {
     "saveHive": "Errore nel salvare la famiglia: {name}",

@@ -596,6 +596,12 @@
     "appleLinked": "Mit Apple verknüpft.",
     "appleLinkSuccess": "Apple-Konto erfolgreich verknüpft.",
     "appleLinkFailed": "Verknüpfung mit Apple fehlgeschlagen.",
+    "googleLinkTitle": "Mit Google verknüpfen",
+    "googleLinkLead": "Verknüpfe dein bestehendes Konto mit Google – für schnelleren Login auf Web und in der App.",
+    "linkWithGoogle": "Mit Google verknüpfen",
+    "googleLinked": "Mit Google verknüpft.",
+    "googleLinkSuccess": "Google-Konto erfolgreich verknüpft.",
+    "googleLinkFailed": "Verknüpfung mit Google fehlgeschlagen.",
     "footerTagline": "Für die Imkerei optimierte PWA",
     "legalImprint": "Impressum",
     "legalTerms": "AGB",
@@ -666,7 +672,10 @@
     "or": "oder",
     "continueWithApple": "Mit Apple fortfahren",
     "appleOnlyIos": "«Mit Apple» ist in der iOS-App verfügbar.",
-    "appleFailed": "Apple-Anmeldung fehlgeschlagen."
+    "appleFailed": "Apple-Anmeldung fehlgeschlagen.",
+    "signInWithGoogle": "Mit Google anmelden",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "googleFailed": "Google-Anmeldung fehlgeschlagen."
   },
   "errors": {
     "saveHive": "Fehler beim Speichern des Volks: {name}",
