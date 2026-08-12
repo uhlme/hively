@@ -6,9 +6,6 @@
 import { escapeHtml } from './utils.js';
 import { getLocale, onLocaleChange } from './i18n/index.js';
 
-const BORDER_RADIUS = 12;
-const BUTTON_HEIGHT = 44;
-
 /** Official left-aligned logo files (Apple Design Resources, 44pt medium). */
 const APPLE_LOGO_ASSETS = {
   black: '/assets/sign-in-with-apple/logo-left-white-medium.svg',
