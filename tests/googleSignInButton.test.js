@@ -94,6 +94,17 @@ describe('googleSignInButton', () => {
     expect(host.innerHTML).toBe('');
   });
 
+  it('centers logo and label as one content group', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    await mountGoogleSignInButton(host, { type: 'sign-in' });
+
+    const content = host.querySelector('.gsi-button__content');
+    expect(content).toBeTruthy();
+    expect(content.querySelector('.gsi-button__icon-bg')).toBeTruthy();
+    expect(content.querySelector('.gsi-button__label')?.textContent).toBe('Mit Google anmelden');
+  });
+
   it('exposes color scheme helper', () => {
     mockColorScheme(false);
     expect(googleButtonColorScheme()).toBe('light');

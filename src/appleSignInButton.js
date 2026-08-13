@@ -57,10 +57,13 @@ function renderAppleButtonMarkup(type) {
   const scheme = appleButtonColorScheme();
   const title = appleButtonTitle(type);
   const outlined = scheme === 'white';
+  // Logo + title as one centered group (system SIWA appearance / Apple HIG).
   return `
     <button type="button" class="siwa-button siwa-button--${scheme}${outlined ? ' siwa-button--outlined' : ''}">
-      <span class="siwa-button__logo">${appleLogoMarkup(scheme)}</span>
-      <span class="siwa-button__label">${escapeHtml(title)}</span>
+      <span class="siwa-button__content">
+        <span class="siwa-button__logo">${appleLogoMarkup(scheme)}</span>
+        <span class="siwa-button__label">${escapeHtml(title)}</span>
+      </span>
     </button>
   `;
 }
