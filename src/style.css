@@ -985,7 +985,8 @@ body.has-fab main {
 
 .siwa-button__logo {
   position: absolute;
-  left: 0;
+  /* HIG: inset allowed to align with other auth logos (Google G at 12px + border). */
+  left: 4px;
   top: 0;
   z-index: 1;
   height: 44px;
