@@ -15,6 +15,9 @@ const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
 const SESSION_REPLAY =
   String(import.meta.env.VITE_POSTHOG_SESSION_REPLAY || '').toLowerCase() === 'true';
+const PENDING_AUTH_PROVIDER_KEY = 'hively_pending_auth_provider';
+
+/** @typedef {'email' | 'google' | 'apple' | 'unknown'} AuthProvider */
 
 let ready = false;
 
@@ -50,8 +53,26 @@ export function initAnalytics() {
   // Lightweight context for all subsequent events
   posthog.register({
     app: 'hively',
-    platform: detectPlatform()
+    platform: detectPlatform(),
+    environment: detectTestTraffic() ? 'development' : 'production',
+    ...(detectTestTraffic() ? { is_test_traffic: true } : {})
   });
+}
+
+function detectTestTraffic() {
+  if (import.meta.env.DEV) return true;
+  if (String(import.meta.env.VITE_POSTHOG_TEST_MODE || '').toLowerCase() === 'true') {
+    return true;
+  }
+  try {
+    const host = window.location?.hostname || '';
+    if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 function detectPlatform() {
@@ -89,6 +110,51 @@ export function trackPageView(viewName) {
 export function trackEvent(event, properties = {}) {
   if (!ready || !event) return;
   posthog.capture(event, properties);
+}
+
+/**
+ * Remember auth method before redirect/password sign-in (consumed on SIGNED_IN).
+ * @param {AuthProvider | string} provider
+ */
+export function markPendingAuthProvider(provider) {
+  if (!provider || typeof sessionStorage === 'undefined') return;
+  sessionStorage.setItem(PENDING_AUTH_PROVIDER_KEY, provider);
+}
+
+/** Clear stale pending provider after failed or cancelled auth attempts. */
+export function clearPendingAuthProvider() {
+  if (typeof sessionStorage === 'undefined') return;
+  sessionStorage.removeItem(PENDING_AUTH_PROVIDER_KEY);
+}
+
+/** @returns {string | null} */
+export function consumePendingAuthProvider() {
+  if (typeof sessionStorage === 'undefined') return null;
+  const provider = sessionStorage.getItem(PENDING_AUTH_PROVIDER_KEY);
+  sessionStorage.removeItem(PENDING_AUTH_PROVIDER_KEY);
+  return provider;
+}
+
+/**
+ * Resolve Supabase auth provider for analytics (no PII).
+ * @param {{ identities?: Array<{ provider?: string }> } | null | undefined} user
+ * @param {string | null | undefined} pendingProvider
+ * @returns {AuthProvider | string}
+ */
+export function resolveAuthProvider(user, pendingProvider) {
+  if (pendingProvider) return pendingProvider;
+  const identityProvider = user?.identities?.find((identity) => identity?.provider)?.provider;
+  if (identityProvider === 'google') return 'google';
+  if (identityProvider === 'apple') return 'apple';
+  if (identityProvider === 'email') return 'email';
+  return identityProvider || 'unknown';
+}
+
+/**
+ * @param {AuthProvider | string} provider
+ */
+export function trackAuthSignedIn(provider = 'unknown') {
+  trackEvent('auth_signed_in', { provider });
 }
 
 /**
