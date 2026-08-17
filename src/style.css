@@ -936,20 +936,26 @@ body.has-fab main {
   pointer-events: none;
 }
 
-/* Sign in with Apple — custom button per Apple HIG */
+/* Sign in with Apple — custom button per Apple HIG
+   https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple
+   Logo + title centered as one group (system button appearance). */
 .siwa-button {
-  position: relative;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 100%;
   min-width: 140px;
   height: 44px;
   min-height: 44px;
-  padding: 0;
+  /* ≥8% of width between title and button edge */
+  padding: 0 max(8%, 12px);
   border-radius: 6px;
   border: none;
   cursor: pointer;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', var(--font-family), sans-serif;
+  /* Title size ≈ 43% of button height */
   font-size: 19px;
   font-weight: 500;
   line-height: 1;
@@ -971,7 +977,8 @@ body.has-fab main {
 }
 
 .siwa-button--white.siwa-button--outlined {
-  border: 1px solid #000;
+  /* Inset stroke so logo can stay exactly 44pt tall (HIG: match logo height to button). */
+  box-shadow: inset 0 0 0 1px #000;
 }
 
 .siwa-button:focus-visible {
@@ -983,15 +990,20 @@ body.has-fab main {
   cursor: wait;
 }
 
+.siwa-button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .siwa-button__logo {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 1;
+  display: block;
+  flex-shrink: 0;
   height: 44px;
   width: 31px;
-  display: block;
-  pointer-events: none;
 }
 
 .siwa-button__logo-asset {
@@ -1001,22 +1013,14 @@ body.has-fab main {
 }
 
 .siwa-button__label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding: 0 max(8%, 12px);
-  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
 }
 
 /* Sign in with Google — per Google Identity branding guidelines
-   https://developers.google.com/identity/branding-guidelines */
+   https://developers.google.com/identity/branding-guidelines
+   G + title centered as one group (logo_alignment=center). */
 .google-sign-in-host {
   display: block;
   width: 100%;
@@ -1031,7 +1035,6 @@ body.has-fab main {
 }
 
 .gsi-button {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1101,16 +1104,22 @@ body.has-fab main {
   cursor: wait;
 }
 
-/* G must sit on a white background (required) */
-.gsi-button__icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
+.gsi-button__content {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
+  height: 100%;
   pointer-events: none;
+}
+
+/* G must sit on a white background (required); 12px gap to label per Material button */
+.gsi-button__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
 }
 
 .gsi-button__icon-bg {
@@ -1130,18 +1139,9 @@ body.has-fab main {
 }
 
 .gsi-button__label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding: 0 12px;
-  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
 }
 
 .btn-danger {

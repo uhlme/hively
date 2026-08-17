@@ -85,6 +85,16 @@ describe('appleSignInButton', () => {
     expect(host.innerHTML).toBe('');
   });
 
+  it('centers logo and label as one content group', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    await mountAppleSignInButton(host, { type: 'sign-in' });
+
+    const content = host.querySelector('.siwa-button__content');
+    expect(content).toBeTruthy();
+    expect(content.querySelector('.siwa-button__logo-asset')).toBeTruthy();
+    expect(content.querySelector('.siwa-button__label')?.textContent).toBe('Mit Apple anmelden');
+  });
   it('exposes color scheme helper', () => {
     mockColorScheme(false);
     expect(appleButtonColorScheme()).toBe('white');

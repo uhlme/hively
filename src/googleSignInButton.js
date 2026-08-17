@@ -62,12 +62,15 @@ export function googleButtonColorScheme() {
 function renderGoogleButtonMarkup(type) {
   const scheme = googleButtonColorScheme();
   const title = googleButtonTitle(type);
+  // G + title as one centered group (logo_alignment=center / Google branding guidelines).
   return `
     <button type="button" class="gsi-button gsi-button--${scheme}">
-      <span class="gsi-button__icon" aria-hidden="true">
-        <span class="gsi-button__icon-bg">${GOOGLE_G_LOGO}</span>
+      <span class="gsi-button__content">
+        <span class="gsi-button__icon" aria-hidden="true">
+          <span class="gsi-button__icon-bg">${GOOGLE_G_LOGO}</span>
+        </span>
+        <span class="gsi-button__label">${escapeHtml(title)}</span>
       </span>
-      <span class="gsi-button__label">${escapeHtml(title)}</span>
     </button>
   `;
 }
