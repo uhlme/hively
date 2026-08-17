@@ -7,7 +7,7 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
-import { markPendingAuthProvider } from './analytics.js';
+import { markPendingAuthProvider, clearPendingAuthProvider } from './analytics.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
 export const NATIVE_APP_SCHEME = 'ch.hively.app';
@@ -200,12 +200,14 @@ async function startGoogleOAuth({ link = false } = {}) {
 
   if (error) {
     clearGoogleAuthPending();
+    clearPendingAuthProvider();
     throw error;
   }
 
   if (isNative) {
     if (!data?.url) {
       clearGoogleAuthPending();
+      clearPendingAuthProvider();
       throw new Error('Google OAuth URL missing');
     }
     await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
@@ -284,6 +286,7 @@ export async function handleNativeAuthOpenUrl(url, handlers = {}) {
     return { handled: result.handled, ...result };
   } catch (err) {
     clearGoogleAuthPending();
+    clearPendingAuthProvider();
     throw err;
   }
 }
@@ -346,6 +349,7 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
       const pending = consumeGoogleAuthPending();
       if (!pending) return;
       if (handlers.onAuthCancelled) {
+        clearPendingAuthProvider();
         void handlers.onAuthCancelled(pending.mode);
       }
     }, 750);

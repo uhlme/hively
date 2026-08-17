@@ -91,6 +91,9 @@ describe('analytics', () => {
     expect(sessionStorage.getItem('hively_pending_auth_provider')).toBe('google');
     expect(analytics.consumePendingAuthProvider()).toBe('google');
     expect(sessionStorage.getItem('hively_pending_auth_provider')).toBeNull();
+    analytics.markPendingAuthProvider('email');
+    analytics.clearPendingAuthProvider();
+    expect(sessionStorage.getItem('hively_pending_auth_provider')).toBeNull();
   });
 
   it('captures exceptions and installs global handlers once', async () => {

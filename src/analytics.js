@@ -121,6 +121,12 @@ export function markPendingAuthProvider(provider) {
   sessionStorage.setItem(PENDING_AUTH_PROVIDER_KEY, provider);
 }
 
+/** Clear stale pending provider after failed or cancelled auth attempts. */
+export function clearPendingAuthProvider() {
+  if (typeof sessionStorage === 'undefined') return;
+  sessionStorage.removeItem(PENDING_AUTH_PROVIDER_KEY);
+}
+
 /** @returns {string | null} */
 export function consumePendingAuthProvider() {
   if (typeof sessionStorage === 'undefined') return null;

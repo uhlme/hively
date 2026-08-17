@@ -37,7 +37,7 @@ There is a single service: the Vite dev server.
     Capacitor/iOS builds; default is `https://hivelyy.netlify.app/api/gemini`.
   - `VITE_POSTHOG_KEY` (optional) enables PostHog analytics. Absent → no tracking.
     Host defaults to EU (`VITE_POSTHOG_HOST`, default `https://eu.i.posthog.com`).
-    Session replay is off unless `VITE_POSTHOG_SESSION_REPLAY=true` (inputs/text masked).
+    Session replay is off in the client unless `VITE_POSTHOG_SESSION_REPLAY=true` (inputs/text masked); PostHog project has `session_recording_opt_in` enabled.
     Localhost/dev traffic is tagged `is_test_traffic=true`; filter in PostHog project settings
     or set `VITE_POSTHOG_TEST_MODE=true` to force-tag. Auth events include `provider`
     (`email`, `google`, `apple`). Dashboard: PostHog project → «Hively – Nutzer & Produkt».

@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from './supabase.js';
-import { markPendingAuthProvider } from './analytics.js';
+import { markPendingAuthProvider, clearPendingAuthProvider } from './analytics.js';
 
 /** Bundle ID — must match Apple App ID + Supabase Apple Client IDs. */
 export const APPLE_CLIENT_ID = 'ch.hively.app';
@@ -108,12 +108,19 @@ export async function signInWithAppleNative() {
 
   markPendingAuthProvider('apple');
 
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: 'apple',
-    token: response.identityToken,
-    nonce: rawNonce
-  });
-  if (error) throw error;
+  let data;
+  let error;
+  try {
+    ({ data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: response.identityToken,
+      nonce: rawNonce
+    }));
+    if (error) throw error;
+  } catch (err) {
+    clearPendingAuthProvider();
+    throw err;
+  }
   if (!data?.user) {
     throw new Error('Apple sign-in returned no user');
   }

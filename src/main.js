@@ -147,6 +147,7 @@ import {
   resetAnalyticsUser,
   installGlobalErrorHandlers,
   markPendingAuthProvider,
+  clearPendingAuthProvider,
   consumePendingAuthProvider,
   resolveAuthProvider,
   trackAuthSignedIn
@@ -536,6 +537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     },
     onAuthError: async (err) => {
+      clearPendingAuthProvider();
       if (isGoogleSignInCancelled(err)) return;
       console.warn('Google auth deep-link failed:', err);
       alert(t('auth.googleFailed'));
@@ -3895,6 +3897,7 @@ function setupAuth() {
           trackEvent('auth_login_submitted');
           closeModal('modal-auth');
         } else {
+          markPendingAuthProvider('email');
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) throw error;
           trackEvent('auth_signup_submitted');
@@ -3908,6 +3911,7 @@ function setupAuth() {
           submitBtn.innerText = 'Anmelden';
         }
       } catch (err) {
+        clearPendingAuthProvider();
         errorMsg.innerText = err.message || 'Ein Fehler ist aufgetreten.';
         errorMsg.style.display = 'block';
       }
@@ -3940,6 +3944,7 @@ function setupAuth() {
               return;
             }
           } catch (err) {
+            clearPendingAuthProvider();
             if (isGoogleSignInCancelled(err)) return;
             errorMsg.innerText = t('auth.googleFailed');
             errorMsg.style.display = 'block';
@@ -3962,6 +3967,7 @@ function setupAuth() {
             trackEvent('auth_apple_submitted');
             closeModal('modal-auth');
           } catch (err) {
+            clearPendingAuthProvider();
             if (isAppleSignInCancelled(err)) return;
             errorMsg.innerText = t('auth.appleFailed');
             errorMsg.style.display = 'block';
