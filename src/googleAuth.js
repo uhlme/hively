@@ -7,6 +7,7 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
+import { markPendingAuthProvider } from './analytics.js';
 
 const DEFAULT_NATIVE_ORIGIN = 'https://hivelyy.netlify.app';
 export const NATIVE_APP_SCHEME = 'ch.hively.app';
@@ -179,6 +180,9 @@ async function startGoogleOAuth({ link = false } = {}) {
   };
 
   markGoogleAuthPending(link ? 'link' : 'sign-in');
+  if (!link) {
+    markPendingAuthProvider('google');
+  }
 
   let data;
   let error;

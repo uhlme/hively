@@ -37,7 +37,10 @@ There is a single service: the Vite dev server.
     Capacitor/iOS builds; default is `https://hivelyy.netlify.app/api/gemini`.
   - `VITE_POSTHOG_KEY` (optional) enables PostHog analytics. Absent → no tracking.
     Host defaults to EU (`VITE_POSTHOG_HOST`, default `https://eu.i.posthog.com`).
-    Session replay is off unless `VITE_POSTHOG_SESSION_REPLAY=true`.
+    Session replay is off unless `VITE_POSTHOG_SESSION_REPLAY=true` (inputs/text masked).
+    Localhost/dev traffic is tagged `is_test_traffic=true`; filter in PostHog project settings
+    or set `VITE_POSTHOG_TEST_MODE=true` to force-tag. Auth events include `provider`
+    (`email`, `google`, `apple`). Dashboard: PostHog project → «Hively – Nutzer & Produkt».
   - Stripe Pro (optional): `VITE_BILLING_ENABLED=true` (or `BILLING_ENABLED`) +
     `STRIPE_SECRET_KEY` + price IDs + `SUPABASE_SERVICE_ROLE_KEY` enable checkout/webhook
     and hard-gates. Soft-locks need the same flag. Absent → no Pro gates.

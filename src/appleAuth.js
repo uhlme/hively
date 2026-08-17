@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { supabase } from './supabase.js';
+import { markPendingAuthProvider } from './analytics.js';
 
 /** Bundle ID — must match Apple App ID + Supabase Apple Client IDs. */
 export const APPLE_CLIENT_ID = 'ch.hively.app';
@@ -104,6 +105,8 @@ export async function signInWithAppleNative() {
   }
 
   const { response, rawNonce } = await authorizeAppleNative();
+
+  markPendingAuthProvider('apple');
 
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',

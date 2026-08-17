@@ -46,6 +46,9 @@ describe('analytics', () => {
     expect(posthogMock.init.mock.calls[0][1].api_host).toBe('https://eu.i.posthog.com');
     expect(posthogMock.init.mock.calls[0][1].autocapture).toBe(false);
     expect(posthogMock.init.mock.calls[0][1].capture_pageview).toBe(false);
+    expect(posthogMock.register).toHaveBeenCalledWith(
+      expect.objectContaining({ app: 'hively', environment: 'development', is_test_traffic: true })
+    );
 
     analytics.trackPageView('hives');
     expect(posthogMock.capture).toHaveBeenCalledWith(
@@ -56,11 +59,38 @@ describe('analytics', () => {
     analytics.trackEvent('hive_created', { x: 1 });
     expect(posthogMock.capture).toHaveBeenCalledWith('hive_created', { x: 1 });
 
+    analytics.trackAuthSignedIn('google');
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      'auth_signed_in',
+      expect.objectContaining({ provider: 'google' })
+    );
+
     analytics.identifyUser({ id: 'user-123' });
     expect(posthogMock.identify).toHaveBeenCalledWith('user-123');
 
     analytics.resetAnalyticsUser();
     expect(posthogMock.reset).toHaveBeenCalled();
+  });
+
+  it('resolves auth provider from Supabase user identities', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    const analytics = await import('../src/analytics.js');
+    expect(analytics.resolveAuthProvider(null, 'email')).toBe('email');
+    expect(
+      analytics.resolveAuthProvider({ identities: [{ provider: 'google' }] }, null)
+    ).toBe('google');
+    expect(
+      analytics.resolveAuthProvider({ identities: [{ provider: 'apple' }] }, null)
+    ).toBe('apple');
+  });
+
+  it('stores and consumes pending auth provider in sessionStorage', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    const analytics = await import('../src/analytics.js');
+    analytics.markPendingAuthProvider('google');
+    expect(sessionStorage.getItem('hively_pending_auth_provider')).toBe('google');
+    expect(analytics.consumePendingAuthProvider()).toBe('google');
+    expect(sessionStorage.getItem('hively_pending_auth_provider')).toBeNull();
   });
 
   it('captures exceptions and installs global handlers once', async () => {

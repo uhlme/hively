@@ -145,7 +145,11 @@ import {
   trackEvent,
   identifyUser,
   resetAnalyticsUser,
-  installGlobalErrorHandlers
+  installGlobalErrorHandlers,
+  markPendingAuthProvider,
+  consumePendingAuthProvider,
+  resolveAuthProvider,
+  trackAuthSignedIn
 } from './analytics.js';
 import {
   APP_VERSION,
@@ -3763,7 +3767,11 @@ function setupAuth() {
     if (session) {
       identifyUser(session.user);
       if (event === 'SIGNED_IN') {
-        trackEvent('auth_signed_in');
+        const provider = resolveAuthProvider(
+          session.user,
+          consumePendingAuthProvider()
+        );
+        trackAuthSignedIn(provider);
       }
       userStatus.innerText = session.user.email;
       btnAuthAction.innerText = 'Logout';
@@ -3881,6 +3889,7 @@ function setupAuth() {
     await withButtonLoading(submitBtn, async () => {
       try {
         if (authMode === 'login') {
+          markPendingAuthProvider('email');
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) throw error;
           trackEvent('auth_login_submitted');
