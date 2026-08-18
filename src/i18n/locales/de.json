@@ -705,6 +705,7 @@
     "saveOpFailed": "Speichern fehlgeschlagen: {name}",
     "inviteCopied": "Einladung kopiert.",
     "inviteFailed": "Einladung fehlgeschlagen: {name}",
+    "inviteCodeInvalid": "Einladungscode ungültig.",
     "operationsNeedLogin": "Betriebe benötigen eine Anmeldung.",
     "voiceSaveFailed": "Fehler beim lokalen Speichern der Sprachnotiz.",
     "receiptSaveFailed": "Fehler beim lokalen Speichern des Belegs.",

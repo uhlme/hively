@@ -705,6 +705,7 @@
     "saveOpFailed": "Save failed: {name}",
     "inviteCopied": "Invite copied.",
     "inviteFailed": "Invite failed: {name}",
+    "inviteCodeInvalid": "Invalid invite code.",
     "operationsNeedLogin": "Operations require sign-in.",
     "voiceSaveFailed": "Error saving voice note locally.",
     "receiptSaveFailed": "Error saving receipt locally.",

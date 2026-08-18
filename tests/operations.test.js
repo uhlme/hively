@@ -113,8 +113,19 @@ describe('invite links', () => {
     expect(parseJoinCodeFromUrl('ch.hively.app://join?join=BAADMGB34UUA')).toBe('BAADMGB34UUA');
     expect(parseJoinCodeFromUrl('capacitor://localhost?join=BAADMGB34UUA')).toBe('BAADMGB34UUA');
     expect(parseJoinCodeFromUrl('?join=ABCD2345')).toBe('ABCD2345');
+    expect(parseJoinCodeFromUrl('/join.html?join=ABCD2345')).toBe('ABCD2345');
+    expect(parseJoinCodeFromUrl('/?join=ABCD2345')).toBe('ABCD2345');
+    expect(parseJoinCodeFromUrl('ch.hively.app://join?code=BAADMGB34UUA')).toBe('BAADMGB34UUA');
     expect(parseJoinCodeFromUrl('ch.hively.app://auth?code=oauth-token')).toBeNull();
+    expect(parseJoinCodeFromUrl('ch.hively.app://auth?code=BAADMGB34UUA')).toBeNull();
+    expect(parseJoinCodeFromUrl('ch.hively.app://auth?join=BAADMGB34UUA')).toBeNull();
     expect(parseJoinCodeFromUrl('ch.hively.app://billing?billing=success')).toBeNull();
+    expect(parseJoinCodeFromUrl('/notjoin.html?code=ABCD2345')).toBeNull();
+  });
+
+  it('rejects invalid codes instead of baking them into links', () => {
+    expect(() => buildInviteLink('not-a-code')).toThrow('Einladungscode ungültig');
+    expect(() => buildNativeJoinDeepLink('???')).toThrow('Einladungscode ungültig');
   });
 
   it('resolves pasted codes and full invite URLs', () => {

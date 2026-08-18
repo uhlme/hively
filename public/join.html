@@ -86,9 +86,10 @@
   </main>
   <script>
     (function () {
+      // Keep in sync with INVITE_CODE_PATTERN / NATIVE_APP_SCHEME in src/operations.js
       var INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8,16}$/i;
       var params = new URLSearchParams(window.location.search);
-      var raw = String(params.get('join') || params.get('code') || '').trim();
+      var raw = String(params.get('join') || '').trim();
       var code = raw.replace(/[\s-]/g, '').toUpperCase();
       if (!INVITE_CODE_PATTERN.test(code)) code = '';
 
@@ -139,8 +140,11 @@
         return;
       }
 
-      var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-      var isAndroid = /Android/i.test(navigator.userAgent || '');
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isMobile =
+        /iPhone|iPad|iPod|Android/i.test(ua) ||
+        (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1);
       if (!isMobile) {
         window.location.replace(webUrl);
         return;
@@ -154,15 +158,24 @@
       document.getElementById('open-app').textContent = t.openApp;
       document.getElementById('open-web').textContent = t.openWeb;
       document.getElementById('open-web').setAttribute('href', webUrl);
-      document.getElementById('open-app').setAttribute('href', isAndroid ? androidIntent : deep);
+      var openAppHref = isAndroid ? androidIntent : deep;
+      document.getElementById('open-app').setAttribute('href', openAppHref);
 
-      setTimeout(function () {
-        try {
-          window.location.href = isAndroid ? androidIntent : deep;
-        } catch (e) {
-          /* user can tap the buttons */
-        }
-      }, 250);
+      // iOS: custom-scheme auto-open is unreliable and not a user gesture.
+      // Android Intent can bounce into the app with a browser fallback URL.
+      var openTimer = null;
+      if (isAndroid) {
+        openTimer = setTimeout(function () {
+          try {
+            window.location.href = openAppHref;
+          } catch (e) {
+            /* user can tap the buttons */
+          }
+        }, 250);
+      }
+      document.getElementById('open-web').addEventListener('click', function () {
+        if (openTimer) clearTimeout(openTimer);
+      });
     })();
   </script>
 </body>

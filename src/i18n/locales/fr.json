@@ -705,6 +705,7 @@
     "saveOpFailed": "Enregistrement échoué : {name}",
     "inviteCopied": "Invitation copiée.",
     "inviteFailed": "Invitation échouée : {name}",
+    "inviteCodeInvalid": "Code d’invitation invalide.",
     "operationsNeedLogin": "Les exploitations nécessitent une connexion.",
     "voiceSaveFailed": "Erreur lors de l’enregistrement local de la dictée.",
     "receiptSaveFailed": "Erreur lors de l’enregistrement local du justificatif.",

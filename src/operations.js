@@ -351,8 +351,26 @@ function normalizeInviteCode(value) {
   return INVITE_CODE_PATTERN.test(compact) ? compact : null;
 }
 
+/** Dummy origin for query/path snippets (must not be treated as a real host). */
+function parseUrlLike(raw) {
+  if (raw.includes('://')) return new URL(raw);
+  if (raw.startsWith('?')) return new URL(`https://local.invalid/${raw}`);
+  if (raw.startsWith('/') || raw.startsWith('join.html')) {
+    return new URL(raw, 'https://local.invalid/');
+  }
+  if (raw.includes('=')) return new URL(`https://local.invalid/?${raw}`);
+  return new URL(`https://local.invalid/${raw}`);
+}
+
+function isJoinPath(path) {
+  return path === '/join.html' || path === '/join' || path === '/join/' || path.endsWith('/join.html');
+}
+
 /**
  * Extract an invite code from a web URL, custom-scheme deep link, or query string.
+ * Invite tokens live in `join=`. `code=` is only read on join hosts/paths —
+ * OAuth uses `code` on `ch.hively.app://auth` and must never be treated as an invite.
+ * Auth/billing hosts are never invites, even if they carry `join=`.
  * @param {string} urlOrSearch
  * @returns {string | null}
  */
@@ -360,13 +378,7 @@ export function parseJoinCodeFromUrl(urlOrSearch) {
   try {
     const raw = String(urlOrSearch || '').trim();
     if (!raw) return null;
-    const url = raw.includes('://')
-      ? new URL(raw)
-      : new URL(
-          raw.startsWith('?') || raw.includes('=')
-            ? `https://local.invalid/${raw.startsWith('?') ? raw : `?${raw}`}`
-            : `https://local.invalid/${raw}`
-        );
+    const url = parseUrlLike(raw);
 
     const host = (url.hostname || url.host || '').toLowerCase();
     const path = url.pathname || '';
@@ -391,11 +403,7 @@ export function parseJoinCodeFromUrl(urlOrSearch) {
     const fromJoin = normalizeInviteCode(params.get('join'));
     if (fromJoin) return fromJoin;
 
-    const isJoinTarget =
-      host === 'join' ||
-      path.includes('join.html') ||
-      path === '/join' ||
-      path === '/join/';
+    const isJoinTarget = host === 'join' || isJoinPath(path);
     if (isJoinTarget) return normalizeInviteCode(params.get('code'));
     return null;
   } catch {
@@ -415,9 +423,15 @@ export function resolveInviteCode(input) {
   return normalizeInviteCode(raw);
 }
 
+function requireInviteCode(code) {
+  const normalized = resolveInviteCode(code);
+  if (!normalized) throw new Error('Einladungscode ungültig');
+  return normalized;
+}
+
 /** Native deep link that opens Hively with an invite code. */
 export function buildNativeJoinDeepLink(code) {
-  const normalized = resolveInviteCode(code) || String(code || '').trim();
+  const normalized = requireInviteCode(code);
   return `${NATIVE_APP_SCHEME}://join?join=${encodeURIComponent(normalized)}`;
 }
 
@@ -428,7 +442,7 @@ export function buildNativeJoinDeepLink(code) {
  */
 export function buildInviteLink(code, locationLike) {
   const origin = getPublicAppOrigin(locationLike);
-  const normalized = resolveInviteCode(code) || String(code || '').trim();
+  const normalized = requireInviteCode(code);
   const url = new URL('join.html', `${origin}/`);
   url.searchParams.set('join', normalized);
   return url.toString();
@@ -446,7 +460,10 @@ export async function handleNativeJoinOpenUrl(url, handlers = {}) {
   return { handled: true, joinCode };
 }
 
-/** Cold-start invite (appUrlOpen does not fire when launched by URL). */
+/**
+ * Cold-start invite. Call during Betrieb bootstrap (with getSession), not in the
+ * post-navigate billing/auth launch block — that would join twice.
+ */
 export async function getNativeLaunchJoinCode() {
   if (!Capacitor.isNativePlatform()) return null;
   try {
@@ -481,7 +498,7 @@ export async function setupNativeJoinLifecycle(handlers = {}) {
 
 export async function previewInvite(code) {
   const client = requireSupabase();
-  const inviteCode = resolveInviteCode(code) || String(code || '').trim();
+  const inviteCode = requireInviteCode(code);
   const { data, error } = await client.rpc('get_invite_by_code', { invite_code: inviteCode });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
@@ -491,7 +508,7 @@ export async function previewInvite(code) {
 
 export async function joinWithCode(code) {
   const client = requireSupabase();
-  const inviteCode = resolveInviteCode(code) || String(code || '').trim();
+  const inviteCode = requireInviteCode(code);
   const { data: operationId, error } = await client.rpc('join_operation_with_code', {
     invite_code: inviteCode
   });

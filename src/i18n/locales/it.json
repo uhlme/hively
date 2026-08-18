@@ -705,6 +705,7 @@
     "saveOpFailed": "Salvataggio non riuscito: {name}",
     "inviteCopied": "Invito copiato.",
     "inviteFailed": "Invito non riuscito: {name}",
+    "inviteCodeInvalid": "Codice di invito non valido.",
     "operationsNeedLogin": "Le aziende richiedono l’accesso.",
     "voiceSaveFailed": "Errore nel salvataggio locale del dettato.",
     "receiptSaveFailed": "Errore nel salvataggio locale dello scontrino.",
