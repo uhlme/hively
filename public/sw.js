@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bee-tracker-v6';
+const CACHE_NAME = 'bee-tracker-v7';
 const ASSETS = [
   '/',
   '/index.html',
@@ -85,8 +85,11 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(e.request)
         .then((networkResponse) => {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseToCache));
+          const isAppShell = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '';
+          if (isAppShell && networkResponse && networkResponse.ok) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseToCache));
+          }
           return networkResponse;
         })
         .catch(() => caches.match(e.request).then((cached) => cached || caches.match('/index.html')))

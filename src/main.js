@@ -104,6 +104,9 @@ import {
   updateOperation,
   createInvite,
   buildInviteLink,
+  resolveInviteCode,
+  getNativeLaunchJoinCode,
+  setupNativeJoinLifecycle,
   joinWithCode,
   listOperationMembers,
   getActiveOperationMeta,
@@ -547,15 +550,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Native Auth-Lifecycle fehlgeschlagen:', err)
   );
 
+  const nativeJoinHandlers = {
+    onJoinCode: (code) => applyJoinCodeFromDeepLink(code)
+  };
+  setupNativeJoinLifecycle(nativeJoinHandlers).catch((err) =>
+    console.warn('Native Join-Lifecycle fehlgeschlagen:', err)
+  );
+
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
   // each break in one of the two environments.
   bindAppHeight();
 
-  // Initial render
+  // Initial render. Native launch-URL join is applied here (not in the post-navigate
+  // consumeNative*LaunchUrl block) so Betrieb bootstrap sees the code once.
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
-  const joinCode = urlParams.get('join');
+  const joinCode =
+    resolveInviteCode(urlParams.get('join')) || (await getNativeLaunchJoinCode());
   if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings', 'calendar'].includes(viewParam)) {
     currentView = viewParam;
   }
@@ -571,6 +583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else if (joinCode) {
         // Remember invite until after login / registration
         sessionStorage.setItem('hively_pending_join', joinCode);
+        promptedJoinCodes.add(joinCode);
         await promptLoginForInvite(joinCode);
       }
     } catch (err) {
@@ -3334,6 +3347,52 @@ async function promptLoginForInvite(joinCode) {
   openModal('modal-auth');
 }
 
+/** Dedupe cold-start getLaunchUrl + appUrlOpen delivering the same invite. */
+const handledJoinCodes = new Set();
+const joiningCodes = new Set();
+const promptedJoinCodes = new Set();
+
+function beginJoin(code) {
+  if (!code || handledJoinCodes.has(code) || joiningCodes.has(code)) return false;
+  joiningCodes.add(code);
+  return true;
+}
+
+function finishJoin(code, ok) {
+  joiningCodes.delete(code);
+  if (ok && code) handledJoinCodes.add(code);
+}
+
+async function applyJoinCodeFromDeepLink(joinCode) {
+  const code = resolveInviteCode(joinCode);
+  if (!code || !supabase) return;
+  if (!beginJoin(code)) return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      finishJoin(code, false);
+      sessionStorage.setItem('hively_pending_join', code);
+      if (promptedJoinCodes.has(code)) return;
+      promptedJoinCodes.add(code);
+      await promptLoginForInvite(code);
+      return;
+    }
+    const joined = await joinWithCode(code);
+    sessionStorage.removeItem('hively_pending_join');
+    finishJoin(code, true);
+    clearLocalEntityCache();
+    updateOperationChrome();
+    applyRoleBasedUI();
+    refreshBillingSettingsUI();
+    await navigate('dashboard');
+    alert(t('errors.joinOk', { name: joined.name }));
+  } catch (err) {
+    finishJoin(code, false);
+    console.warn('Join via Deep-Link fehlgeschlagen:', err);
+    alert(t('errors.joinFailed', { name: err.message || err }));
+  }
+}
+
 async function bootstrapOperationsForSession(session, { joinCode } = {}) {
   if (!session) {
     clearActiveOperation();
@@ -3342,17 +3401,21 @@ async function bootstrapOperationsForSession(session, { joinCode } = {}) {
     return;
   }
 
-  const pending = joinCode || sessionStorage.getItem('hively_pending_join');
-  if (pending) {
+  const pending = resolveInviteCode(joinCode || sessionStorage.getItem('hively_pending_join'));
+  if (pending && !beginJoin(pending)) {
+    await ensureActiveOperation();
+  } else if (pending) {
     try {
       const joined = await joinWithCode(pending);
       sessionStorage.removeItem('hively_pending_join');
+      finishJoin(pending, true);
       // Clean join param from URL without reload
       const url = new URL(window.location.href);
       url.searchParams.delete('join');
       window.history.replaceState({}, '', url.pathname + url.search);
       alert(t('errors.joinOk', { name: joined.name }));
     } catch (err) {
+      finishJoin(pending, false);
       console.warn('Join via code failed:', err);
       alert(t('errors.joinFailed', { name: err.message || err }));
       await ensureActiveOperation();
@@ -3664,7 +3727,12 @@ function setupOperationsUI() {
   document.getElementById('form-operation-join')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.submitter || e.currentTarget.querySelector('button[type="submit"]');
-    const code = document.getElementById('op-join-code').value.trim();
+    const rawCode = document.getElementById('op-join-code').value.trim();
+    const code = resolveInviteCode(rawCode);
+    if (!code) {
+      alert(t('errors.inviteCodeInvalid'));
+      return;
+    }
     await withButtonLoading(btn, async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -3728,7 +3796,8 @@ function setupOperationsUI() {
             Rolle: <strong>${escapeHtml(roleTxt)}</strong><br>
             Code: <strong>${escapeHtml(invite.code)}</strong><br>
             Link: <span style="word-break:break-all;">${escapeHtml(link)}</span><br>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">Kopieren</button>
+            <span style="display:block; margin-top:8px;">${escapeHtml(t('settings.inviteHint'))}</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">${escapeHtml(t('common.copy'))}</button>
           `;
           document.getElementById('btn-copy-invite')?.addEventListener('click', async () => {
             try {

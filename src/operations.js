@@ -1,8 +1,15 @@
 /**
  * Bienenbetrieb (operations) – multi-user workspace helpers.
  */
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from './supabase.js';
 import { safeJsonParse } from './utils.js';
+
+/** Custom URL scheme (must match iOS CFBundleURLSchemes / Android intent-filter). */
+export const NATIVE_APP_SCHEME = 'ch.hively.app';
+const DEFAULT_PUBLIC_ORIGIN = 'https://hivelyy.netlify.app';
+const INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8,16}$/i;
 
 const ACTIVE_OP_KEY = 'hively_active_operation_id';
 const ACTIVE_ROLE_KEY = 'hively_active_operation_role';
@@ -299,17 +306,200 @@ export async function createInvite(operationId, { role = 'editor', daysValid = 3
   return data;
 }
 
-export function buildInviteLink(code) {
-  const url = new URL(window.location.href);
-  url.searchParams.set('join', code);
-  // Keep path clean for SPA
-  url.hash = '';
+function envPublicOrigin() {
+  const raw = String(
+    import.meta.env?.VITE_APP_ORIGIN ||
+    import.meta.env?.VITE_NATIVE_ORIGIN ||
+    import.meta.env?.VITE_STRIPE_API_ORIGIN ||
+    DEFAULT_PUBLIC_ORIGIN
+  ).trim();
+  return raw.replace(/\/$/, '') || DEFAULT_PUBLIC_ORIGIN;
+}
+
+function isUnshareableOrigin(url) {
+  const proto = url.protocol;
+  const host = (url.hostname || '').toLowerCase();
+  if (proto === 'capacitor:' || proto === 'ionic:') return true;
+  if (proto === `${NATIVE_APP_SCHEME}:`) return true;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]') {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Public https origin for shareable links. Never capacitor:// or Android's https://localhost.
+ * @param {{ href?: string, origin?: string } | null} [locationLike]
+ */
+export function getPublicAppOrigin(locationLike = typeof window !== 'undefined' ? window.location : null) {
+  const fallback = envPublicOrigin();
+  if (!locationLike) return fallback;
+  try {
+    const href = locationLike.href || (locationLike.origin ? `${locationLike.origin}/` : '');
+    if (!href) return fallback;
+    const url = new URL(href);
+    if (isUnshareableOrigin(url)) return fallback;
+    if (url.protocol === 'http:' || url.protocol === 'https:') return url.origin;
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
+function normalizeInviteCode(value) {
+  const compact = String(value || '').trim().replace(/[\s-]/g, '').toUpperCase();
+  return INVITE_CODE_PATTERN.test(compact) ? compact : null;
+}
+
+/** Dummy origin for query/path snippets (must not be treated as a real host). */
+function parseUrlLike(raw) {
+  if (raw.includes('://')) return new URL(raw);
+  if (raw.startsWith('?')) return new URL(`https://local.invalid/${raw}`);
+  if (raw.startsWith('/') || raw.startsWith('join.html')) {
+    return new URL(raw, 'https://local.invalid/');
+  }
+  if (raw.includes('=')) return new URL(`https://local.invalid/?${raw}`);
+  return new URL(`https://local.invalid/${raw}`);
+}
+
+function isJoinPath(path) {
+  return path === '/join.html' || path === '/join' || path === '/join/' || path.endsWith('/join.html');
+}
+
+/**
+ * Extract an invite code from a web URL, custom-scheme deep link, or query string.
+ * Invite tokens live in `join=`. `code=` is only read on join hosts/paths —
+ * OAuth uses `code` on `ch.hively.app://auth` and must never be treated as an invite.
+ * Auth/billing hosts are never invites, even if they carry `join=`.
+ * @param {string} urlOrSearch
+ * @returns {string | null}
+ */
+export function parseJoinCodeFromUrl(urlOrSearch) {
+  try {
+    const raw = String(urlOrSearch || '').trim();
+    if (!raw) return null;
+    const url = parseUrlLike(raw);
+
+    const host = (url.hostname || url.host || '').toLowerCase();
+    const path = url.pathname || '';
+    if (
+      host === 'auth' ||
+      host === 'billing' ||
+      path.includes('auth-return') ||
+      path.includes('billing-return')
+    ) {
+      return null;
+    }
+    if (url.searchParams.get('billing')) return null;
+
+    const params = new URLSearchParams(url.search);
+    if (url.hash && url.hash.includes('=')) {
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+      for (const [key, value] of hashParams.entries()) {
+        if (!params.has(key)) params.set(key, value);
+      }
+    }
+
+    const fromJoin = normalizeInviteCode(params.get('join'));
+    if (fromJoin) return fromJoin;
+
+    const isJoinTarget = host === 'join' || isJoinPath(path);
+    if (isJoinTarget) return normalizeInviteCode(params.get('code'));
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Accept a raw invite code or a pasted invite URL.
+ * @param {string} input
+ * @returns {string | null}
+ */
+export function resolveInviteCode(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return null;
+  if (/[:/?#=]/.test(raw)) return parseJoinCodeFromUrl(raw);
+  return normalizeInviteCode(raw);
+}
+
+function requireInviteCode(code) {
+  const normalized = resolveInviteCode(code);
+  if (!normalized) throw new Error('Einladungscode ungültig');
+  return normalized;
+}
+
+/** Native deep link that opens Hively with an invite code. */
+export function buildNativeJoinDeepLink(code) {
+  const normalized = requireInviteCode(code);
+  return `${NATIVE_APP_SCHEME}://join?join=${encodeURIComponent(normalized)}`;
+}
+
+/**
+ * Shareable https invite URL (join.html bounces into the native app when installed).
+ * @param {string} code
+ * @param {{ href?: string, origin?: string } | null} [locationLike]
+ */
+export function buildInviteLink(code, locationLike) {
+  const origin = getPublicAppOrigin(locationLike);
+  const normalized = requireInviteCode(code);
+  const url = new URL('join.html', `${origin}/`);
+  url.searchParams.set('join', normalized);
   return url.toString();
+}
+
+/**
+ * Handle a native deep-link / launch URL that carries an invite code.
+ * @param {string} url
+ * @param {{ onJoinCode?: (code: string) => void | Promise<void> }} [handlers]
+ */
+export async function handleNativeJoinOpenUrl(url, handlers = {}) {
+  const joinCode = parseJoinCodeFromUrl(url);
+  if (!joinCode) return { handled: false, joinCode: null };
+  if (handlers.onJoinCode) await handlers.onJoinCode(joinCode);
+  return { handled: true, joinCode };
+}
+
+/**
+ * Cold-start invite. Call during Betrieb bootstrap (with getSession), not in the
+ * post-navigate billing/auth launch block — that would join twice.
+ */
+export async function getNativeLaunchJoinCode() {
+  if (!Capacitor.isNativePlatform()) return null;
+  try {
+    const launch = await App.getLaunchUrl();
+    return parseJoinCodeFromUrl(launch?.url);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wire Capacitor deep-link hooks for Betrieb invites.
+ * @param {{ onJoinCode: (code: string) => void | Promise<void> }} handlers
+ */
+export async function setupNativeJoinLifecycle(handlers = {}) {
+  if (!Capacitor.isNativePlatform()) return () => {};
+  const appUrlSub = await App.addListener('appUrlOpen', async ({ url }) => {
+    try {
+      await handleNativeJoinOpenUrl(url, handlers);
+    } catch (err) {
+      console.warn('Native join deep-link failed:', err);
+    }
+  });
+  return () => {
+    try {
+      appUrlSub.remove();
+    } catch {
+      /* ignore */
+    }
+  };
 }
 
 export async function previewInvite(code) {
   const client = requireSupabase();
-  const { data, error } = await client.rpc('get_invite_by_code', { invite_code: code });
+  const inviteCode = requireInviteCode(code);
+  const { data, error } = await client.rpc('get_invite_by_code', { invite_code: inviteCode });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) throw new Error('Einladungscode ungültig');
@@ -318,8 +508,9 @@ export async function previewInvite(code) {
 
 export async function joinWithCode(code) {
   const client = requireSupabase();
+  const inviteCode = requireInviteCode(code);
   const { data: operationId, error } = await client.rpc('join_operation_with_code', {
-    invite_code: String(code || '').trim()
+    invite_code: inviteCode
   });
   if (error) throw error;
 

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hively – Einladung</title>
+  <style>
+    :root {
+      --bg: #1a1510;
+      --text: #f6efe4;
+      --muted: #c4b8a8;
+      --accent: #e08a3c;
+      --accent-text: #1a1510;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #3a2a18 0%, transparent 55%),
+        var(--bg);
+      color: var(--text);
+      text-align: center;
+    }
+    main { max-width: 22rem; }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    p {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 1rem;
+    }
+    .code {
+      display: inline-block;
+      margin: 0 0 1.25rem;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid rgba(224, 138, 60, 0.45);
+      border-radius: 0.65rem;
+      color: var(--accent);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    a.btn {
+      display: block;
+      padding: 0.85rem 1rem;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      font-weight: 650;
+    }
+    a.btn-primary {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+    a.btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid rgba(246, 239, 228, 0.28);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 id="title">Hively</h1>
+    <p id="message">Einen Moment…</p>
+    <div id="code-wrap" class="hidden"><span class="code" id="code"></span></div>
+    <div id="actions" class="actions hidden">
+      <a class="btn btn-primary" id="open-app" href="#">In der App öffnen</a>
+      <a class="btn btn-secondary" id="open-web" href="/">Im Browser beitreten</a>
+    </div>
+  </main>
+  <script>
+    (function () {
+      // Keep in sync with INVITE_CODE_PATTERN / NATIVE_APP_SCHEME in src/operations.js
+      var INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8,16}$/i;
+      var params = new URLSearchParams(window.location.search);
+      var raw = String(params.get('join') || '').trim();
+      var code = raw.replace(/[\s-]/g, '').toUpperCase();
+      if (!INVITE_CODE_PATTERN.test(code)) code = '';
+
+      var lang = String(navigator.language || 'de').slice(0, 2).toLowerCase();
+      var copy = {
+        de: {
+          missing: 'Kein gültiger Einladungscode.',
+          title: 'Betrieb beitreten',
+          message: 'Öffne die Einladung in der Hively-App oder im Browser.',
+          openApp: 'In der App öffnen',
+          openWeb: 'Im Browser beitreten'
+        },
+        fr: {
+          missing: 'Aucun code d’invitation valide.',
+          title: 'Rejoindre l’exploitation',
+          message: 'Ouvre l’invitation dans l’app Hively ou dans le navigateur.',
+          openApp: 'Ouvrir dans l’app',
+          openWeb: 'Rejoindre dans le navigateur'
+        },
+        it: {
+          missing: 'Nessun codice di invito valido.',
+          title: 'Unisciti all’azienda',
+          message: 'Apri l’invito nell’app Hively o nel browser.',
+          openApp: 'Apri nell’app',
+          openWeb: 'Unisciti nel browser'
+        },
+        en: {
+          missing: 'No valid invite code.',
+          title: 'Join operation',
+          message: 'Open the invite in the Hively app or in the browser.',
+          openApp: 'Open in app',
+          openWeb: 'Join in browser'
+        }
+      };
+      var t = copy[lang] || copy.de;
+      var title = document.getElementById('title');
+      var message = document.getElementById('message');
+      var webUrl = '/?join=' + encodeURIComponent(code);
+      var deep = 'ch.hively.app://join?join=' + encodeURIComponent(code);
+      var androidIntent =
+        'intent://join?join=' + encodeURIComponent(code) +
+        '#Intent;scheme=ch.hively.app;package=ch.hively.app;S.browser_fallback_url=' +
+        encodeURIComponent(window.location.origin + webUrl) + ';end';
+
+      if (!code) {
+        title.textContent = 'Hively';
+        message.textContent = t.missing;
+        return;
+      }
+
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var isMobile =
+        /iPhone|iPad|iPod|Android/i.test(ua) ||
+        (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+      if (!isMobile) {
+        window.location.replace(webUrl);
+        return;
+      }
+
+      title.textContent = t.title;
+      message.textContent = t.message;
+      document.getElementById('code').textContent = code;
+      document.getElementById('code-wrap').classList.remove('hidden');
+      document.getElementById('actions').classList.remove('hidden');
+      document.getElementById('open-app').textContent = t.openApp;
+      document.getElementById('open-web').textContent = t.openWeb;
+      document.getElementById('open-web').setAttribute('href', webUrl);
+      var openAppHref = isAndroid ? androidIntent : deep;
+      document.getElementById('open-app').setAttribute('href', openAppHref);
+
+      // iOS: custom-scheme auto-open is unreliable and not a user gesture.
+      // Android Intent can bounce into the app with a browser fallback URL.
+      var openTimer = null;
+      if (isAndroid) {
+        openTimer = setTimeout(function () {
+          try {
+            window.location.href = openAppHref;
+          } catch (e) {
+            /* user can tap the buttons */
+          }
+        }, 250);
+      }
+      document.getElementById('open-web').addEventListener('click', function () {
+        if (openTimer) clearTimeout(openTimer);
+      });
+    })();
+  </script>
+</body>
+</html>
