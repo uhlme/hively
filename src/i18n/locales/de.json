@@ -573,6 +573,8 @@
     "inviteEditor": "Mitarbeiter (bearbeiten)",
     "inviteViewer": "Betrachter / Patenschaft (nur lesen)",
     "createInvite": "Einladungscode erzeugen",
+    "inviteHint": "Link in der Hively-App oder im Browser öffnen. Der Code funktioniert auch unter «Mit Code beitreten».",
+    "joinCodePlaceholder": "Code oder Einladungslink",
     "apiariesTitle": "Bienenstände",
     "apiariesLead": "Organisiere deine Völker nach Standorten (Ständen).",
     "newApiary": "Neuer Stand",

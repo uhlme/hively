@@ -104,6 +104,9 @@ import {
   updateOperation,
   createInvite,
   buildInviteLink,
+  resolveInviteCode,
+  getNativeLaunchJoinCode,
+  setupNativeJoinLifecycle,
   joinWithCode,
   listOperationMembers,
   getActiveOperationMeta,
@@ -547,6 +550,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Native Auth-Lifecycle fehlgeschlagen:', err)
   );
 
+  const nativeJoinHandlers = {
+    onJoinCode: (code) => applyJoinCodeFromDeepLink(code)
+  };
+  setupNativeJoinLifecycle(nativeJoinHandlers).catch((err) =>
+    console.warn('Native Join-Lifecycle fehlgeschlagen:', err)
+  );
+
   // Pin #app to the real visible viewport height. Works in BOTH Safari (tracks the
   // dynamic URL bar) and standalone PWA (full height), unlike 100vh/100dvh which
   // each break in one of the two environments.
@@ -555,7 +565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial render
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
-  const joinCode = urlParams.get('join');
+  const joinCode =
+    resolveInviteCode(urlParams.get('join')) || (await getNativeLaunchJoinCode());
   if (viewParam && ['dashboard', 'hives', 'hive-detail', 'finances', 'settings', 'calendar'].includes(viewParam)) {
     currentView = viewParam;
   }
@@ -3334,6 +3345,28 @@ async function promptLoginForInvite(joinCode) {
   openModal('modal-auth');
 }
 
+async function applyJoinCodeFromDeepLink(joinCode) {
+  const code = resolveInviteCode(joinCode);
+  if (!code || !supabase) return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await prepareSessionWorkspace(session, { joinCode: code });
+      clearLocalEntityCache();
+      updateOperationChrome();
+      applyRoleBasedUI();
+      refreshBillingSettingsUI();
+      await navigate('dashboard');
+      return;
+    }
+    sessionStorage.setItem('hively_pending_join', code);
+    await promptLoginForInvite(code);
+  } catch (err) {
+    console.warn('Join via Deep-Link fehlgeschlagen:', err);
+    alert(t('errors.joinFailed', { name: err.message || err }));
+  }
+}
+
 async function bootstrapOperationsForSession(session, { joinCode } = {}) {
   if (!session) {
     clearActiveOperation();
@@ -3664,7 +3697,8 @@ function setupOperationsUI() {
   document.getElementById('form-operation-join')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.submitter || e.currentTarget.querySelector('button[type="submit"]');
-    const code = document.getElementById('op-join-code').value.trim();
+    const rawCode = document.getElementById('op-join-code').value.trim();
+    const code = resolveInviteCode(rawCode) || rawCode;
     await withButtonLoading(btn, async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -3728,7 +3762,8 @@ function setupOperationsUI() {
             Rolle: <strong>${escapeHtml(roleTxt)}</strong><br>
             Code: <strong>${escapeHtml(invite.code)}</strong><br>
             Link: <span style="word-break:break-all;">${escapeHtml(link)}</span><br>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">Kopieren</button>
+            <span style="display:block; margin-top:8px;">${escapeHtml(t('settings.inviteHint'))}</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-copy-invite" style="margin-top:8px; width:auto;">${escapeHtml(t('common.copy'))}</button>
           `;
           document.getElementById('btn-copy-invite')?.addEventListener('click', async () => {
             try {

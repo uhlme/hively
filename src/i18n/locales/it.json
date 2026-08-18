@@ -573,6 +573,8 @@
     "inviteEditor": "Collaboratore (modifica)",
     "inviteViewer": "Lettore / affido (sola lettura)",
     "createInvite": "Crea codice di invito",
+    "inviteHint": "Apri il link nell’app Hively o nel browser. Il codice funziona anche in « Unisciti con codice ».",
+    "joinCodePlaceholder": "Codice o link di invito",
     "apiariesTitle": "Apiari",
     "apiariesLead": "Organizza le famiglie per ubicazioni (apiari).",
     "newApiary": "Nuovo apiario",

@@ -573,6 +573,8 @@
     "inviteEditor": "Editor (can edit)",
     "inviteViewer": "Viewer / sponsorship (read only)",
     "createInvite": "Create invite code",
+    "inviteHint": "Open the link in the Hively app or in the browser. The code also works under “Join with code”.",
+    "joinCodePlaceholder": "Code or invite link",
     "apiariesTitle": "Apiaries",
     "apiariesLead": "Organise colonies by location (apiaries).",
     "newApiary": "New apiary",
