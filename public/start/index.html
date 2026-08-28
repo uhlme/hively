@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Hively – Stockbuch am Bienenstand. Kontrollen, Finanzen und Honig offline festhalten. Für Imkerinnen und Imker in der Schweiz." />
+  <title>Hively – Stockbuch am Bienenstand</title>
+  <link rel="icon" href="/icon-192.png" type="image/png" />
+  <style>
+    :root {
+      --bg: #1a1510;
+      --text: #f6efe4;
+      --muted: #c4b8a8;
+      --accent: #e08a3c;
+      --accent-text: #1a1510;
+      --card: rgba(246, 239, 228, 0.05);
+      --border: rgba(246, 239, 228, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -15%, #3a2a18 0%, transparent 60%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 28rem;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 2.5rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.5rem;
+    }
+    .brand img {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.55rem;
+    }
+    .brand span {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(1.65rem, 5vw, 2rem);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+    .lead {
+      margin: 0 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+    .features {
+      display: grid;
+      gap: 0.65rem;
+      margin: 0 0 1.75rem;
+      padding: 0;
+      list-style: none;
+    }
+    .features li {
+      padding: 0.75rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--card);
+      font-size: 0.95rem;
+    }
+    .features strong {
+      display: block;
+      margin-bottom: 0.15rem;
+      color: var(--text);
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+    a.btn {
+      display: block;
+      padding: 0.9rem 1rem;
+      border-radius: 0.75rem;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 650;
+      font-size: 1rem;
+    }
+    a.btn-primary {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+    a.btn-secondary {
+      color: var(--text);
+      border: 1px solid rgba(246, 239, 228, 0.28);
+      background: transparent;
+    }
+    .hint {
+      margin: 0 0 1.5rem;
+      padding: 0.85rem 0.95rem;
+      border-radius: 0.75rem;
+      border: 1px dashed rgba(224, 138, 60, 0.35);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .hint strong { color: var(--text); }
+    footer {
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    footer a {
+      color: var(--muted);
+      margin-right: 0.85rem;
+    }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <img src="/icon-192.png" width="40" height="40" alt="" aria-hidden="true" />
+      <span>Hively</span>
+    </div>
+
+    <h1>Stockbuch am Bienenstand – auch offline</h1>
+    <p class="lead">
+      Kontrollen festhalten, Finanzen im Blick behalten, Honig erfassen.
+      Für Imkerinnen und Imker in der Schweiz – ohne Login, direkt im Browser.
+    </p>
+
+    <ul class="features">
+      <li>
+        <strong>Kontrollen &amp; Behandlungen</strong>
+        Checklisten, Notizen und Behandlungen pro Volk – auch ohne Netz.
+      </li>
+      <li>
+        <strong>Finanzen &amp; Honig</strong>
+        Einnahmen, Ausgaben und Ernte im Überblick.
+      </li>
+      <li>
+        <strong>Bienenstände &amp; Team</strong>
+        Mehrere Standorte, optional mit Cloud-Sync und Einladungen.
+      </li>
+    </ul>
+
+    <div class="actions">
+      <a id="cta-open" class="btn btn-primary" href="/">Jetzt öffnen</a>
+      <a id="cta-install" class="btn btn-secondary" href="/">Als App installieren</a>
+    </div>
+
+    <p class="hint">
+      <strong>iPhone:</strong> In Safari «Teilen» → «Zum Home-Bildschirm».<br />
+      <strong>Android:</strong> Im Browser «App installieren» oder «Zum Startbildschirm hinzufügen».
+    </p>
+
+    <footer>
+      <a href="/impressum/">Impressum</a>
+      <a href="/privacy/">Datenschutz</a>
+      <a href="/agb/">AGB</a>
+    </footer>
+  </div>
+
+  <script src="/marketing/utm.js"></script>
+  <script>
+    (function () {
+      var utm = window.HivelyUtm.captureUtmFromSearch(window.location.search);
+      window.HivelyUtm.markPendingMarketingView('start', utm);
+
+      var appBase = window.location.origin + '/';
+      var appUrl = window.HivelyUtm.appendUtmToUrl(appBase, utm);
+
+      var openBtn = document.getElementById('cta-open');
+      var installBtn = document.getElementById('cta-install');
+      openBtn.href = appUrl;
+      installBtn.href = appUrl;
+
+      function onCtaClick(cta) {
+        return function (event) {
+          window.HivelyUtm.markPendingMarketingCta(cta, utm);
+          openBtn.href = window.HivelyUtm.appendUtmToUrl(appBase, utm);
+        };
+      }
+
+      openBtn.addEventListener('click', onCtaClick('open_app'));
+      installBtn.addEventListener('click', onCtaClick('install_hint'));
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hively Flyer A6 – Druckvorlage</title>
+  <style>
+    @page {
+      size: 105mm 148mm;
+      margin: 0;
+    }
+    :root {
+      --bg: #1a1510;
+      --text: #f6efe4;
+      --muted: #c4b8a8;
+      --accent: #e08a3c;
+      --accent-text: #1a1510;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #555;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 0.75rem 1rem;
+      background: #222;
+      color: #eee;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .toolbar button {
+      margin-left: 0.75rem;
+      padding: 0.45rem 0.85rem;
+      border: 0;
+      border-radius: 0.4rem;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .page {
+      display: flex;
+      flex-direction: column;
+      width: 105mm;
+      height: 148mm;
+      margin: 1rem auto;
+      padding: 7mm 7.5mm 5.5mm;
+      background:
+        radial-gradient(ellipse 90% 50% at 50% 0%, #3a2a18 0%, transparent 55%),
+        var(--bg);
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+    .header {
+      flex: 0 0 auto;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 2.5mm;
+      margin-bottom: 2mm;
+    }
+    .brand img { width: 8mm; height: 8mm; border-radius: 1.5mm; }
+    .brand span {
+      font-size: 12pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    h1 {
+      margin: 0 0 1.5mm;
+      font-size: 12.5pt;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 8pt;
+      line-height: 1.28;
+    }
+    .features {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      margin: 2.5mm 0 0;
+      padding: 0;
+      list-style: none;
+      min-height: 0;
+    }
+    .features li {
+      font-size: 7.4pt;
+      color: var(--muted);
+      line-height: 1.24;
+      padding-left: 3mm;
+      position: relative;
+    }
+    .features li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.45em;
+      width: 1.1mm;
+      height: 1.1mm;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .features strong {
+      display: block;
+      color: var(--text);
+      font-size: 8pt;
+      font-weight: 650;
+      margin-bottom: 0.2mm;
+    }
+    .pro-note {
+      flex: 0 0 auto;
+      margin: 0 0 2mm;
+      padding-top: 1.5mm;
+      border-top: 1px solid rgba(246, 239, 228, 0.1);
+      font-size: 6.8pt;
+      color: var(--muted);
+      line-height: 1.22;
+    }
+    .bottom {
+      flex: 0 0 auto;
+    }
+    .cta-box {
+      display: flex;
+      gap: 3mm;
+      align-items: center;
+      padding: 2.5mm;
+      border: 1px solid rgba(224, 138, 60, 0.45);
+      border-radius: 2mm;
+      background: rgba(224, 138, 60, 0.08);
+    }
+    .qr {
+      flex: 0 0 20mm;
+      width: 20mm;
+      height: 20mm;
+      background: #fff;
+      border-radius: 1.2mm;
+      padding: 1.2mm;
+    }
+    .qr img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .cta-text {
+      font-size: 7.5pt;
+      line-height: 1.22;
+    }
+    .cta-text strong {
+      display: block;
+      margin-bottom: 0.5mm;
+      font-size: 8.5pt;
+      color: var(--accent);
+    }
+    .url {
+      margin-top: 0.8mm;
+      font-size: 6.5pt;
+      color: var(--muted);
+    }
+    footer {
+      margin-top: 1.5mm;
+      font-size: 6pt;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none; }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+  A6-Druckvorlage (105 × 148 mm). Papier: matt, 250–300 g/m² empfohlen.
+  <button type="button" onclick="window.print()">Drucken</button>
+  </div>
+
+  <article class="page" aria-label="Hively Flyer">
+    <header class="header">
+      <div class="brand">
+        <img src="/icon-192.png" width="30" height="30" alt="" aria-hidden="true" />
+        <span>Hively</span>
+      </div>
+      <h1>Stockbuch am Bienenstand – auch offline</h1>
+      <p class="lead">
+        Digitales Stockbuch für Imker in der Schweiz – Kontrollen, Finanzen und Honig am Stand festhalten, auch ohne Netz.
+      </p>
+    </header>
+
+    <ul class="features">
+      <li>
+        <strong>Durchsichten</strong>
+        Checklisten, Wetter und Notizen – Historie jederzeit pro Volk
+      </li>
+      <li>
+        <strong>Behandlungen</strong>
+        Varroa dokumentieren mit Produkt, Zeitraum und Wartezeit bis zur Ernte
+      </li>
+      <li>
+        <strong>Bienenstände &amp; Völker</strong>
+        Mehrere Standorte, Königin, Rasse und Gesundheitsstatus im Überblick
+      </li>
+      <li>
+        <strong>Finanzen &amp; Honig</strong>
+        Einnahmen, Ausgaben, Honigernte und Bienenpatenschaften festhalten
+      </li>
+      <li>
+        <strong>Saisonkalender</strong>
+        Monatliche Aufgaben-Checklisten fürs Bienenjahr
+      </li>
+      <li>
+        <strong>Offline &amp; kostenlos</strong>
+        Ohne Login starten – optional Cloud-Sync und Team per Einladung
+      </li>
+    </ul>
+
+    <p class="pro-note">
+      Hively Pro optional: KI-Sprachassistent, Beleg-Scan und Wetterhinweise (Internet nötig).
+    </p>
+
+    <div class="bottom">
+      <div class="cta-box">
+        <div class="qr">
+          <img id="qr" width="76" height="76" alt="QR-Code zu Hively" />
+        </div>
+        <div class="cta-text">
+          <strong>Jetzt kostenlos starten</strong>
+          QR scannen – App zum Home-Bildschirm hinzufügen.
+          <div class="url" id="landing-url">hivelyy.netlify.app/start/</div>
+        </div>
+      </div>
+      <footer>hively.support@proton.me · Willisau, Schweiz</footer>
+    </div>
+  </article>
+
+  <script>
+    (function () {
+      var landingUrl = 'https://hivelyy.netlify.app/start/?utm_source=flyer&utm_medium=print&utm_campaign=ch-2026';
+      document.getElementById('landing-url').textContent = 'hivelyy.netlify.app/start/';
+      document.getElementById('qr').src =
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=' +
+        encodeURIComponent(landingUrl);
+    })();
+  </script>
+</body>
+</html>

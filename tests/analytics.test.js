@@ -17,6 +17,8 @@ describe('analytics', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
     delete window.__hivelyErrorHandlersInstalled;
     posthogMock.init.mockImplementation((_key, opts) => {
       opts?.loaded?.(posthogMock);
@@ -70,6 +72,59 @@ describe('analytics', () => {
 
     analytics.resetAnalyticsUser();
     expect(posthogMock.reset).toHaveBeenCalled();
+  });
+
+  it('registers UTM params and flushes pending marketing events', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    localStorage.setItem(
+      'hively_utm',
+      JSON.stringify({ utm_source: 'flyer', utm_campaign: 'ch-2026' })
+    );
+    sessionStorage.setItem(
+      'hively_pending_marketing_view',
+      JSON.stringify({ page: 'start', utm: { utm_source: 'flyer' }, ts: 1 })
+    );
+    sessionStorage.setItem(
+      'hively_pending_marketing_cta',
+      JSON.stringify({ cta: 'open_app', utm: { utm_source: 'flyer' }, ts: 1 })
+    );
+
+    const analytics = await import('../src/analytics.js');
+    analytics.initAnalytics();
+
+    expect(posthogMock.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        utm_source: 'flyer',
+        utm_campaign: 'ch-2026'
+      })
+    );
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      'marketing_landing_view',
+      expect.objectContaining({ page: 'start', utm_source: 'flyer' })
+    );
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      'marketing_cta_click',
+      expect.objectContaining({ cta: 'open_app', utm_source: 'flyer' })
+    );
+  });
+
+  it('captures marketing_attribution when app opens with UTM in URL', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test');
+    window.history.replaceState({}, '', '/?utm_source=facebook&utm_campaign=ch-2026');
+
+    const analytics = await import('../src/analytics.js');
+    analytics.initAnalytics();
+
+    expect(posthogMock.capture).toHaveBeenCalledWith(
+      'marketing_attribution',
+      expect.objectContaining({
+        entry: 'app',
+        utm_source: 'facebook',
+        utm_campaign: 'ch-2026'
+      })
+    );
+
+    window.history.replaceState({}, '', '/');
   });
 
   it('resolves auth provider from Supabase user identities', async () => {

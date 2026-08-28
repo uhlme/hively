@@ -10,6 +10,12 @@
  */
 
 import posthog from 'posthog-js';
+import {
+  captureUtmFromSearch,
+  consumePendingMarketingCta,
+  consumePendingMarketingView,
+  parseUtmFromSearch
+} from './utm.js';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
@@ -51,12 +57,47 @@ export function initAnalytics() {
   ready = true;
 
   // Lightweight context for all subsequent events
+  const utm =
+    typeof window !== 'undefined'
+      ? captureUtmFromSearch(window.location.search)
+      : null;
+
   posthog.register({
     app: 'hively',
     platform: detectPlatform(),
     environment: detectTestTraffic() ? 'development' : 'production',
-    ...(detectTestTraffic() ? { is_test_traffic: true } : {})
+    ...(detectTestTraffic() ? { is_test_traffic: true } : {}),
+    ...(utm || {})
   });
+
+  flushPendingMarketingEvents(utm);
+}
+
+function flushPendingMarketingEvents(utm) {
+  const pendingView = consumePendingMarketingView();
+  if (pendingView) {
+    posthog.capture('marketing_landing_view', {
+      page: pendingView.page || 'unknown',
+      ...(pendingView.utm || utm || {})
+    });
+  }
+
+  const pendingCta = consumePendingMarketingCta();
+  if (pendingCta) {
+    posthog.capture('marketing_cta_click', {
+      cta: pendingCta.cta || 'unknown',
+      ...(pendingCta.utm || utm || {})
+    });
+  }
+
+  if (
+    !pendingView &&
+    utm &&
+    typeof window !== 'undefined' &&
+    parseUtmFromSearch(window.location.search)
+  ) {
+    posthog.capture('marketing_attribution', { entry: 'app', ...utm });
+  }
 }
 
 function detectTestTraffic() {
