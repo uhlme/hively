@@ -1,0 +1,2 @@
+- Verbesserte KI-Wetterhinweise
+- Fehlerbehebungen und Stabilitätsverbesserungen

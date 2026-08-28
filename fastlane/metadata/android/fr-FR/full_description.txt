@@ -1,0 +1,33 @@
+Hively est l’app pour les apiculteurs qui veulent gérer leurs ruchers directement sur place – rapidement, clairement et même sans connexion Internet.
+
+RUCHERS & COLONIES
+Organise plusieurs ruchers et enregistre tes colonies avec reine, race, année et état de santé. Le tableau de bord affiche le nombre de colonies, la récolte de miel, la trésorerie et les données météo et pollinisation (radar abeilles).
+
+CONTRÔLES DOCUMENTÉS
+Note tes observations pour une ou plusieurs colonies, avec la météo au moment du contrôle. L’historique par colonie est toujours accessible.
+
+TRAITEMENTS
+Documente les traitements varroa avec produit, période et délai avant récolte.
+
+CALENDRIER SAISONNIER
+Un plan mensuel avec listes de contrôle t’aide à ne pas manquer les tâches importantes de l’année apicole.
+
+FINANCES ET REVENUS
+Garde une vue d’ensemble sur les dépenses, les récoltes de miel et les parrainages d’abeilles.
+
+ÉQUIPE & PARRAINAGE
+Avec connexion optionnelle : invite des collaborateurs ou donne un accès lecture aux parrains. Rejoindre un rucher par code d’invitation est gratuit.
+
+MODE HORS LIGNE
+Toutes les données de base sont stockées localement – l’app fonctionne aussi sans réseau au rucher. Avec connexion : sauvegarde optionnelle dans le cloud.
+
+HIVELY PRO (OPTIONNEL)
+Avec Hively Pro (14 jours d’essai, CHF 1.99/mois ou CHF 10/an) et connexion :
+• Assistant vocal IA – comprend le suisse allemand, écrit en allemand standard
+• Reçus par photo lus automatiquement
+• Conseils météo IA et recommandations par colonie
+• Synchronisation cloud et création d’invitations d’équipe
+
+Les fonctions IA nécessitent Internet et un abonnement Hively Pro.
+
+Hively s’adresse aux apiculteurs amateurs et semi-professionnels qui veulent organiser leur apiculture sans papier et de façon numérique.

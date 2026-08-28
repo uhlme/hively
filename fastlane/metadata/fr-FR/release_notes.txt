@@ -1,0 +1,2 @@
+- Amélioration des conseils météo IA
+- Corrections de bugs et améliorations de stabilité

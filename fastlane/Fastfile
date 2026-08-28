@@ -1,5 +1,27 @@
 default_platform(:ios)
 
+# Shared App Store Connect API key — supports CI (ASC_KEY_CONTENT base64) and local (ASC_KEY_FILEPATH).
+def asc_api_key
+  if ENV["ASC_KEY_CONTENT"].to_s != ""
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"],
+      is_key_content_base64: true,
+      in_house: false
+    )
+  elsif ENV["ASC_KEY_FILEPATH"].to_s != ""
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_FILEPATH"],
+      in_house: false
+    )
+  else
+    UI.user_error!("Set ASC_KEY_CONTENT (base64) or ASC_KEY_FILEPATH for App Store Connect API access.")
+  end
+end
+
 platform :ios do
   desc "Capture App Store screenshots via the AppUITests target"
   lane :screenshots do
@@ -49,21 +71,15 @@ platform :ios do
     UI.success("Screenshots saved to #{output_dir}")
   end
 
-  desc "Upload App Store metadata and screenshots (no binary)"
+  desc "Upload App Store listing text + screenshots from fastlane/metadata/ (no binary)"
   lane :upload_metadata do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_filepath: ENV["ASC_KEY_FILEPATH"],
-      in_house: false
-    )
-
     deliver(
-      api_key: api_key,
+      api_key: asc_api_key,
       app_identifier: "ch.hively.app",
       skip_binary_upload: true,
       skip_app_version_update: true,
       skip_metadata: ENV["SKIP_METADATA"] == "true",
+      skip_screenshots: ENV["SKIP_SCREENSHOTS"] == "true",
       run_precheck_before_submit: false,
       force: true
     )
@@ -71,13 +87,7 @@ platform :ios do
 
   desc "Build the iOS app and upload it to TestFlight"
   lane :beta do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_KEY_CONTENT"],
-      is_key_content_base64: true,
-      in_house: false
-    )
+    api_key = asc_api_key
 
     match(
       type: "appstore",
@@ -127,6 +137,19 @@ platform :ios do
 end
 
 platform :android do
+  desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"
+  lane :upload_metadata do
+    upload_to_play_store(
+      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+      package_name: "ch.hively.app",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: ENV["SKIP_STORE_IMAGES"] == "true",
+      skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] == "true"
+    )
+  end
+
   desc "Build the Android app and upload it to the Play Store internal testing track"
   lane :beta do
     gradle(

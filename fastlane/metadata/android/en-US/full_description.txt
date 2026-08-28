@@ -1,0 +1,33 @@
+Hively is the app for beekeepers who want to manage their apiaries right at the hive stand – quickly, clearly, and even without an internet connection.
+
+APIARIES & COLONIES
+Organize multiple apiaries and record colonies with queen, breed, year, and health status. The dashboard shows colony count, honey harvest, balance, and weather and pollen data (bee radar).
+
+LOG INSPECTIONS
+Capture observations for one or more colonies, including weather at inspection time. Full history per colony is always available.
+
+TREATMENTS
+Document varroa treatments with product, period, and harvest waiting time.
+
+SEASON CALENDAR
+A monthly plan with text checklists helps you stay on top of the beekeeping year.
+
+FINANCES AND YIELDS
+Keep expenses, honey harvests, and colony sponsorships under control.
+
+TEAM & SPONSORSHIP
+Optional sign-in: invite collaborators or give read-only access to sponsors. Joining by invite code is free.
+
+WORKS OFFLINE
+All core data is stored locally – the app works without network at the apiary. With sign-in: optional cloud backup across devices.
+
+HIVELY PRO (OPTIONAL)
+With Hively Pro (14-day trial, CHF 1.99/month or CHF 10/year) and sign-in:
+• AI voice assistant – understands Swiss German, writes notes in standard German
+• Receipts read automatically from photos
+• AI weather insights and per-colony recommendations
+• Cloud sync and team invite creation
+
+AI features require internet and a Hively Pro subscription.
+
+Hively is for hobby and part-time beekeepers who want paperless, digital beekeeping management.

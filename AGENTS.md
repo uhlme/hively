@@ -58,5 +58,9 @@ There is a single service: the Vite dev server.
 - The iOS/Capacitor path (`npm run ios:*`), `fastlane/`, and `Gemfile` require macOS + Xcode
   and **cannot be built or run in the Linux cloud environment**. Ignore them for web
   /testing. After changing web code: `npm run ios:sync` before rebuilding in Xcode.
+  **Exception:** Store listing text under `fastlane/metadata/` can be edited in Cursor and
+  uploaded via `bundle exec fastlane ios upload_metadata` / `android upload_metadata` or the
+  GitHub Actions workflow **Store metadata** — no Xcode/Android build required. See
+  `fastlane/metadata/README.md`.
 - UI is multilingual (de/fr/it/en) via `src/i18n/` + Settings language switcher; default from browser, fallback German (CH). Hive management lives under the "Kästen" navigation;
   add a hive via the "+ Volk" button → "Neues Volk erfassen" form → "Speichern".
