@@ -69,22 +69,23 @@
       position: absolute;
       z-index: 2;
       pointer-events: none;
-      filter: drop-shadow(0 1.5px 2px rgba(44, 31, 14, 0.18));
+      object-fit: contain;
+      filter: drop-shadow(0 1.5px 2px rgba(44, 31, 14, 0.14));
     }
     .deco-bee.top {
-      top: 1.5mm;
-      right: 0.5mm;
-      width: 22mm;
-      height: 22mm;
-      transform: rotate(-12deg);
-      opacity: 0.35;
+      top: 0.5mm;
+      right: -1mm;
+      width: 20mm;
+      height: auto;
+      opacity: 0.5;
+      transform: rotate(-6deg);
     }
     .deco-bee.bottom {
-      bottom: 2mm;
-      left: 0;
-      width: 19mm;
-      height: 19mm;
-      transform: rotate(18deg) scaleX(-1);
+      bottom: 0.5mm;
+      left: -2mm;
+      width: 30mm;
+      height: auto;
+      transform: rotate(4deg);
     }
     .card {
       position: relative;
@@ -316,31 +317,8 @@
   <article class="page" aria-label="Hively Flyer">
     <div class="honeycomb" aria-hidden="true"></div>
 
-    <svg class="deco-bee top" viewBox="0 0 100 100" aria-hidden="true">
-      <ellipse cx="52" cy="58" rx="24" ry="30" fill="#ffc629" stroke="#1a1a1a" stroke-width="2"/>
-      <path d="M34 52h36M34 62h36M34 72h36" stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
-      <ellipse cx="38" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(-25 38 42)"/>
-      <ellipse cx="66" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(25 66 42)"/>
-      <circle cx="44" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="60" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="46" cy="35" r="2.5" fill="#1a1a1a"/>
-      <circle cx="62" cy="35" r="2.5" fill="#1a1a1a"/>
-      <path d="M48 44 Q52 48 56 44" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M50 18 Q46 8 42 4 M54 18 Q58 8 62 4" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-
-    <svg class="deco-bee bottom" viewBox="0 0 100 100" aria-hidden="true">
-      <ellipse cx="52" cy="58" rx="24" ry="30" fill="#ffc629" stroke="#1a1a1a" stroke-width="2"/>
-      <path d="M34 52h36M34 62h36M34 72h36" stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
-      <ellipse cx="38" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(-25 38 42)"/>
-      <ellipse cx="66" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(25 66 42)"/>
-      <circle cx="44" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="60" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="46" cy="35" r="2.5" fill="#1a1a1a"/>
-      <circle cx="62" cy="35" r="2.5" fill="#1a1a1a"/>
-      <path d="M48 44 Q52 48 56 44" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M50 18 Q46 8 42 4 M54 18 Q58 8 62 4" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
-    </svg>
+    <img class="deco-bee top" src="/marketing/flyer-bees.png" width="76" height="66" alt="" aria-hidden="true" />
+    <img class="deco-bee bottom" src="/marketing/flyer-bees.png" width="114" height="99" alt="" aria-hidden="true" />
 
     <div class="card">
       <header class="header">
