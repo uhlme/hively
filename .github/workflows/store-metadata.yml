@@ -16,6 +16,7 @@ on:
     branches: [main]
     paths:
       - 'fastlane/metadata/**'
+      - 'fastlane/Fastfile'
       - '.github/workflows/store-metadata.yml'
 
 jobs:
