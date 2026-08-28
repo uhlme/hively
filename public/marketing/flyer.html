@@ -77,6 +77,7 @@
       width: 22mm;
       height: 22mm;
       transform: rotate(-12deg);
+      opacity: 0.35;
     }
     .deco-bee.bottom {
       bottom: 2mm;
@@ -149,10 +150,54 @@
     }
     .ornament {
       flex: 0 0 auto;
-      margin: 2mm auto 1.5mm;
-      width: 70%;
+      margin: 1.5mm 0 1.2mm;
+      width: 100%;
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.45), transparent);
+    }
+    .main-split {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: 1fr 25mm;
+      gap: 2.5mm;
+      min-height: 0;
+      align-items: stretch;
+    }
+    .main-copy {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+    }
+    .app-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .phone-frame {
+      width: 25mm;
+      padding: 1.1mm;
+      border-radius: 3mm;
+      border: 1.5px solid rgba(44, 31, 14, 0.75);
+      background: linear-gradient(180deg, #2a2118 0%, #14110e 100%);
+      box-shadow:
+        0 2px 8px rgba(44, 31, 14, 0.18),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+    }
+    .phone-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 2mm;
+    }
+    .preview-label {
+      margin: 1mm 0 0;
+      font-size: 5.5pt;
+      color: var(--ink-soft);
+      text-align: center;
+      font-weight: 600;
     }
     .features {
       flex: 1 1 auto;
@@ -165,8 +210,8 @@
       min-height: 0;
     }
     .features li {
-      font-size: 7.1pt;
-      line-height: 1.22;
+      font-size: 6.6pt;
+      line-height: 1.2;
       color: var(--ink-soft);
       padding-left: 3.2mm;
       position: relative;
@@ -183,17 +228,17 @@
     .features strong {
       display: block;
       font-family: "Fredoka", "Segoe UI", sans-serif;
-      font-size: 7.6pt;
+      font-size: 7pt;
       font-weight: 600;
       color: var(--ink);
       margin-bottom: 0.1mm;
     }
     .pro-note {
       flex: 0 0 auto;
-      margin: 0 0 1.8mm;
-      padding-top: 1.2mm;
+      margin: 1.2mm 0 0;
+      padding-top: 1mm;
       border-top: 1px dashed rgba(217, 119, 6, 0.28);
-      font-size: 6.5pt;
+      font-size: 6pt;
       line-height: 1.2;
       color: var(--ink-soft);
       text-align: center;
@@ -311,36 +356,47 @@
 
       <div class="ornament" aria-hidden="true"></div>
 
-      <ul class="features">
-        <li>
-          <strong>Durchsichten</strong>
-          Checklisten, Wetter und Notizen – Historie jederzeit pro Volk
-        </li>
-        <li>
-          <strong>Behandlungen</strong>
-          Varroa dokumentieren mit Produkt, Zeitraum und Wartezeit bis zur Ernte
-        </li>
-        <li>
-          <strong>Bienenstände &amp; Völker</strong>
-          Mehrere Standorte, Königin, Rasse und Gesundheitsstatus im Überblick
-        </li>
-        <li>
-          <strong>Finanzen &amp; Honig</strong>
-          Einnahmen, Ausgaben, Honigernte und Bienenpatenschaften festhalten
-        </li>
-        <li>
-          <strong>Saisonkalender</strong>
-          Monatliche Aufgaben-Checklisten fürs Bienenjahr
-        </li>
-        <li>
-          <strong>Offline &amp; kostenlos</strong>
-          Ohne Login starten – optional Cloud-Sync und Team per Einladung
-        </li>
-      </ul>
+      <div class="main-split">
+        <div class="main-copy">
+          <ul class="features">
+            <li>
+              <strong>Durchsichten</strong>
+              Checklisten, Wetter und Notizen – Historie pro Volk
+            </li>
+            <li>
+              <strong>Behandlungen</strong>
+              Varroa mit Produkt, Zeitraum und Wartezeit
+            </li>
+            <li>
+              <strong>Bienenstände</strong>
+              Standorte, Königin und Gesundheitsstatus
+            </li>
+            <li>
+              <strong>Finanzen &amp; Honig</strong>
+              Einnahmen, Ausgaben und Honigernte
+            </li>
+            <li>
+              <strong>Saisonkalender</strong>
+              Aufgaben-Checklisten fürs Bienenjahr
+            </li>
+            <li>
+              <strong>Offline &amp; gratis</strong>
+              Ohne Login – optional Cloud-Sync
+            </li>
+          </ul>
 
-      <p class="pro-note">
-        Hively Pro optional: KI-Sprachassistent, Beleg-Scan und Wetterhinweise (Internet nötig).
-      </p>
+          <p class="pro-note">
+            Hively Pro optional: KI, Beleg-Scan und Wetter (Internet nötig).
+          </p>
+        </div>
+
+        <figure class="app-preview">
+          <div class="phone-frame">
+            <img src="/screenshot-2.png" width="94" height="198" alt="Hively App – Dashboard" />
+          </div>
+          <figcaption class="preview-label">App-Vorschau</figcaption>
+        </figure>
+      </div>
 
       <div class="bottom">
         <div class="cta-box">
