@@ -72,7 +72,7 @@ export function saveStoredUtm(utm, opts = {}) {
  */
 export function captureUtmFromSearch(search = '') {
   const fromUrl = parseUtmFromSearch(search);
-  if (fromUrl) return saveStoredUtm(fromUrl);
+  if (fromUrl) return saveStoredUtm(fromUrl, { merge: false });
   return loadStoredUtm();
 }
 

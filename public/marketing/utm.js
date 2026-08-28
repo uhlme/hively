@@ -52,7 +52,7 @@
 
   function captureUtmFromSearch(search) {
     const fromUrl = parseUtmFromSearch(search);
-    if (fromUrl) return saveStoredUtm(fromUrl);
+    if (fromUrl) return saveStoredUtm(fromUrl, false);
     return loadStoredUtm();
   }
 

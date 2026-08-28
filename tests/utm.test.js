@@ -41,9 +41,10 @@ describe('utm', () => {
   });
 
   it('captures UTM from URL search over stored values', () => {
-    saveStoredUtm({ utm_source: 'old' });
+    saveStoredUtm({ utm_source: 'old', utm_medium: 'print', utm_campaign: 'old-campaign' });
     const utm = captureUtmFromSearch('?utm_source=facebook&utm_campaign=ch-2026');
     expect(utm).toEqual({ utm_source: 'facebook', utm_campaign: 'ch-2026' });
+    expect(loadStoredUtm()).toEqual({ utm_source: 'facebook', utm_campaign: 'ch-2026' });
   });
 
   it('appends stored UTM to target URL', () => {
