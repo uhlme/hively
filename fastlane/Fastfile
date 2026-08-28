@@ -22,6 +22,59 @@ def asc_api_key
   end
 end
 
+IOS_APP_INFO_FILES = %w[
+  name.txt subtitle.txt description.txt keywords.txt
+  promotional_text.txt privacy_url.txt support_url.txt
+].freeze
+
+ANDROID_LISTING_FILES = %w[
+  title.txt short_description.txt full_description.txt
+].freeze
+
+# Copy only selected locale folders so deliver/supply do not try to create
+# store languages that are not enabled yet (e.g. while a version is in review).
+def stage_ios_metadata_for_upload
+  allowed = (ENV["STORE_IOS_LOCALES"] || "de-DE").split(",").map(&:strip)
+  src = File.expand_path("metadata", __dir__)
+  dst = File.expand_path("metadata_ios_upload", __dir__)
+  sh("rm -rf '#{dst}' && mkdir -p '#{dst}'")
+  %w[copyright.txt primary_category.txt secondary_category.txt].each do |file|
+    path = File.join(src, file)
+    sh("cp '#{path}' '#{dst}/'") if File.exist?(path)
+  end
+  allowed.each do |locale|
+    locale_src = File.join(src, locale)
+    next unless File.directory?(locale_src)
+
+    locale_dst = File.join(dst, locale)
+    sh("mkdir -p '#{locale_dst}'")
+    IOS_APP_INFO_FILES.each do |file|
+      from = File.join(locale_src, file)
+      sh("cp '#{from}' '#{locale_dst}/'") if File.exist?(from)
+    end
+  end
+  dst
+end
+
+def stage_android_metadata_for_upload
+  allowed = (ENV["STORE_ANDROID_LOCALES"] || "de-DE,fr-FR,it-IT,en-US").split(",").map(&:strip)
+  src = File.expand_path("metadata/android", __dir__)
+  dst = File.expand_path("metadata_android_upload", __dir__)
+  sh("rm -rf '#{dst}' && mkdir -p '#{dst}'")
+  allowed.each do |locale|
+    locale_src = File.join(src, locale)
+    next unless File.directory?(locale_src)
+
+    locale_dst = File.join(dst, locale)
+    sh("mkdir -p '#{locale_dst}'")
+    ANDROID_LISTING_FILES.each do |file|
+      from = File.join(locale_src, file)
+      sh("cp '#{from}' '#{locale_dst}/'") if File.exist?(from)
+    end
+  end
+  dst
+end
+
 platform :ios do
   desc "Capture App Store screenshots via the AppUITests target"
   lane :screenshots do
@@ -73,16 +126,22 @@ platform :ios do
 
   desc "Upload App Store listing text + screenshots from fastlane/metadata/ (no binary)"
   lane :upload_metadata do
-    deliver(
-      api_key: asc_api_key,
-      app_identifier: "ch.hively.app",
-      skip_binary_upload: true,
-      skip_app_version_update: true,
-      skip_metadata: ENV["SKIP_METADATA"] == "true",
-      skip_screenshots: ENV["SKIP_SCREENSHOTS"] == "true",
-      run_precheck_before_submit: false,
-      force: true
-    )
+    metadata_path = stage_ios_metadata_for_upload
+    begin
+      deliver(
+        api_key: asc_api_key,
+        app_identifier: "ch.hively.app",
+        metadata_path: metadata_path,
+        skip_binary_upload: true,
+        skip_app_version_update: true,
+        skip_metadata: ENV["SKIP_METADATA"] == "true",
+        skip_screenshots: ENV["SKIP_SCREENSHOTS"] != "false",
+        run_precheck_before_submit: false,
+        force: true
+      )
+    ensure
+      sh("rm -rf '#{metadata_path}'")
+    end
   end
 
   desc "Build the iOS app and upload it to TestFlight"
@@ -139,15 +198,21 @@ end
 platform :android do
   desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"
   lane :upload_metadata do
-    upload_to_play_store(
-      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
-      package_name: "ch.hively.app",
-      skip_upload_apk: true,
-      skip_upload_aab: true,
-      skip_upload_metadata: false,
-      skip_upload_images: ENV["SKIP_STORE_IMAGES"] == "true",
-      skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] == "true"
-    )
+    metadata_path = stage_android_metadata_for_upload
+    begin
+      upload_to_play_store(
+        metadata_path: metadata_path,
+        json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+        package_name: "ch.hively.app",
+        skip_upload_apk: true,
+        skip_upload_aab: true,
+        skip_upload_metadata: false,
+        skip_upload_images: ENV["SKIP_STORE_IMAGES"] != "false",
+        skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] != "false"
+      )
+    ensure
+      sh("rm -rf '#{metadata_path}'")
+    end
   end
 
   desc "Build the Android app and upload it to the Play Store internal testing track"

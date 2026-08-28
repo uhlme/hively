@@ -32,4 +32,5 @@ Oder GitHub Actions Workflow **Store metadata** (`workflow_dispatch`).
 - App-UI-Übersetzungen (`src/i18n/`) und Store-Texte getrennt halten — gleiche Sprachen, andere Limits und Tonalität erlaubt
 - **KI-Funktionen** immer als Hively Pro + Login + Internet kennzeichnen; Schweizerdeutsch = Eingabe, Ausgabe Hochdeutsch
 - **Kernfunktionen** (Völker, Durchsichten, Finanzen, Kalender, Offline) sind ohne Abo nutzbar
+- **iOS:** Neue Sprachen zuerst in App Store Connect anlegen (oder warten bis Review durch). CI nutzt `STORE_IOS_LOCALES` (Standard: `de-DE`)
 - Keine Secrets in Metadaten-Dateien

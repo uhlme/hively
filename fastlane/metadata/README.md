@@ -76,12 +76,20 @@ GOOGLE_PLAY_JSON_KEY_PATH=/path/to/play-service-account.json \
   bundle exec fastlane android upload_metadata
 ```
 
-Nur Text, keine Screenshots:
+Nur Text, keine Screenshots (Standard):
 
 ```bash
-SKIP_SCREENSHOTS=true bundle exec fastlane ios upload_metadata
-SKIP_STORE_IMAGES=true SKIP_STORE_SCREENSHOTS=true bundle exec fastlane android upload_metadata
+bundle exec fastlane ios upload_metadata
+GOOGLE_PLAY_JSON_KEY_PATH=... bundle exec fastlane android upload_metadata
 ```
+
+**iOS-Sprachen filtern** (z. B. solange eine Version in Review ist und nur Deutsch in ASC aktiv ist):
+
+```bash
+STORE_IOS_LOCALES=de-DE bundle exec fastlane ios upload_metadata
+```
+
+Screenshots optional einschließen: `SKIP_SCREENSHOTS=false` (iOS) bzw. `SKIP_STORE_IMAGES=false SKIP_STORE_SCREENSHOTS=false` (Android).
 
 ## Workflow in Cursor
 

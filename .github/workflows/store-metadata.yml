@@ -29,6 +29,9 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      # Only upload locales already enabled in App Store Connect while a version is in review.
+      # Set to de-DE,fr-FR,it,en-US once those languages exist in ASC.
+      STORE_IOS_LOCALES: de-DE
     steps:
       - uses: actions/checkout@v4
 
