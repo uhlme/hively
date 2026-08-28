@@ -1,5 +1,7 @@
 import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
+import fs from 'node:fs';
+import path from 'node:path';
 import { handleGeminiRequest } from './server/geminiProxy.js';
 import {
   handleCreateCheckout,
@@ -26,6 +28,24 @@ function sendJson(res, statusCode, body, headers) {
     res.setHeader(key, value);
   }
   res.end(body == null || body === '' ? '' : JSON.stringify(body));
+}
+
+function publicMarketingPagesDevPlugin() {
+  return {
+    name: 'public-marketing-pages-dev',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        const pathname = (req.url || '').split('?')[0];
+        if (pathname !== '/start' && pathname !== '/start/') return next();
+        const file = path.join(process.cwd(), 'public', 'start', 'index.html');
+        if (!fs.existsSync(file)) return next();
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(fs.readFileSync(file, 'utf8'));
+      });
+    }
+  };
 }
 
 function geminiApiPlugin() {
@@ -124,7 +144,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [geminiApiPlugin(), stripeApiPlugin()],
+    plugins: [publicMarketingPagesDevPlugin(), geminiApiPlugin(), stripeApiPlugin()],
     test: {
       environment: 'jsdom',
       setupFiles: ['./tests/setup.js'],
