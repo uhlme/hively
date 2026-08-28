@@ -1,0 +1,24 @@
+Hively is the app for beekeepers who want to manage their apiaries right at the hive stand – quickly, clearly, and even without an internet connection.
+
+APIARIES AT A GLANCE
+Record all your colonies with queen, breed, year, and health status. The dashboard shows colony count, honey harvest, finances, and current weather and pollen data (bee radar).
+
+LOG INSPECTIONS
+Capture observations for one or more colonies, including weather at inspection time. Full history per colony is always available.
+
+HANDS-FREE DICTATION
+The AI voice assistant captures your notes in Swiss German – ideal when your hands are busy at the apiary.
+
+RECEIPTS BY PHOTO
+Snap receipts and let AI extract expenses automatically – no more manual typing.
+
+FINANCES AND YIELDS
+Keep expenses, honey harvests, and colony sponsorships under control.
+
+SEASON CALENDAR
+A monthly task plan helps you stay on top of the beekeeping year.
+
+WORKS OFFLINE
+All data is stored locally – the app works without network at the apiary. Optionally sign in and sync across devices via the cloud.
+
+Hively is for hobby and part-time beekeepers who want paperless, digital beekeeping management.
