@@ -44,26 +44,26 @@
       cursor: pointer;
     }
     .page {
-      position: relative;
+      display: flex;
+      flex-direction: column;
       width: 105mm;
       height: 148mm;
       margin: 1rem auto;
-      padding: 7mm 7.5mm 0;
+      padding: 7mm 7.5mm 5.5mm;
       background:
         radial-gradient(ellipse 90% 50% at 50% 0%, #3a2a18 0%, transparent 55%),
         var(--bg);
       overflow: hidden;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
     }
-    .content {
-      max-height: calc(148mm - 34mm);
-      overflow: hidden;
+    .header {
+      flex: 0 0 auto;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 2.5mm;
-      margin-bottom: 2.5mm;
+      margin-bottom: 2mm;
     }
     .brand img { width: 8mm; height: 8mm; border-radius: 1.5mm; }
     .brand span {
@@ -78,46 +78,56 @@
       letter-spacing: -0.02em;
     }
     .lead {
-      margin: 0 0 2.5mm;
+      margin: 0;
       color: var(--muted);
       font-size: 8pt;
-      line-height: 1.25;
+      line-height: 1.28;
     }
     .features {
-      margin: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      margin: 2.5mm 0 0;
       padding: 0;
       list-style: none;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.8mm 3mm;
-      align-content: start;
+      min-height: 0;
     }
     .features li {
-      font-size: 7pt;
+      font-size: 7.4pt;
       color: var(--muted);
-      line-height: 1.22;
-      padding-left: 2.5mm;
+      line-height: 1.24;
+      padding-left: 3mm;
       position: relative;
     }
     .features li::before {
       content: "";
       position: absolute;
       left: 0;
-      top: 0.5em;
-      width: 1mm;
-      height: 1mm;
+      top: 0.45em;
+      width: 1.1mm;
+      height: 1.1mm;
       border-radius: 50%;
       background: var(--accent);
     }
     .features strong {
+      display: block;
       color: var(--text);
+      font-size: 8pt;
       font-weight: 650;
+      margin-bottom: 0.2mm;
+    }
+    .pro-note {
+      flex: 0 0 auto;
+      margin: 0 0 2mm;
+      padding-top: 1.5mm;
+      border-top: 1px solid rgba(246, 239, 228, 0.1);
+      font-size: 6.8pt;
+      color: var(--muted);
+      line-height: 1.22;
     }
     .bottom {
-      position: absolute;
-      left: 7.5mm;
-      right: 7.5mm;
-      bottom: 5.5mm;
+      flex: 0 0 auto;
     }
     .cta-box {
       display: flex;
@@ -180,24 +190,47 @@
   </div>
 
   <article class="page" aria-label="Hively Flyer">
-    <div class="content">
+    <header class="header">
       <div class="brand">
         <img src="/icon-192.png" width="30" height="30" alt="" aria-hidden="true" />
         <span>Hively</span>
       </div>
       <h1>Stockbuch am Bienenstand – auch offline</h1>
       <p class="lead">
-        Digitales Stockbuch für Imker in der Schweiz – am Stand, auch ohne Netz.
+        Digitales Stockbuch für Imker in der Schweiz – Kontrollen, Finanzen und Honig am Stand festhalten, auch ohne Netz.
       </p>
-      <ul class="features">
-        <li><strong>Durchsichten</strong> – Checklisten, Wetter &amp; Historie</li>
-        <li><strong>Behandlungen</strong> – Varroa, Produkt &amp; Wartezeit</li>
-        <li><strong>Bienenstände</strong> – Standorte, Königin &amp; Gesundheit</li>
-        <li><strong>Finanzen &amp; Honig</strong> – Einnahmen, Ausgaben &amp; Ernte</li>
-        <li><strong>Saisonkalender</strong> – Aufgaben-Checklisten pro Monat</li>
-        <li><strong>Offline &amp; gratis</strong> – ohne Login, optional Cloud-Sync</li>
-      </ul>
-    </div>
+    </header>
+
+    <ul class="features">
+      <li>
+        <strong>Durchsichten</strong>
+        Checklisten, Wetter und Notizen – Historie jederzeit pro Volk
+      </li>
+      <li>
+        <strong>Behandlungen</strong>
+        Varroa dokumentieren mit Produkt, Zeitraum und Wartezeit bis zur Ernte
+      </li>
+      <li>
+        <strong>Bienenstände &amp; Völker</strong>
+        Mehrere Standorte, Königin, Rasse und Gesundheitsstatus im Überblick
+      </li>
+      <li>
+        <strong>Finanzen &amp; Honig</strong>
+        Einnahmen, Ausgaben, Honigernte und Bienenpatenschaften festhalten
+      </li>
+      <li>
+        <strong>Saisonkalender</strong>
+        Monatliche Aufgaben-Checklisten fürs Bienenjahr
+      </li>
+      <li>
+        <strong>Offline &amp; kostenlos</strong>
+        Ohne Login starten – optional Cloud-Sync und Team per Einladung
+      </li>
+    </ul>
+
+    <p class="pro-note">
+      Hively Pro optional: KI-Sprachassistent, Beleg-Scan und Wetterhinweise (Internet nötig).
+    </p>
 
     <div class="bottom">
       <div class="cta-box">
