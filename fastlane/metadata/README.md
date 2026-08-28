@@ -61,7 +61,7 @@ Benötigte Secrets (bereits für TestFlight/Play vorhanden):
 
 - iOS: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT`
 - Android: `GOOGLE_PLAY_JSON_KEY_PATH` (oder `PLAY_STORE_JSON_KEY_BASE64` in CI)
-- Optional: `PLAY_METADATA_TRACK` (Standard: `internal`)
+- Optional: `PLAY_METADATA_TRACK` (Standard: `internal`; Listing-Upload nutzt die neueste Version auf diesem Track)
 
 ### Lokal
 

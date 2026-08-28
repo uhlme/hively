@@ -198,16 +198,27 @@ end
 platform :android do
   desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"
   lane :upload_metadata do
+    track = ENV["PLAY_METADATA_TRACK"] || "internal"
+    version_codes = google_play_track_version_codes(
+      track: track,
+      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+      package_name: "ch.hively.app"
+    )
+    version_code = version_codes.map(&:to_i).max
+    UI.user_error!("No Play Store release found on track '#{track}'") if version_code.nil? || version_code <= 0
+
     metadata_path = stage_android_metadata_for_upload
     begin
       upload_to_play_store(
         metadata_path: metadata_path,
-        track: ENV["PLAY_METADATA_TRACK"] || "internal",
+        track: track,
+        version_code: version_code,
         json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
         package_name: "ch.hively.app",
         skip_upload_apk: true,
         skip_upload_aab: true,
         skip_upload_metadata: false,
+        skip_upload_changelogs: true,
         skip_upload_images: ENV["SKIP_STORE_IMAGES"] != "false",
         skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] != "false"
       )
