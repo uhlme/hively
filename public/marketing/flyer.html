@@ -44,95 +44,97 @@
       cursor: pointer;
     }
     .page {
+      position: relative;
       width: 105mm;
       height: 148mm;
       margin: 1rem auto;
-      padding: 9mm 8mm;
+      padding: 7mm 7.5mm 0;
       background:
         radial-gradient(ellipse 90% 50% at 50% 0%, #3a2a18 0%, transparent 55%),
         var(--bg);
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      overflow: hidden;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+    .content {
+      max-height: calc(148mm - 34mm);
+      overflow: hidden;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 3mm;
-      margin-bottom: 4mm;
+      gap: 2.5mm;
+      margin-bottom: 2.5mm;
     }
-    .brand img { width: 10mm; height: 10mm; border-radius: 2mm; }
+    .brand img { width: 8mm; height: 8mm; border-radius: 1.5mm; }
     .brand span {
-      font-size: 14pt;
+      font-size: 12pt;
       font-weight: 700;
       letter-spacing: -0.02em;
     }
     h1 {
-      margin: 0 0 2.5mm;
-      font-size: 14pt;
-      line-height: 1.15;
+      margin: 0 0 1.5mm;
+      font-size: 12.5pt;
+      line-height: 1.12;
       letter-spacing: -0.02em;
     }
     .lead {
-      margin: 0 0 3mm;
+      margin: 0 0 2.5mm;
       color: var(--muted);
-      font-size: 9pt;
-      line-height: 1.3;
+      font-size: 8pt;
+      line-height: 1.25;
     }
     .features {
       margin: 0;
       padding: 0;
       list-style: none;
       display: grid;
-      gap: 2mm;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8mm 3mm;
+      align-content: start;
     }
     .features li {
-      font-size: 8pt;
+      font-size: 7pt;
       color: var(--muted);
-      line-height: 1.28;
-      padding-left: 3mm;
+      line-height: 1.22;
+      padding-left: 2.5mm;
       position: relative;
     }
     .features li::before {
       content: "";
       position: absolute;
       left: 0;
-      top: 0.55em;
-      width: 1.2mm;
-      height: 1.2mm;
+      top: 0.5em;
+      width: 1mm;
+      height: 1mm;
       border-radius: 50%;
       background: var(--accent);
     }
     .features strong {
-      display: block;
       color: var(--text);
-      font-size: 8.3pt;
+      font-weight: 650;
     }
-    .note {
-      margin: 3mm 0 0;
-      padding-top: 2.5mm;
-      border-top: 1px solid rgba(246, 239, 228, 0.1);
-      font-size: 7.5pt;
-      color: var(--muted);
-      line-height: 1.3;
+    .bottom {
+      position: absolute;
+      left: 7.5mm;
+      right: 7.5mm;
+      bottom: 5.5mm;
     }
     .cta-box {
       display: flex;
-      gap: 4mm;
+      gap: 3mm;
       align-items: center;
-      padding: 3.5mm;
+      padding: 2.5mm;
       border: 1px solid rgba(224, 138, 60, 0.45);
-      border-radius: 2.5mm;
+      border-radius: 2mm;
       background: rgba(224, 138, 60, 0.08);
     }
     .qr {
-      flex: 0 0 24mm;
-      width: 24mm;
-      height: 24mm;
+      flex: 0 0 20mm;
+      width: 20mm;
+      height: 20mm;
       background: #fff;
-      border-radius: 1.5mm;
-      padding: 1.5mm;
+      border-radius: 1.2mm;
+      padding: 1.2mm;
     }
     .qr img {
       display: block;
@@ -140,23 +142,23 @@
       height: 100%;
     }
     .cta-text {
-      font-size: 8.5pt;
-      line-height: 1.3;
+      font-size: 7.5pt;
+      line-height: 1.22;
     }
     .cta-text strong {
       display: block;
-      margin-bottom: 1mm;
-      font-size: 10pt;
+      margin-bottom: 0.5mm;
+      font-size: 8.5pt;
       color: var(--accent);
     }
     .url {
-      margin-top: 1.5mm;
-      font-size: 7.5pt;
-      word-break: break-all;
+      margin-top: 0.8mm;
+      font-size: 6.5pt;
       color: var(--muted);
     }
     footer {
-      font-size: 7pt;
+      margin-top: 1.5mm;
+      font-size: 6pt;
       color: var(--muted);
       text-align: center;
     }
@@ -178,54 +180,33 @@
   </div>
 
   <article class="page" aria-label="Hively Flyer">
-    <div>
+    <div class="content">
       <div class="brand">
-        <img src="/icon-192.png" width="38" height="38" alt="" aria-hidden="true" />
+        <img src="/icon-192.png" width="30" height="30" alt="" aria-hidden="true" />
         <span>Hively</span>
       </div>
       <h1>Stockbuch am Bienenstand – auch offline</h1>
       <p class="lead">
-        Dein digitales Stockbuch für die Schweiz – am Bienenstand, auch ohne Netz.
+        Digitales Stockbuch für Imker in der Schweiz – am Stand, auch ohne Netz.
       </p>
       <ul class="features">
-        <li>
-          <strong>Durchsichten</strong>
-          Checklisten, Wetter und Notizen pro Volk – Historie jederzeit abrufbar
-        </li>
-        <li>
-          <strong>Behandlungen</strong>
-          Varroa dokumentieren mit Produkt, Zeitraum und Wartezeit bis zur Ernte
-        </li>
-        <li>
-          <strong>Bienenstände &amp; Völker</strong>
-          Mehrere Standorte, Königin, Rasse und Gesundheitsstatus im Überblick
-        </li>
-        <li>
-          <strong>Finanzen &amp; Honig</strong>
-          Einnahmen, Ausgaben, Ernte und Bienenpatenschaften festhalten
-        </li>
-        <li>
-          <strong>Saisonkalender</strong>
-          Monatliche Aufgaben-Checklisten fürs Bienenjahr
-        </li>
-        <li>
-          <strong>Offline &amp; kostenlos</strong>
-          Ohne Login starten – optional Cloud-Sync und Team per Einladung
-        </li>
+        <li><strong>Durchsichten</strong> – Checklisten, Wetter &amp; Historie</li>
+        <li><strong>Behandlungen</strong> – Varroa, Produkt &amp; Wartezeit</li>
+        <li><strong>Bienenstände</strong> – Standorte, Königin &amp; Gesundheit</li>
+        <li><strong>Finanzen &amp; Honig</strong> – Einnahmen, Ausgaben &amp; Ernte</li>
+        <li><strong>Saisonkalender</strong> – Aufgaben-Checklisten pro Monat</li>
+        <li><strong>Offline &amp; gratis</strong> – ohne Login, optional Cloud-Sync</li>
       </ul>
-      <p class="note">
-        Optional: Hively Pro mit KI-Sprachassistent, Beleg-Scan und Wetterhinweisen (Internet nötig).
-      </p>
     </div>
 
-    <div>
+    <div class="bottom">
       <div class="cta-box">
         <div class="qr">
-          <img id="qr" width="96" height="96" alt="QR-Code zu Hively" />
+          <img id="qr" width="76" height="76" alt="QR-Code zu Hively" />
         </div>
         <div class="cta-text">
           <strong>Jetzt kostenlos starten</strong>
-          QR scannen oder Link öffnen – App zum Home-Bildschirm hinzufügen.
+          QR scannen – App zum Home-Bildschirm hinzufügen.
           <div class="url" id="landing-url">hivelyy.netlify.app/start/</div>
         </div>
       </div>
@@ -236,7 +217,7 @@
   <script>
     (function () {
       var landingUrl = 'https://hivelyy.netlify.app/start/?utm_source=flyer&utm_medium=print&utm_campaign=ch-2026';
-      document.getElementById('landing-url').textContent = landingUrl.replace('https://', '');
+      document.getElementById('landing-url').textContent = 'hivelyy.netlify.app/start/';
       document.getElementById('qr').src =
         'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=' +
         encodeURIComponent(landingUrl);
