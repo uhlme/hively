@@ -117,12 +117,41 @@ test.describe('Auth form (local mode)', () => {
     await page.evaluate(() => {
       document.getElementById('modal-auth')?.classList.add('active');
     });
+    await expect(page.locator('#modal-auth')).toHaveClass(/active/);
     await page.locator('#auth-email').fill('notanemail');
     await page.locator('#auth-password').fill('secret123');
     await page.locator('#form-auth button[type="submit"]').click();
     await expect(page.locator('#modal-auth')).toHaveClass(/active/);
     const valid = await page.locator('#auth-email').evaluate((el) => el.checkValidity());
     expect(valid).toBe(false);
+  });
+});
+
+test.describe('Treatment form', () => {
+  test('product list includes Formivar 70% and common CH products', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.nav-item[data-view="hives"]').click();
+    await page.locator('#btn-quick-add').click();
+    await expect(page.locator('#modal-hive')).toHaveClass(/active/);
+    const hiveName = `E2E Behandlungsvolk ${Date.now()}`;
+    await page.locator('#hive-form-name').fill(hiveName);
+    await page.locator('#form-hive button[type="submit"]').click();
+    await expect(page.locator('#modal-hive')).not.toHaveClass(/active/);
+
+    await page.locator('.nav-item[data-view="dashboard"]').click();
+    await page.locator('#dash-btn-treatment').click();
+    await expect(page.locator('#modal-treatment')).toHaveClass(/active/);
+
+    const productSelect = page.locator('#treatment-form-product');
+    await expect(productSelect.locator('option[value="formivar_70"]')).toHaveText('Formivar 70%');
+    await expect(productSelect.locator('option[value="formivar_60"]')).toHaveText('Formivar 60%');
+    await expect(productSelect.locator('option[value="oxuvar"]')).toHaveText('Oxuvar');
+    await expect(productSelect.locator('option[value="apiguard"]')).toHaveText('Apiguard');
+    await expect(productSelect.locator('option[value="apivar"]')).toHaveText('Apivar');
+    await expect(productSelect.locator('optgroup[label="Ameisensäure"]')).toHaveCount(1);
+
+    await productSelect.selectOption('formivar_70');
+    await expect(productSelect).toHaveValue('formivar_70');
   });
 });
 

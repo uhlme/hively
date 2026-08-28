@@ -34,8 +34,8 @@ import {
   hasLocalDomainData
 } from './storage.js';
 import {
-  TREATMENT_PRODUCTS,
   getTreatmentProduct,
+  getGroupedTreatmentProducts,
   computeHarvestBlockedUntil,
   VARROA_LEVEL_LABELS,
   summarizeChecklist,
@@ -2215,9 +2215,17 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
   }
 
   const productSelect = document.getElementById('treatment-form-product');
-  productSelect.innerHTML = TREATMENT_PRODUCTS.map(
-    (p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(getTreatmentProductLabel(p.id))}</option>`
-  ).join('');
+  productSelect.innerHTML = getGroupedTreatmentProducts()
+    .map((group) => {
+      const options = group.products
+        .map(
+          (p) =>
+            `<option value="${escapeHtml(p.id)}">${escapeHtml(getTreatmentProductLabel(p.id))}</option>`
+        )
+        .join('');
+      return `<optgroup label="${escapeHtml(group.label)}">${options}</optgroup>`;
+    })
+    .join('');
 
   const hivesContainer = document.getElementById('treatment-form-hives-container');
   const preselectIds = treatment?.hiveIds

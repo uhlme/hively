@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   TREATMENT_PRODUCTS,
   getTreatmentProduct,
+  getGroupedTreatmentProducts,
+  getTreatmentProductLabel,
   computeHarvestBlockedUntil,
   summarizeChecklist,
   formatChecklistChips,
@@ -14,10 +16,33 @@ describe('healthCatalog', () => {
     setLocale('de', { persist: false });
   });
 
-  it('exposes CH treatment products including formic acid', () => {
-    expect(TREATMENT_PRODUCTS.length).toBeGreaterThanOrEqual(4);
+  it('exposes CH treatment products including Formivar 70%', () => {
+    expect(TREATMENT_PRODUCTS.length).toBeGreaterThanOrEqual(15);
     expect(getTreatmentProduct('formic_60')?.label).toMatch(/Ameisensäure/);
+    expect(getTreatmentProduct('formivar_70')?.label).toBe('Formivar 70%');
+    expect(getTreatmentProduct('apiguard')?.label).toBe('Apiguard');
+    expect(getTreatmentProduct('apivar')?.label).toBe('Apivar');
     expect(getTreatmentProduct('missing')).toBeNull();
+
+    const groups = getGroupedTreatmentProducts();
+    expect(groups.map((g) => g.id)).toEqual([
+      'formic',
+      'oxalic',
+      'thymol',
+      'combined',
+      'synthetic',
+      'other'
+    ]);
+    expect(groups.find((g) => g.id === 'formic')?.products.map((p) => p.id)).toContain(
+      'formivar_70'
+    );
+    expect(getTreatmentProductLabel('formivar_70')).toBe('Formivar 70%');
+
+    const ids = TREATMENT_PRODUCTS.map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) {
+      expect(getTreatmentProductLabel(id)).not.toBe(`treatments.products.${id}`);
+    }
   });
 
   it('computes harvest blocked-until from end date + PHI', () => {
