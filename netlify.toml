@@ -60,6 +60,11 @@
   to = "/delete-account/"
   status = 301
 
+[[redirects]]
+  from = "/start"
+  to = "/start/"
+  status = 301
+
 # Localized legal pages — force trailing slash before SPA fallback
 [[redirects]]
   from = "/fr/privacy"
