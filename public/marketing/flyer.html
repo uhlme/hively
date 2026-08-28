@@ -69,21 +69,24 @@
       position: absolute;
       z-index: 2;
       pointer-events: none;
-      filter: drop-shadow(0 1.5px 2px rgba(44, 31, 14, 0.18));
+      object-fit: contain;
+      filter: drop-shadow(0 1.5px 2px rgba(44, 31, 14, 0.14));
     }
     .deco-bee.top {
-      top: 1.5mm;
-      right: 0.5mm;
+      top: 1mm;
+      right: 1mm;
       width: 22mm;
-      height: 22mm;
-      transform: rotate(-12deg);
+      height: auto;
+      opacity: 1;
+      transform: scaleX(-1) rotate(-8deg);
     }
     .deco-bee.bottom {
-      bottom: 2mm;
-      left: 0;
-      width: 19mm;
-      height: 19mm;
-      transform: rotate(18deg) scaleX(-1);
+      bottom: 1mm;
+      left: 0.5mm;
+      right: auto;
+      width: 22mm;
+      height: auto;
+      transform: rotate(-8deg);
     }
     .card {
       position: relative;
@@ -149,10 +152,54 @@
     }
     .ornament {
       flex: 0 0 auto;
-      margin: 2mm auto 1.5mm;
-      width: 70%;
+      margin: 1.5mm 0 1.2mm;
+      width: 100%;
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.45), transparent);
+    }
+    .main-split {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: 1fr 25mm;
+      gap: 2.5mm;
+      min-height: 0;
+      align-items: stretch;
+    }
+    .main-copy {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+    }
+    .app-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .phone-frame {
+      width: 25mm;
+      padding: 1.1mm;
+      border-radius: 3mm;
+      border: 1.5px solid rgba(44, 31, 14, 0.75);
+      background: linear-gradient(180deg, #2a2118 0%, #14110e 100%);
+      box-shadow:
+        0 2px 8px rgba(44, 31, 14, 0.18),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+    }
+    .phone-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 2mm;
+    }
+    .preview-label {
+      margin: 1mm 0 0;
+      font-size: 5.5pt;
+      color: var(--ink-soft);
+      text-align: center;
+      font-weight: 600;
     }
     .features {
       flex: 1 1 auto;
@@ -165,8 +212,8 @@
       min-height: 0;
     }
     .features li {
-      font-size: 7.1pt;
-      line-height: 1.22;
+      font-size: 6.6pt;
+      line-height: 1.2;
       color: var(--ink-soft);
       padding-left: 3.2mm;
       position: relative;
@@ -183,20 +230,22 @@
     .features strong {
       display: block;
       font-family: "Fredoka", "Segoe UI", sans-serif;
-      font-size: 7.6pt;
+      font-size: 7pt;
       font-weight: 600;
       color: var(--ink);
       margin-bottom: 0.1mm;
     }
     .pro-note {
       flex: 0 0 auto;
-      margin: 0 0 1.8mm;
-      padding-top: 1.2mm;
+      margin: 1mm 0 1.5mm;
+      padding-top: 1mm;
       border-top: 1px dashed rgba(217, 119, 6, 0.28);
-      font-size: 6.5pt;
-      line-height: 1.2;
+      font-size: 6.1pt;
+      line-height: 1.15;
       color: var(--ink-soft);
       text-align: center;
+      white-space: nowrap;
+      letter-spacing: -0.01em;
     }
     .bottom {
       flex: 0 0 auto;
@@ -271,31 +320,8 @@
   <article class="page" aria-label="Hively Flyer">
     <div class="honeycomb" aria-hidden="true"></div>
 
-    <svg class="deco-bee top" viewBox="0 0 100 100" aria-hidden="true">
-      <ellipse cx="52" cy="58" rx="24" ry="30" fill="#ffc629" stroke="#1a1a1a" stroke-width="2"/>
-      <path d="M34 52h36M34 62h36M34 72h36" stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
-      <ellipse cx="38" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(-25 38 42)"/>
-      <ellipse cx="66" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(25 66 42)"/>
-      <circle cx="44" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="60" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="46" cy="35" r="2.5" fill="#1a1a1a"/>
-      <circle cx="62" cy="35" r="2.5" fill="#1a1a1a"/>
-      <path d="M48 44 Q52 48 56 44" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M50 18 Q46 8 42 4 M54 18 Q58 8 62 4" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-
-    <svg class="deco-bee bottom" viewBox="0 0 100 100" aria-hidden="true">
-      <ellipse cx="52" cy="58" rx="24" ry="30" fill="#ffc629" stroke="#1a1a1a" stroke-width="2"/>
-      <path d="M34 52h36M34 62h36M34 72h36" stroke="#1a1a1a" stroke-width="4" stroke-linecap="round"/>
-      <ellipse cx="38" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(-25 38 42)"/>
-      <ellipse cx="66" cy="42" rx="16" ry="11" fill="#b8e8ff" opacity="0.85" transform="rotate(25 66 42)"/>
-      <circle cx="44" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="60" cy="34" r="7" fill="#fff" stroke="#1a1a1a" stroke-width="1.5"/>
-      <circle cx="46" cy="35" r="2.5" fill="#1a1a1a"/>
-      <circle cx="62" cy="35" r="2.5" fill="#1a1a1a"/>
-      <path d="M48 44 Q52 48 56 44" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M50 18 Q46 8 42 4 M54 18 Q58 8 62 4" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round"/>
-    </svg>
+    <img class="deco-bee top" src="/marketing/flyer-bee-single.png" width="83" height="83" alt="" aria-hidden="true" />
+    <img class="deco-bee bottom" src="/marketing/flyer-bee-single.png" width="83" height="83" alt="" aria-hidden="true" />
 
     <div class="card">
       <header class="header">
@@ -311,35 +337,46 @@
 
       <div class="ornament" aria-hidden="true"></div>
 
-      <ul class="features">
-        <li>
-          <strong>Durchsichten</strong>
-          Checklisten, Wetter und Notizen – Historie jederzeit pro Volk
-        </li>
-        <li>
-          <strong>Behandlungen</strong>
-          Varroa dokumentieren mit Produkt, Zeitraum und Wartezeit bis zur Ernte
-        </li>
-        <li>
-          <strong>Bienenstände &amp; Völker</strong>
-          Mehrere Standorte, Königin, Rasse und Gesundheitsstatus im Überblick
-        </li>
-        <li>
-          <strong>Finanzen &amp; Honig</strong>
-          Einnahmen, Ausgaben, Honigernte und Bienenpatenschaften festhalten
-        </li>
-        <li>
-          <strong>Saisonkalender</strong>
-          Monatliche Aufgaben-Checklisten fürs Bienenjahr
-        </li>
-        <li>
-          <strong>Offline &amp; kostenlos</strong>
-          Ohne Login starten – optional Cloud-Sync und Team per Einladung
-        </li>
-      </ul>
+      <div class="main-split">
+        <div class="main-copy">
+          <ul class="features">
+            <li>
+              <strong>Durchsichten</strong>
+              Checklisten, Wetter und Notizen – Historie pro Volk
+            </li>
+            <li>
+              <strong>Behandlungen</strong>
+              Varroa mit Produkt, Zeitraum und Wartezeit
+            </li>
+            <li>
+              <strong>Bienenstände</strong>
+              Standorte, Königin und Gesundheitsstatus
+            </li>
+            <li>
+              <strong>Finanzen &amp; Honig</strong>
+              Einnahmen, Ausgaben und Honigernte
+            </li>
+            <li>
+              <strong>Saisonkalender</strong>
+              Aufgaben-Checklisten fürs Bienenjahr
+            </li>
+            <li>
+              <strong>Offline &amp; gratis</strong>
+              Ohne Login – optional Cloud-Sync
+            </li>
+          </ul>
+        </div>
+
+        <figure class="app-preview">
+          <div class="phone-frame">
+            <img src="/marketing/flyer-app-screenshot.png" width="94" height="204" alt="Hively App – Dashboard" />
+          </div>
+          <figcaption class="preview-label">App-Vorschau</figcaption>
+        </figure>
+      </div>
 
       <p class="pro-note">
-        Hively Pro optional: KI-Sprachassistent, Beleg-Scan und Wetterhinweise (Internet nötig).
+        Hively Pro optional: KI, Beleg-Scan &amp; Wetter (Internet nötig).
       </p>
 
       <div class="bottom">
