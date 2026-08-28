@@ -1,0 +1,33 @@
+---
+description: Store-Listing-Texte für App Store und Google Play — Pfade, Limits und Fastlane-Upload.
+globs:
+  - fastlane/metadata/**
+alwaysApply: false
+---
+
+# Store-Metadaten (App Store + Google Play)
+
+Store-Beschreibungen werden **nicht** in der App (`src/i18n/`) gepflegt, sondern als Plain-Text unter `fastlane/metadata/`.
+
+## Bearbeiten
+
+- **Apple:** `fastlane/metadata/<locale>/` — Locales: `de-DE`, `fr-FR`, `it`, `en-US`
+- **Google Play:** `fastlane/metadata/android/<locale>/` — Locales: `de-DE`, `fr-FR`, `it-IT`, `en-US`
+
+Vollständige Dateiliste und Zeichenlimits: `fastlane/metadata/README.md`.
+
+## Upload nach Änderungen
+
+```bash
+bundle exec fastlane ios upload_metadata      # App Store (deliver)
+bundle exec fastlane android upload_metadata  # Play Store (supply)
+```
+
+Oder GitHub Actions Workflow **Store metadata** (`workflow_dispatch`).
+
+## Regeln
+
+- Zeichenlimits einhalten (siehe README)
+- `release_notes.txt` (iOS) und `changelogs/default.txt` (Android) bei jedem Release anpassen
+- App-UI-Übersetzungen (`src/i18n/`) und Store-Texte getrennt halten — gleiche Sprachen, andere Limits und Tonalität erlaubt
+- Keine Secrets in Metadaten-Dateien

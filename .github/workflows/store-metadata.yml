@@ -1,0 +1,58 @@
+name: Store metadata
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which store listing to upload'
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - ios
+          - android
+
+jobs:
+  ios-metadata:
+    if: inputs.platform == 'ios' || inputs.platform == 'both'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Upload App Store listing (deliver)
+        run: bundle exec fastlane ios upload_metadata
+
+  android-metadata:
+    if: inputs.platform == 'android' || inputs.platform == 'both'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Write Play service-account key to disk
+        run: |
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Upload Play Store listing (supply)
+        run: bundle exec fastlane android upload_metadata
+
+      - name: Clean up credential files
+        if: always()
+        run: rm -f /tmp/play-service-account.json
