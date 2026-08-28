@@ -1,24 +1,33 @@
 Hively ist die App für Imkerinnen und Imker, die ihre Bienenstände direkt am Stand verwalten möchten – schnell, übersichtlich und auch ohne Internetverbindung.
 
-BIENENSTÄNDE IM BLICK
-Erfasse alle deine Völker mit Königin, Rasse, Jahr und Gesundheitsstatus. Das Dashboard zeigt dir auf einen Blick die Anzahl deiner Völker, den Honigertrag, deinen Kassenstand und aktuelle Wetter- und Pollendaten (Bienen-Radar).
+BIENENSTÄNDE & VÖLKER
+Organisiere mehrere Bienenstände und erfasse alle Völker mit Königin, Rasse, Jahr und Gesundheitsstatus. Das Dashboard zeigt Volkszahl, Honigertrag, Kassenstand sowie Wetter- und Pollendaten (Bienen-Radar).
 
 DURCHSICHTEN PROTOKOLLIEREN
-Halte Beobachtungen zu einzelnen oder mehreren Völkern fest, inklusive Wetter zum Zeitpunkt der Durchsicht. Die komplette Historie pro Volk ist jederzeit einsehbar.
+Halte Beobachtungen zu einzelnen oder mehreren Völkern fest – inklusive Wetter zum Zeitpunkt der Durchsicht. Die Historie pro Volk ist jederzeit einsehbar.
 
-FREIHÄNDIG DIKTIEREN
-Der KI-Sprachassistent nimmt deine Beobachtungen auf Schweizerdeutsch entgegen – ideal, wenn die Hände beim Imkern nicht frei sind.
+BEHANDLUNGEN
+Dokumentiere Varroa-Behandlungen mit Produkt, Zeitraum und Wartezeit bis zur Ernte.
 
-BELEGE PER FOTO ERFASSEN
-Fotografiere Quittungen und lass die Ausgaben automatisch per KI auslesen – kein manuelles Abtippen mehr nötig.
+SAISONKALENDER
+Ein monatlicher Aufgabenplan mit Text-Checklisten hilft dir, die wichtigsten Arbeiten im Bienenjahr nicht zu verpassen.
 
 FINANZEN UND ERTRÄGE
 Behalte Ausgaben, Honigerträge und Bienenpatenschaften im Überblick.
 
-SAISONKALENDER
-Ein monatlicher Aufgabenplan hilft dir, die wichtigsten Arbeiten im Bienenjahr nicht zu verpassen.
+TEAM & PATENSCHAFT
+Optional mit Login: lade Mitimker ein oder gib Paten/Lesenden Lesezugriff auf ihre Völker. Beitreten per Einladungscode ist kostenlos.
 
 OFFLINE-FÄHIG
-Alle Daten werden lokal gespeichert – die App funktioniert auch ohne Netz am Bienenstand. Optional kannst du dich anmelden und deine Daten geräteübergreifend über die Cloud synchronisieren.
+Alle Kerndaten werden lokal gespeichert – die App funktioniert auch ohne Netz am Bienenstand. Optional mit Login: Daten geräteübergreifend in der Cloud sichern.
+
+HIVELY PRO (OPTIONAL)
+Mit Hively Pro (14 Tage testen, CHF 1.99/Monat oder CHF 10/Jahr) und Login:
+• KI-Sprachassistent – versteht Schweizerdeutsch, schreibt Notizen in Hochdeutsch
+• Belege per Foto automatisch auslesen
+• KI-Wetterhinweise und Empfehlungen pro Volk
+• Cloud-Sync und Team-Einladungen erstellen
+
+KI-Funktionen benötigen Internet und ein Hively-Pro-Abo.
 
 Hively richtet sich an Hobby- und Nebenerwerbsimker, die ihre Bienenhaltung papierlos und digital organisieren möchten.

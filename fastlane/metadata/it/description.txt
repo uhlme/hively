@@ -1,24 +1,33 @@
 Hively è l’app per gli apicoltori che vogliono gestire i propri apiari direttamente sul posto – in modo rapido, chiaro e anche senza connessione Internet.
 
-APIARI A COLPO D’OCCHIO
-Registra tutte le tue colonie con regina, razza, anno e stato di salute. La dashboard mostra il numero di colonie, il raccolto di miele, il saldo finanziario e dati meteo e pollinazione (radar api).
+APIARI & COLONIE
+Organizza più apiari e registra le colonie con regina, razza, anno e stato di salute. La dashboard mostra numero di colonie, raccolto di miele, saldo e dati meteo e pollinazione (radar api).
 
 ISPEZIONI DOCUMENTATE
-Annota le osservazioni per una o più colonie, con il meteo al momento dell’ispezione. La cronologia completa per colonia è sempre consultabile.
+Annota le osservazioni per una o più colonie, con il meteo al momento dell’ispezione. La cronologia per colonia è sempre consultabile.
 
-DETTATURA A MANI LIBERE
-L’assistente vocale IA registra le tue osservazioni in svizzero tedesco – ideale quando le mani sono occupate all’apiario.
+TRATTAMENTI
+Documenta i trattamenti varroa con prodotto, periodo e attesa prima del raccolto.
 
-RICEVUTE CON FOTO
-Fotografa le ricevute e lascia che l’IA estragga automaticamente le spese – niente più digitazione manuale.
+CALENDARIO STAGIONALE
+Un piano mensile con checklist di testo aiuta a non perdere i lavori importanti dell’anno apistico.
 
 FINANZE E RICAVI
 Tieni sotto controllo spese, raccolti di miele e affidi di colonie.
 
-CALENDARIO STAGIONALE
-Un piano mensile ti aiuta a non perdere i lavori importanti dell’anno apistico.
+TEAM & AFFIDO
+Con accesso opzionale: invita collaboratori o concedi accesso in sola lettura agli affini. Unirsi con codice invito è gratuito.
 
 OFFLINE
-Tutti i dati sono salvati in locale – l’app funziona anche senza rete all’apiario. Puoi accedere e sincronizzare i dati nel cloud su più dispositivi.
+Tutti i dati principali sono salvati in locale – l’app funziona anche senza rete all’apiario. Con accesso: backup opzionale nel cloud.
+
+HIVELY PRO (OPZIONALE)
+Con Hively Pro (14 giorni di prova, CHF 1.99/mese o CHF 10/anno) e accesso:
+• Assistente vocale IA – capisce lo svizzero tedesco, scrive in tedesco standard
+• Ricevute da foto lette automaticamente
+• Suggerimenti meteo IA e raccomandazioni per colonia
+• Sincronizzazione cloud e creazione inviti team
+
+Le funzioni IA richiedono Internet e un abbonamento Hively Pro.
 
 Hively è pensata per apicoltori hobbisti e part-time che vogliono organizzare l’apicoltura senza carta e in digitale.

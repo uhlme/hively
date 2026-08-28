@@ -1,1 +1,1 @@
-beekeeping,bees,apiary,colony,honey,inspection,beekeeper,breeding,hive card,apiculture
+beekeeping,bees,apiary,colony,honey,treatment,beekeeper,varroa,hive card,team
