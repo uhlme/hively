@@ -12,10 +12,17 @@ on:
           - both
           - ios
           - android
+  push:
+    branches: [main]
+    paths:
+      - 'fastlane/metadata/**'
+      - '.github/workflows/store-metadata.yml'
 
 jobs:
   ios-metadata:
-    if: inputs.platform == 'ios' || inputs.platform == 'both'
+    if: |
+      github.event_name == 'push' ||
+      inputs.platform == 'ios' || inputs.platform == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -34,7 +41,9 @@ jobs:
         run: bundle exec fastlane ios upload_metadata
 
   android-metadata:
-    if: inputs.platform == 'android' || inputs.platform == 'both'
+    if: |
+      github.event_name == 'push' ||
+      inputs.platform == 'android' || inputs.platform == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
