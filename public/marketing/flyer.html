@@ -81,11 +81,12 @@
       transform: scaleX(-1) rotate(-8deg);
     }
     .deco-bee.bottom {
-      bottom: 0.5mm;
-      left: -2mm;
-      width: 30mm;
+      bottom: 1mm;
+      right: 0.5mm;
+      left: auto;
+      width: 22mm;
       height: auto;
-      transform: rotate(4deg);
+      transform: rotate(8deg);
     }
     .card {
       position: relative;
@@ -236,13 +237,15 @@
     }
     .pro-note {
       flex: 0 0 auto;
-      margin: 1.2mm 0 0;
+      margin: 1mm 0 1.5mm;
       padding-top: 1mm;
       border-top: 1px dashed rgba(217, 119, 6, 0.28);
-      font-size: 6pt;
-      line-height: 1.2;
+      font-size: 6.1pt;
+      line-height: 1.15;
       color: var(--ink-soft);
       text-align: center;
+      white-space: nowrap;
+      letter-spacing: -0.01em;
     }
     .bottom {
       flex: 0 0 auto;
@@ -318,7 +321,7 @@
     <div class="honeycomb" aria-hidden="true"></div>
 
     <img class="deco-bee top" src="/marketing/flyer-bee-single.png" width="83" height="83" alt="" aria-hidden="true" />
-    <img class="deco-bee bottom" src="/marketing/flyer-bees.png" width="114" height="99" alt="" aria-hidden="true" />
+    <img class="deco-bee bottom" src="/marketing/flyer-bee-single.png" width="83" height="83" alt="" aria-hidden="true" />
 
     <div class="card">
       <header class="header">
@@ -362,10 +365,6 @@
               Ohne Login – optional Cloud-Sync
             </li>
           </ul>
-
-          <p class="pro-note">
-            Hively Pro optional: KI, Beleg-Scan und Wetter (Internet nötig).
-          </p>
         </div>
 
         <figure class="app-preview">
@@ -375,6 +374,10 @@
           <figcaption class="preview-label">App-Vorschau</figcaption>
         </figure>
       </div>
+
+      <p class="pro-note">
+        Hively Pro optional: KI, Beleg-Scan &amp; Wetter (Internet nötig).
+      </p>
 
       <div class="bottom">
         <div class="cta-box">
