@@ -95,9 +95,8 @@ import {
   shouldUseBackgroundNetwork,
   shouldAutoProcessMedia,
   getConnectionType,
-  isConstrainedConnection,
   isConstrainedForLightRequests,
-  isSlowConnection,
+  isNetworkDegraded,
   clearNetworkDegraded
 } from './network.js';
 import {
@@ -197,11 +196,15 @@ function writeRadarCache(data) {
   }
   // Keep inspection-weather cache in sync so Durchsicht works offline too
   if (data?.temperature != null) {
+    const prev = readWeatherCache() || {};
     writeWeatherCache({
       temperature: data.temperature,
       conditionText: data.conditionText,
       conditionIcon: data.conditionIcon,
       code: data.code,
+      windSpeed: data.windSpeed ?? prev.windSpeed,
+      dominantPollen: data.dominantPollen ?? prev.dominantPollen ?? null,
+      allPollen: data.allPollen ?? prev.allPollen,
       latitude: data.latitude,
       longitude: data.longitude,
       timestamp: data.timestamp || Date.now()
@@ -222,11 +225,14 @@ async function buildRadarPayload(forceLocation) {
   } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
     insight = getProUpsellInsight();
   }
+  const observedAt = weatherData.fromCache
+    ? Date.now() - (weatherData.cacheAgeMs || 0)
+    : Date.now();
   return {
     ...weatherData,
     insight,
     locale: getLocale(),
-    timestamp: Date.now()
+    timestamp: observedAt
   };
 }
 
@@ -2143,18 +2149,18 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
       btnWeatherRetry.style.display = w.fromCache ? 'block' : 'none';
     };
 
-    const loadWeather = async (forceRefresh = false) => {
+    const loadWeather = async (forceNetwork = false) => {
       const cached = readWeatherCache();
       const hasCache = cached?.temperature != null;
 
-      if (hasCache && !forceRefresh) {
+      if (hasCache && !forceNetwork) {
         applyInspectionWeather({ ...cached, fromCache: true });
       } else {
         weatherDisplay.innerHTML = escapeHtml(t('inspections.weatherLoading'));
         btnWeatherRetry.style.display = 'none';
       }
 
-      if (!shouldUseBackgroundNetwork() && !forceRefresh) {
+      if (!forceNetwork && !shouldUseBackgroundNetwork()) {
         if (!hasCache) {
           weatherDisplay.innerHTML = `<span class="text-danger">${escapeHtml(t('inspections.weatherOffline'))}</span>`;
           btnWeatherRetry.style.display = 'block';
@@ -2163,7 +2169,8 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
       }
 
       try {
-        const w = await fetchCurrentWeather(forceRefresh);
+        // Retry refreshes weather without forcing a new GPS fix
+        const w = await fetchCurrentWeather(false, { bypassGate: forceNetwork });
         applyInspectionWeather(w);
       } catch (err) {
         if (!hasCache) {
@@ -2797,7 +2804,9 @@ function formatSyncStatusText() {
 
   if (!navigator.onLine) {
     parts.push(t('offline.changesLocal'));
-  } else if (prefs.fieldMode && isConstrainedForLightRequests()) {
+  } else if (
+    prefs.fieldMode && (isConstrainedForLightRequests() || isNetworkDegraded())
+  ) {
     parts.push(`${t('offline.fieldModeOn')} (${conn || t('header.offline')}).`);
   } else {
     parts.push(conn ? `${t('header.online')} (${conn}).` : t('header.online') + '.');
@@ -4501,7 +4510,7 @@ function updateConnectionStatusUI() {
     return;
   }
 
-  if (prefs.fieldMode && isConstrainedForLightRequests()) {
+  if (prefs.fieldMode && (isConstrainedForLightRequests() || isNetworkDegraded())) {
     statusEl.classList.add('is-field');
     statusEl.title = pendingCount > 0
       ? `Funkloch-Modus – ${pendingCount} Änderungen lokal wartend`

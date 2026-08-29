@@ -7,7 +7,6 @@ import {
   fetchWithTimeout,
   getLightFetchTimeoutMs,
   isConstrainedForLightRequests,
-  isSlowConnection,
   shouldUseBackgroundNetwork
 } from './network.js';
 import { safeJsonParse } from './utils.js';
@@ -178,12 +177,12 @@ export function writeWeatherCache(data) {
 }
 
 function getGeoOptions(forceRefresh = false) {
-  const slow = isConstrainedForLightRequests() || isSlowConnection();
+  const slow = isConstrainedForLightRequests();
   return {
     ...GEO_OPTIONS_BASE,
     enableHighAccuracy: forceRefresh && !slow,
     timeout: slow ? 6000 : forceRefresh ? 10000 : 8000,
-    maximumAge: forceRefresh ? 60_000 : 300_000
+    maximumAge: forceRefresh ? 0 : 300_000
   };
 }
 
@@ -253,7 +252,9 @@ async function resolveUserCoords(forceRefresh) {
   const cached = getCachedLocation();
   if (!forceRefresh && cached?.lat != null && cached?.lon != null) return cached;
 
-  const useCachedOnFailure = () => {
+  /** Soft fallback only when not explicitly re-locating. */
+  const softFallback = () => {
+    if (forceRefresh) return null;
     if (cached?.lat != null && cached?.lon != null) {
       console.warn('Standortabfrage fehlgeschlagen – verwende letzten Standort');
       return cached;
@@ -280,7 +281,7 @@ async function resolveUserCoords(forceRefresh) {
       if (isLocationDeniedError(error)) {
         throw new LocationPermissionError('denied', String(error?.message || error));
       }
-      const fallback = useCachedOnFailure();
+      const fallback = softFallback();
       if (fallback) return fallback;
       throw error instanceof Error
         ? error
@@ -289,7 +290,7 @@ async function resolveUserCoords(forceRefresh) {
   }
 
   if (!navigator.geolocation) {
-    const fallback = useCachedOnFailure();
+    const fallback = softFallback();
     if (fallback) return fallback;
     throw new Error('Geolocation wird von diesem Browser nicht unterstützt.');
   }
@@ -306,7 +307,12 @@ async function resolveUserCoords(forceRefresh) {
       },
       (error) => {
         console.warn('Standortabfrage fehlgeschlagen oder abgelehnt:', error.message);
-        const fallback = useCachedOnFailure();
+        // Permission denied — never silently reuse cached coords
+        if (error?.code === 1) {
+          reject(error);
+          return;
+        }
+        const fallback = softFallback();
         if (fallback) {
           resolve(fallback);
           return;
@@ -328,26 +334,30 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`;
   const skipPollen = isConstrainedForLightRequests() || !shouldUseBackgroundNetwork();
 
-  const weatherResponse = await fetchWithTimeout(weatherUrl, {}, timeoutMs);
-  if (!weatherResponse.ok) {
+  const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
+
+  const [weatherSettled, pollenSettled] = await Promise.allSettled([
+    fetchWithTimeout(weatherUrl, {}, timeoutMs),
+    skipPollen
+      ? Promise.resolve(null)
+      : fetchWithTimeout(pollenUrl, {}, timeoutMs, { markDegraded: false })
+  ]);
+
+  if (weatherSettled.status !== 'fulfilled' || !weatherSettled.value?.ok) {
     throw new Error('Fehler beim Abrufen der Wetterdaten');
   }
 
-  const weatherData = await weatherResponse.json();
+  const weatherData = await weatherSettled.value.json();
   let pollenData = { current: {} };
 
-  if (!skipPollen) {
-    const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
+  if (!skipPollen && pollenSettled.status === 'fulfilled' && pollenSettled.value?.ok) {
     try {
-      const pollenResponse = await fetchWithTimeout(pollenUrl, {}, timeoutMs);
-      if (pollenResponse.ok) {
-        pollenData = await pollenResponse.json();
-      } else {
-        console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.');
-      }
+      pollenData = await pollenSettled.value.json();
     } catch (e) {
-      console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.', e);
+      console.warn('Pollen-Daten konnten nicht gelesen werden:', e);
     }
+  } else if (!skipPollen) {
+    console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.');
   }
 
   const weatherCode = weatherData.current?.weather_code;
@@ -400,15 +410,25 @@ async function fetchCurrentWeatherByCoords(lat, lon) {
   };
 }
 
-export async function fetchCurrentWeather(forceRefresh = false) {
-  if (!shouldUseBackgroundNetwork()) {
+/**
+ * @param {boolean} [forceLocation] re-request GPS
+ * @param {{ bypassGate?: boolean }} [opts] bypassGate: user-initiated refresh despite weak-link gate
+ */
+export async function fetchCurrentWeather(forceLocation = false, opts = {}) {
+  const bypassGate = !!opts.bypassGate || !!forceLocation;
+  if (!navigator.onLine) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) return cached;
+    throw new Error('offline');
+  }
+  if (!bypassGate && !shouldUseBackgroundNetwork()) {
     const cached = weatherFromCacheEntry(readWeatherCache());
     if (cached) return cached;
     throw new Error('offline');
   }
 
   try {
-    const data = await withUserLocation(forceRefresh, fetchCurrentWeatherByCoords);
+    const data = await withUserLocation(forceLocation, fetchCurrentWeatherByCoords);
     writeWeatherCache({ ...data, timestamp: Date.now() });
     return { ...data, fromCache: false };
   } catch (err) {
@@ -421,15 +441,25 @@ export async function fetchCurrentWeather(forceRefresh = false) {
   }
 }
 
-export async function fetchDashboardWeatherAndPollen(forceRefresh = false) {
-  if (!shouldUseBackgroundNetwork()) {
+/**
+ * @param {boolean} [forceLocation]
+ * @param {{ bypassGate?: boolean }} [opts]
+ */
+export async function fetchDashboardWeatherAndPollen(forceLocation = false, opts = {}) {
+  const bypassGate = !!opts.bypassGate || !!forceLocation;
+  if (!navigator.onLine) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) return cached;
+    throw new Error('offline');
+  }
+  if (!bypassGate && !shouldUseBackgroundNetwork()) {
     const cached = weatherFromCacheEntry(readWeatherCache());
     if (cached) return cached;
     throw new Error('offline');
   }
 
   try {
-    const data = await withUserLocation(forceRefresh, fetchWeatherAndPollenByCoords);
+    const data = await withUserLocation(forceLocation, fetchWeatherAndPollenByCoords);
     writeWeatherCache({ ...data, timestamp: Date.now() });
     return { ...data, fromCache: false };
   } catch (err) {

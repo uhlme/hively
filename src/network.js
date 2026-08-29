@@ -57,10 +57,6 @@ export function isNetworkDegraded() {
   return Date.now() < networkDegradedUntil;
 }
 
-export function noteNetworkFailure(err) {
-  if (isNetworkError(err)) markNetworkDegraded();
-}
-
 export function getNetworkPrefs() {
   const stored = safeJsonParse(localStorage.getItem(PREFS_KEY), null);
   if (!stored || typeof stored !== 'object') return { ...DEFAULT_PREFS };
@@ -87,6 +83,7 @@ export function isSaveDataEnabled() {
  * (media uploads) where even a genuine 3g link is worth deferring. */
 export function isConstrainedConnection() {
   if (isSaveDataEnabled()) return true;
+  if (isSlowConnection()) return true;
   const type = getConnectionType();
   return type === 'slow-2g' || type === '2g' || type === '3g';
 }
@@ -127,15 +124,25 @@ export function shouldAutoProcessMedia() {
   return true;
 }
 
-/** fetch with AbortController timeout — fails fast on dead connections. */
-export async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+/**
+ * fetch with AbortController timeout — fails fast on dead connections.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @param {number} [timeoutMs]
+ * @param {{ markDegraded?: boolean }} [opts] markDegraded defaults true; set false for optional calls (e.g. pollen)
+ */
+export async function fetchWithTimeout(url, options = {}, timeoutMs = 8000, opts = {}) {
+  const markDegraded = opts.markDegraded !== false;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    return response;
+    return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
-    noteNetworkFailure(err);
+    if (markDegraded && timedOut) markNetworkDegraded();
     throw err;
   } finally {
     clearTimeout(timer);

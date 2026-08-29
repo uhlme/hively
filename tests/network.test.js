@@ -152,6 +152,29 @@ describe('connection policy', () => {
     vi.useRealTimers();
     clearNetworkDegraded();
   });
+
+  it('does not mark degraded when markDegraded is false (optional pollen)', async () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+    clearNetworkDegraded();
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url, options) => {
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = fetchWithTimeout('https://example.test', {}, 1000, { markDegraded: false });
+    const expectation = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.advanceTimersByTimeAsync(1000);
+    await expectation;
+    expect(isNetworkDegraded()).toBe(false);
+    vi.useRealTimers();
+  });
 });
 
 describe('fetchWithTimeout / isNetworkError', () => {
