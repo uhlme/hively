@@ -34,8 +34,8 @@ import {
   hasLocalDomainData
 } from './storage.js';
 import {
-  TREATMENT_PRODUCTS,
   getTreatmentProduct,
+  getGroupedTreatmentProducts,
   computeHarvestBlockedUntil,
   VARROA_LEVEL_LABELS,
   summarizeChecklist,
@@ -2215,9 +2215,17 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
   }
 
   const productSelect = document.getElementById('treatment-form-product');
-  productSelect.innerHTML = TREATMENT_PRODUCTS.map(
-    (p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(getTreatmentProductLabel(p.id))}</option>`
-  ).join('');
+  productSelect.innerHTML = getGroupedTreatmentProducts()
+    .map((group) => {
+      const options = group.products
+        .map(
+          (p) =>
+            `<option value="${escapeHtml(p.id)}">${escapeHtml(getTreatmentProductLabel(p.id))}</option>`
+        )
+        .join('');
+      return `<optgroup label="${escapeHtml(group.label)}">${options}</optgroup>`;
+    })
+    .join('');
 
   const hivesContainer = document.getElementById('treatment-form-hives-container');
   const preselectIds = treatment?.hiveIds
@@ -2238,7 +2246,8 @@ async function openTreatmentModal(treatment = null, preselectedHiveId = null) {
     document.getElementById('treatment-form-id').value = treatment.id;
     document.getElementById('treatment-form-date-start').value = treatment.dateStart || '';
     document.getElementById('treatment-form-date-end').value = treatment.dateEnd || '';
-    document.getElementById('treatment-form-product').value = treatment.productId || 'formic_60';
+    const knownId = getTreatmentProduct(treatment.productId) ? treatment.productId : 'formic_60';
+    document.getElementById('treatment-form-product').value = knownId;
     document.getElementById('treatment-form-dose').value = treatment.dose || '';
     document.getElementById('treatment-form-status').value = treatment.status || 'active';
     document.getElementById('treatment-form-notes').value = treatment.notes || '';

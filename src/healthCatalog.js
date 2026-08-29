@@ -4,66 +4,77 @@
  */
 import { t } from './i18n/index.js';
 
-export const TREATMENT_PRODUCTS = [
-  {
-    id: 'formic_60',
-    labelKey: 'treatments.products.formic_60',
+/**
+ * @param {string} id
+ * @param {{ group: string, defaultDurationDays?: number|null, phiDays?: number|null, disease?: string }} spec
+ */
+function defineTreatmentProduct(id, spec) {
+  return {
+    id,
+    group: spec.group,
+    labelKey: `treatments.products.${id}`,
     /** @deprecated use getTreatmentProductLabel(id) */
     get label() {
       return getTreatmentProductLabel(this.id);
     },
-    defaultDurationDays: 7,
-    phiDays: 0,
-    disease: 'varroa'
-  },
-  {
-    id: 'oxalic_trickle',
-    labelKey: 'treatments.products.oxalic_trickle',
-    get label() {
-      return getTreatmentProductLabel(this.id);
-    },
-    defaultDurationDays: 1,
-    phiDays: 0,
-    disease: 'varroa'
-  },
-  {
-    id: 'oxalic_sublim',
-    labelKey: 'treatments.products.oxalic_sublim',
-    get label() {
-      return getTreatmentProductLabel(this.id);
-    },
-    defaultDurationDays: 1,
-    phiDays: 0,
-    disease: 'varroa'
-  },
-  {
-    id: 'thymol',
-    labelKey: 'treatments.products.thymol',
-    get label() {
-      return getTreatmentProductLabel(this.id);
-    },
-    defaultDurationDays: 14,
-    phiDays: 0,
-    disease: 'varroa'
-  },
-  {
-    id: 'other',
-    labelKey: 'treatments.products.other',
-    get label() {
-      return getTreatmentProductLabel(this.id);
-    },
-    defaultDurationDays: null,
-    phiDays: null,
-    disease: 'varroa'
-  }
+    defaultDurationDays: spec.defaultDurationDays ?? null,
+    phiDays: Object.prototype.hasOwnProperty.call(spec, 'phiDays') ? spec.phiDays : 0,
+    disease: spec.disease || 'varroa'
+  };
+}
+
+export const TREATMENT_PRODUCTS = [
+  defineTreatmentProduct('formivar_60', { group: 'formic', defaultDurationDays: 7 }),
+  defineTreatmentProduct('formivar_70', { group: 'formic', defaultDurationDays: 7 }),
+  defineTreatmentProduct('maqs', { group: 'formic', defaultDurationDays: 7 }),
+  defineTreatmentProduct('formic_60', { group: 'formic', defaultDurationDays: 7 }),
+  defineTreatmentProduct('oxuvar', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('oxybee', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('apibioxal', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('varroxal', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('oxalic_trickle', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('oxalic_sublim', { group: 'oxalic', defaultDurationDays: 1 }),
+  defineTreatmentProduct('apiguard', { group: 'thymol', defaultDurationDays: 14 }),
+  defineTreatmentProduct('thymovar', { group: 'thymol', defaultDurationDays: 21 }),
+  defineTreatmentProduct('apilife_var', { group: 'thymol', defaultDurationDays: 21 }),
+  defineTreatmentProduct('thymol', { group: 'thymol', defaultDurationDays: 14 }),
+  defineTreatmentProduct('varromed', { group: 'combined', defaultDurationDays: 6 }),
+  // Synthetics: no automatic PHI — label/SPC must be checked manually
+  defineTreatmentProduct('apivar', { group: 'synthetic', defaultDurationDays: 42, phiDays: null }),
+  defineTreatmentProduct('bayvarol', { group: 'synthetic', defaultDurationDays: 28, phiDays: null }),
+  defineTreatmentProduct('polyvar', { group: 'synthetic', defaultDurationDays: 84, phiDays: null }),
+  defineTreatmentProduct('other', { group: 'other', defaultDurationDays: null, phiDays: null })
 ];
 
 const FALLBACK_PRODUCT_LABELS = {
+  formivar_60: 'Formivar 60%',
+  formivar_70: 'Formivar 70%',
+  maqs: 'MAQS',
   formic_60: 'Ameisensäure 60%',
+  oxuvar: 'Oxuvar',
+  oxybee: 'Oxybee',
+  apibioxal: 'Api-Bioxal',
+  varroxal: 'Varroxal',
   oxalic_trickle: 'Oxalsäure träufeln',
   oxalic_sublim: 'Oxalsäure verdampfen',
-  thymol: 'Thymol / Apiguard-ähnlich',
+  apiguard: 'Apiguard',
+  thymovar: 'Thymovar',
+  apilife_var: 'Api Life Var',
+  thymol: 'Thymol',
+  varromed: 'VarroMed',
+  apivar: 'Apivar',
+  bayvarol: 'Bayvarol',
+  polyvar: 'PolyVar Yellow',
   other: 'Sonstiges'
+};
+
+const FALLBACK_PRODUCT_GROUP_LABELS = {
+  formic: 'Ameisensäure',
+  oxalic: 'Oxalsäure',
+  thymol: 'Thymol',
+  combined: 'Kombination',
+  synthetic: 'Synthetisch',
+  other: 'Weitere'
 };
 
 export function getTreatmentProductLabel(id) {
@@ -77,6 +88,33 @@ export function getTreatmentProductLabel(id) {
 export function getTreatmentProduct(id) {
   if (!id) return null;
   return TREATMENT_PRODUCTS.find((p) => p.id === id) || null;
+}
+
+export function getTreatmentProductGroupLabel(groupId) {
+  if (!groupId) return FALLBACK_PRODUCT_GROUP_LABELS.other;
+  const key = `treatments.productGroups.${groupId}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return FALLBACK_PRODUCT_GROUP_LABELS[groupId] || FALLBACK_PRODUCT_GROUP_LABELS.other;
+}
+
+/** Products grouped for the treatment form <select> (optgroups). */
+export function getGroupedTreatmentProducts() {
+  const order = [];
+  const byGroup = new Map();
+  for (const product of TREATMENT_PRODUCTS) {
+    const groupId = product.group || 'other';
+    if (!byGroup.has(groupId)) {
+      byGroup.set(groupId, []);
+      order.push(groupId);
+    }
+    byGroup.get(groupId).push(product);
+  }
+  return order.map((groupId) => ({
+    id: groupId,
+    label: getTreatmentProductGroupLabel(groupId),
+    products: byGroup.get(groupId)
+  }));
 }
 
 /**
