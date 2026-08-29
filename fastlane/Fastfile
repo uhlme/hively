@@ -160,9 +160,21 @@ platform :ios do
     )
 
     if ENV["VERSION_NUMBER"]
+      # App Store Connect: CFBundleShortVersionString must be at most 3 integers
+      # (e.g. 1.2.3). Four-part tags like 0.6.9.2 are rejected at upload.
+      raw = ENV["VERSION_NUMBER"].to_s.strip
+      parts = raw.split(".").map { |p| Integer(p) }
+      if parts.length < 1 || parts.length > 3
+        UI.user_error!(
+          "VERSION_NUMBER '#{raw}' is invalid for iOS. " \
+          "Use at most three period-separated integers (e.g. 0.6.10), not four (e.g. 0.6.9.2)."
+        )
+      end
+      marketing = parts.join(".")
+      ENV["VERSION_NUMBER"] = marketing
       increment_version_number(
         xcodeproj: "ios/App/App.xcodeproj",
-        version_number: ENV["VERSION_NUMBER"]
+        version_number: marketing
       )
     end
 

@@ -51,6 +51,17 @@ jobs:
               ;;
           esac
           echo "Version aus Tag $tag: $version"
+          # App Store: CFBundleShortVersionString may have at most 3 integer parts
+          parts=$(echo "$version" | tr '.' '\n' | wc -l | tr -d ' ')
+          if [ "$parts" -gt 3 ]; then
+            echo "Ungültige iOS-Marketing-Version '$version' ($parts Teile)." >&2
+            echo "Apple erlaubt max. drei Zahlen (z.B. 0.6.10), nicht 0.6.9.2." >&2
+            exit 1
+          fi
+          if ! echo "$version" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "VERSION_NUMBER '$version' muss nur aus Zahlen und Punkten bestehen." >&2
+            exit 1
+          fi
           echo "VERSION_NUMBER=$version" >> "$GITHUB_ENV"
 
       - name: Select latest available Xcode
