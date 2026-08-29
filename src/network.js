@@ -13,8 +13,48 @@ const DEFAULT_PREFS = {
   remotePullTtlMs: 15 * 60 * 1000
 };
 
+/** After a timeout/fetch failure, skip background fetches for a few minutes. */
+const NETWORK_DEGRADED_MS = 5 * 60 * 1000;
+/** Mbps below which we treat the link as unusably slow (e.g. 1-bar 5G). */
+const SLOW_DOWNLINK_MBPS = 0.2;
+/** ms RTT above which we treat the link as slow. */
+const SLOW_RTT_MS = 2000;
+
+let networkDegradedUntil = 0;
+
 function getNavigatorConnection() {
   return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+}
+
+export function getConnectionDownlinkMbps() {
+  const downlink = getNavigatorConnection()?.downlink;
+  return typeof downlink === 'number' && Number.isFinite(downlink) ? downlink : null;
+}
+
+export function getConnectionRttMs() {
+  const rtt = getNavigatorConnection()?.rtt;
+  return typeof rtt === 'number' && Number.isFinite(rtt) ? rtt : null;
+}
+
+/** True when the browser reports a very slow link (independent of effectiveType). */
+export function isSlowConnection() {
+  const downlink = getConnectionDownlinkMbps();
+  if (downlink != null && downlink < SLOW_DOWNLINK_MBPS) return true;
+  const rtt = getConnectionRttMs();
+  if (rtt != null && rtt > SLOW_RTT_MS) return true;
+  return false;
+}
+
+export function markNetworkDegraded(durationMs = NETWORK_DEGRADED_MS) {
+  networkDegradedUntil = Date.now() + durationMs;
+}
+
+export function clearNetworkDegraded() {
+  networkDegradedUntil = 0;
+}
+
+export function isNetworkDegraded() {
+  return Date.now() < networkDegradedUntil;
 }
 
 export function getNetworkPrefs() {
@@ -43,6 +83,7 @@ export function isSaveDataEnabled() {
  * (media uploads) where even a genuine 3g link is worth deferring. */
 export function isConstrainedConnection() {
   if (isSaveDataEnabled()) return true;
+  if (isSlowConnection()) return true;
   const type = getConnectionType();
   return type === 'slow-2g' || type === '2g' || type === '3g';
 }
@@ -55,6 +96,7 @@ export function isConstrainedConnection() {
  * poor links (2g/slow-2g) still count as constrained. */
 export function isConstrainedForLightRequests() {
   if (isSaveDataEnabled()) return true;
+  if (isSlowConnection()) return true;
   const type = getConnectionType();
   return type === 'slow-2g' || type === '2g';
 }
@@ -62,9 +104,16 @@ export function isConstrainedForLightRequests() {
 /** Should we attempt background network work (pulls, weather, AI)? */
 export function shouldUseBackgroundNetwork() {
   if (!navigator.onLine) return false;
+  if (isNetworkDegraded()) return false;
   const prefs = getNetworkPrefs();
   if (prefs.fieldMode && isConstrainedForLightRequests()) return false;
   return true;
+}
+
+/** Timeout for small JSON fetches (weather, pollen) — fail fast on weak links. */
+export function getLightFetchTimeoutMs() {
+  if (isConstrainedForLightRequests() || isNetworkDegraded()) return 3000;
+  return 5000;
 }
 
 /** AI media uploads (large payloads) — only when allowed. */
@@ -75,12 +124,26 @@ export function shouldAutoProcessMedia() {
   return true;
 }
 
-/** fetch with AbortController timeout — fails fast on dead connections. */
-export async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+/**
+ * fetch with AbortController timeout — fails fast on dead connections.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @param {number} [timeoutMs]
+ * @param {{ markDegraded?: boolean }} [opts] markDegraded defaults true; set false for optional calls (e.g. pollen)
+ */
+export async function fetchWithTimeout(url, options = {}, timeoutMs = 8000, opts = {}) {
+  const markDegraded = opts.markDegraded !== false;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (markDegraded && timedOut) markNetworkDegraded();
+    throw err;
   } finally {
     clearTimeout(timer);
   }

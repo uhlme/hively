@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNavigatorNetwork } from './setup.js';
 
 const {
   getCurrentPosition,
@@ -297,6 +298,7 @@ describe('weather inspection cache', () => {
   it('throws when offline and no usable cache exists', async () => {
     const { saveCachedLocation, fetchCurrentWeather } = await import('../src/weather.js');
     saveCachedLocation(47.3, 8.5);
+    mockNavigatorNetwork({ onLine: true, effectiveType: '2g' });
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -304,5 +306,30 @@ describe('weather inspection cache', () => {
       })
     );
     await expect(fetchCurrentWeather(false)).rejects.toThrow();
+  });
+
+  it('returns stale cache from fetchDashboardWeatherAndPollen when network fails', async () => {
+    const { writeWeatherCache, saveCachedLocation, fetchDashboardWeatherAndPollen } = await import(
+      '../src/weather.js'
+    );
+    saveCachedLocation(47.3, 8.5);
+    writeWeatherCache({
+      temperature: 14,
+      conditionText: 'Heiter',
+      code: 1,
+      windSpeed: 3,
+      timestamp: Date.now() - 60_000
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('timeout');
+      })
+    );
+
+    const result = await fetchDashboardWeatherAndPollen(false);
+    expect(result.fromCache).toBe(true);
+    expect(result.temperature).toBe(14);
   });
 });

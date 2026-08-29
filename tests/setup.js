@@ -14,7 +14,9 @@ afterEach(() => {
 export function mockNavigatorNetwork({
   onLine = true,
   effectiveType = '4g',
-  saveData = false
+  saveData = false,
+  downlink = null,
+  rtt = null
 } = {}) {
   Object.defineProperty(navigator, 'onLine', {
     configurable: true,
@@ -24,6 +26,8 @@ export function mockNavigatorNetwork({
   const connection = {
     effectiveType,
     saveData,
+    downlink,
+    rtt,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn()
   };
