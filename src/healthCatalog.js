@@ -39,9 +39,10 @@ export const TREATMENT_PRODUCTS = [
   defineTreatmentProduct('apilife_var', { group: 'thymol', defaultDurationDays: 21 }),
   defineTreatmentProduct('thymol', { group: 'thymol', defaultDurationDays: 14 }),
   defineTreatmentProduct('varromed', { group: 'combined', defaultDurationDays: 6 }),
-  defineTreatmentProduct('apivar', { group: 'synthetic', defaultDurationDays: 42 }),
-  defineTreatmentProduct('bayvarol', { group: 'synthetic', defaultDurationDays: 28 }),
-  defineTreatmentProduct('polyvar', { group: 'synthetic', defaultDurationDays: 84 }),
+  // Synthetics: no automatic PHI — label/SPC must be checked manually
+  defineTreatmentProduct('apivar', { group: 'synthetic', defaultDurationDays: 42, phiDays: null }),
+  defineTreatmentProduct('bayvarol', { group: 'synthetic', defaultDurationDays: 28, phiDays: null }),
+  defineTreatmentProduct('polyvar', { group: 'synthetic', defaultDurationDays: 84, phiDays: null }),
   defineTreatmentProduct('other', { group: 'other', defaultDurationDays: null, phiDays: null })
 ];
 

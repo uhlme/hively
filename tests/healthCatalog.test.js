@@ -38,6 +38,14 @@ describe('healthCatalog', () => {
     );
     expect(getTreatmentProductLabel('formivar_70')).toBe('Formivar 70%');
 
+    expect(getTreatmentProduct('formic_60')?.defaultDurationDays).toBe(7);
+    expect(getTreatmentProduct('formic_60')?.phiDays).toBe(0);
+    expect(getTreatmentProduct('formivar_70')?.phiDays).toBe(0);
+    expect(getTreatmentProduct('apivar')?.phiDays).toBeNull();
+    expect(getTreatmentProduct('bayvarol')?.phiDays).toBeNull();
+    expect(getTreatmentProduct('polyvar')?.phiDays).toBeNull();
+    expect(getTreatmentProduct('other')?.phiDays).toBeNull();
+
     const ids = TREATMENT_PRODUCTS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) {
