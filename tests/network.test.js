@@ -10,7 +10,6 @@ import {
   shouldAutoProcessMedia,
   fetchWithTimeout,
   isNetworkError,
-  markNetworkDegraded,
   clearNetworkDegraded,
   isNetworkDegraded,
   getLightFetchTimeoutMs
