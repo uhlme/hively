@@ -5,10 +5,15 @@ import {
   saveNetworkPrefs,
   isConstrainedConnection,
   isConstrainedForLightRequests,
+  isSlowConnection,
   shouldUseBackgroundNetwork,
   shouldAutoProcessMedia,
   fetchWithTimeout,
-  isNetworkError
+  isNetworkError,
+  markNetworkDegraded,
+  clearNetworkDegraded,
+  isNetworkDegraded,
+  getLightFetchTimeoutMs
 } from '../src/network.js';
 
 describe('network prefs', () => {
@@ -44,6 +49,7 @@ describe('connection policy', () => {
   beforeEach(() => {
     localStorage.clear();
     saveNetworkPrefs({ fieldMode: true, wifiOnlyMedia: true });
+    clearNetworkDegraded();
   });
 
   it('detects constrained connections', () => {
@@ -111,6 +117,40 @@ describe('connection policy', () => {
     saveNetworkPrefs({ wifiOnlyMedia: false });
     mockNavigatorNetwork({ onLine: true, effectiveType: '3g' });
     expect(shouldAutoProcessMedia()).toBe(true);
+  });
+
+  it('detects very slow links via downlink/rtt and blocks light background work', () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g', downlink: 0.1 });
+    expect(isSlowConnection()).toBe(true);
+    expect(isConstrainedForLightRequests()).toBe(true);
+    expect(shouldUseBackgroundNetwork()).toBe(false);
+    expect(getLightFetchTimeoutMs()).toBe(3000);
+  });
+
+  it('marks network degraded after fetch timeout and pauses background work', async () => {
+    mockNavigatorNetwork({ onLine: true, effectiveType: '4g' });
+    expect(isNetworkDegraded()).toBe(false);
+
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url, options) => {
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = fetchWithTimeout('https://example.test', {}, 1000);
+    const expectation = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.advanceTimersByTimeAsync(1000);
+    await expectation;
+    expect(isNetworkDegraded()).toBe(true);
+    expect(shouldUseBackgroundNetwork()).toBe(false);
+    vi.useRealTimers();
+    clearNetworkDegraded();
   });
 });
 

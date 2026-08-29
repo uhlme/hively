@@ -83,6 +83,7 @@ import {
   fetchDashboardWeatherAndPollen,
   getCachedLocation,
   LocationPermissionError,
+  readWeatherCache,
   weatherIconSvg,
   writeWeatherCache
 } from './weather.js';
@@ -94,7 +95,10 @@ import {
   shouldUseBackgroundNetwork,
   shouldAutoProcessMedia,
   getConnectionType,
-  isConstrainedConnection
+  isConstrainedConnection,
+  isConstrainedForLightRequests,
+  isSlowConnection,
+  clearNetworkDegraded
 } from './network.js';
 import {
   ensureActiveOperation,
@@ -208,7 +212,12 @@ function writeRadarCache(data) {
 async function buildRadarPayload(forceLocation) {
   const weatherData = await fetchDashboardWeatherAndPollen(forceLocation);
   let insight = t('ai.insightDataSaver');
-  if (shouldUseBackgroundNetwork() && hasProAccess()) {
+  if (weatherData.fromCache) {
+    const cached = readRadarCache();
+    if (cached?.insight && !isProUpsellInsight(cached.insight)) {
+      insight = cached.insight;
+    }
+  } else if (shouldUseBackgroundNetwork() && hasProAccess()) {
     insight = await getWeatherInsightFromGemini(weatherData);
   } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
     insight = getProUpsellInsight();
@@ -1194,23 +1203,44 @@ async function loadDashboardRadar() {
   if (btnLocate) btnLocate.style.display = 'block';
 
   const cached = readRadarCache();
-  if (cached && Date.now() - cached.timestamp < RADAR_FRESH_MS) {
-    applyRadarData(cached);
-    // Pro unlock or language change: refresh KI insight language/content.
+  const cacheAge = cached?.timestamp != null ? Date.now() - cached.timestamp : Infinity;
+  const cacheFresh = cacheAge < RADAR_FRESH_MS;
+  const cacheUsable = cached && cacheAge < RADAR_STALE_OK_MS;
+
+  async function refreshRadarInBackground() {
+    try {
+      const data = await buildRadarPayload(false);
+      writeRadarCache(data);
+      applyRadarData(data);
+    } catch (err) {
+      console.warn('Radar-Hintergrund-Update fehlgeschlagen:', err);
+    }
+  }
+
+  if (cacheUsable) {
+    applyRadarData(cached, { stale: !cacheFresh });
     const refreshed = await refreshRadarInsightIfNeeded(cached);
     if (refreshed) applyRadarData(refreshed);
+
+    if (cacheFresh || !shouldUseBackgroundNetwork()) {
+      return;
+    }
+
+    refreshRadarInBackground();
     return;
   }
 
-  // Weak link: keep showing stale cache instead of burning data/time on refresh
-  if (cached && !shouldUseBackgroundNetwork() && Date.now() - cached.timestamp < RADAR_STALE_OK_MS) {
-    applyRadarData(cached, { stale: true });
+  if (!shouldUseBackgroundNetwork()) {
+    radarContent.style.display = 'none';
+    radarLoading.style.display = 'block';
+    radarLoading.innerText = t('radar.offline');
+    radarLoading.style.color = 'var(--text-secondary)';
     return;
   }
 
   radarContent.style.display = 'none';
   radarLoading.style.display = 'block';
-  radarLoading.innerText = 'Lädt...';
+  radarLoading.innerText = t('dashboard.radarLoading');
 
   try {
     const data = await buildRadarPayload(false);
@@ -1221,7 +1251,7 @@ async function loadDashboardRadar() {
       applyRadarData(cached, { stale: true });
       return;
     }
-    radarLoading.innerText = 'Radar offline';
+    radarLoading.innerText = t('radar.offline');
     radarLoading.style.color = 'var(--danger)';
   }
 }
@@ -2101,26 +2131,48 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
     inpWeatherTemp.value = '';
     inpWeatherCond.value = '';
     
-    const loadWeather = async () => {
-      weatherDisplay.innerHTML = escapeHtml(t('inspections.weatherLoading'));
-      btnWeatherRetry.style.display = 'none';
-      try {
-        const w = await fetchCurrentWeather();
-        const cond = w.code != null ? conditionFromCode(w.code) : null;
-        const condLabel = cond?.labelKey ? t(cond.labelKey) : (w.conditionText || t('weather.unknown'));
-        const cacheHint = w.fromCache ? ` <span class="text-muted" style="font-weight:400;">(${escapeHtml(t('radar.stale'))})</span>` : '';
-        weatherDisplay.innerHTML = `${escapeHtml(condLabel)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
-        inpWeatherTemp.value = w.temperature;
-        inpWeatherCond.value = condLabel;
-        if (w.fromCache) {
+    const applyInspectionWeather = (w) => {
+      const cond = w.code != null ? conditionFromCode(w.code) : null;
+      const condLabel = cond?.labelKey ? t(cond.labelKey) : (w.conditionText || t('weather.unknown'));
+      const cacheHint = w.fromCache
+        ? ` <span class="text-muted" style="font-weight:400;">(${escapeHtml(t('radar.stale'))})</span>`
+        : '';
+      weatherDisplay.innerHTML = `${escapeHtml(condLabel)} · ${escapeHtml(w.temperature)}°C${cacheHint}`;
+      inpWeatherTemp.value = w.temperature;
+      inpWeatherCond.value = condLabel;
+      btnWeatherRetry.style.display = w.fromCache ? 'block' : 'none';
+    };
+
+    const loadWeather = async (forceRefresh = false) => {
+      const cached = readWeatherCache();
+      const hasCache = cached?.temperature != null;
+
+      if (hasCache && !forceRefresh) {
+        applyInspectionWeather({ ...cached, fromCache: true });
+      } else {
+        weatherDisplay.innerHTML = escapeHtml(t('inspections.weatherLoading'));
+        btnWeatherRetry.style.display = 'none';
+      }
+
+      if (!shouldUseBackgroundNetwork() && !forceRefresh) {
+        if (!hasCache) {
+          weatherDisplay.innerHTML = `<span class="text-danger">${escapeHtml(t('inspections.weatherOffline'))}</span>`;
           btnWeatherRetry.style.display = 'block';
         }
+        return;
+      }
+
+      try {
+        const w = await fetchCurrentWeather(forceRefresh);
+        applyInspectionWeather(w);
       } catch (err) {
-        weatherDisplay.innerHTML = `<span class="text-danger">${escapeHtml(t('inspections.weatherOffline'))}</span>`;
-        btnWeatherRetry.style.display = 'block';
+        if (!hasCache) {
+          weatherDisplay.innerHTML = `<span class="text-danger">${escapeHtml(t('inspections.weatherOffline'))}</span>`;
+          btnWeatherRetry.style.display = 'block';
+        }
       }
     };
-    btnWeatherRetry.onclick = loadWeather;
+    btnWeatherRetry.onclick = () => loadWeather(true);
     loadWeather();
 
     hivesContainer.innerHTML = hives.map(h => {
@@ -2745,7 +2797,7 @@ function formatSyncStatusText() {
 
   if (!navigator.onLine) {
     parts.push(t('offline.changesLocal'));
-  } else if (prefs.fieldMode && isConstrainedConnection()) {
+  } else if (prefs.fieldMode && isConstrainedForLightRequests()) {
     parts.push(`${t('offline.fieldModeOn')} (${conn || t('header.offline')}).`);
   } else {
     parts.push(conn ? `${t('header.online')} (${conn}).` : t('header.online') + '.');
@@ -4378,6 +4430,7 @@ function setupConnectionTracking() {
   updateConnectionStatusUI();
 
   window.addEventListener('online', async () => {
+    clearNetworkDegraded();
     updateConnectionStatusUI();
     console.log('[Connection] Online – prüfe Sync...');
     try {
@@ -4448,7 +4501,7 @@ function updateConnectionStatusUI() {
     return;
   }
 
-  if (prefs.fieldMode && isConstrainedConnection()) {
+  if (prefs.fieldMode && isConstrainedForLightRequests()) {
     statusEl.classList.add('is-field');
     statusEl.title = pendingCount > 0
       ? `Funkloch-Modus – ${pendingCount} Änderungen lokal wartend`

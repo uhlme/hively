@@ -3,7 +3,13 @@
  */
 import { Geolocation } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
-import { fetchWithTimeout } from './network.js';
+import {
+  fetchWithTimeout,
+  getLightFetchTimeoutMs,
+  isConstrainedForLightRequests,
+  isSlowConnection,
+  shouldUseBackgroundNetwork
+} from './network.js';
 import { safeJsonParse } from './utils.js';
 
 /** WMO weather codes → DE fallback label + icon + i18n key. */
@@ -60,10 +66,7 @@ const WEATHER_ICON_PATHS = {
   unknown: '<circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.5-1.1 1-1.1 1.8M12 17h.01"/>'
 };
 
-const GEO_OPTIONS = {
-  enableHighAccuracy: true,
-  timeout: 20000,
-  maximumAge: 60000,
+const GEO_OPTIONS_BASE = {
   enableLocationFallback: true
 };
 const WEATHER_CACHE_KEY = 'hively_weather_cache';
@@ -174,6 +177,35 @@ export function writeWeatherCache(data) {
   }
 }
 
+function getGeoOptions(forceRefresh = false) {
+  const slow = isConstrainedForLightRequests() || isSlowConnection();
+  return {
+    ...GEO_OPTIONS_BASE,
+    enableHighAccuracy: forceRefresh && !slow,
+    timeout: slow ? 6000 : forceRefresh ? 10000 : 8000,
+    maximumAge: forceRefresh ? 60_000 : 300_000
+  };
+}
+
+function weatherFromCacheEntry(cached) {
+  if (!cached || cached.temperature == null) return null;
+  const age = cached.timestamp != null ? Date.now() - cached.timestamp : Infinity;
+  if (age > WEATHER_STALE_OK_MS) return null;
+  return {
+    temperature: cached.temperature,
+    conditionText: cached.conditionText,
+    conditionIcon: cached.conditionIcon || weatherIconKind(cached.code ?? cached.conditionText),
+    code: cached.code,
+    windSpeed: cached.windSpeed,
+    dominantPollen: cached.dominantPollen ?? null,
+    allPollen: cached.allPollen,
+    latitude: cached.latitude,
+    longitude: cached.longitude,
+    fromCache: true,
+    cacheAgeMs: age
+  };
+}
+
 export function conditionFromCode(code) {
   return WMO_CODES[code] || { label: 'Unbekannt', icon: 'unknown', labelKey: 'weather.unknown' };
 }
@@ -218,15 +250,21 @@ export function weatherIconSvg(codeOrKind, { size = 40 } = {}) {
 }
 
 async function resolveUserCoords(forceRefresh) {
-  if (!forceRefresh) {
-    const cached = getCachedLocation();
-    if (cached?.lat != null && cached?.lon != null) return cached;
-  }
+  const cached = getCachedLocation();
+  if (!forceRefresh && cached?.lat != null && cached?.lon != null) return cached;
+
+  const useCachedOnFailure = () => {
+    if (cached?.lat != null && cached?.lon != null) {
+      console.warn('Standortabfrage fehlgeschlagen – verwende letzten Standort');
+      return cached;
+    }
+    return null;
+  };
 
   if (Capacitor.isNativePlatform()) {
     try {
       await ensureNativeLocationPermission();
-      const position = await Geolocation.getCurrentPosition(GEO_OPTIONS);
+      const position = await Geolocation.getCurrentPosition(getGeoOptions(forceRefresh));
       const coords = {
         lat: position.coords.latitude,
         lon: position.coords.longitude
@@ -242,8 +280,8 @@ async function resolveUserCoords(forceRefresh) {
       if (isLocationDeniedError(error)) {
         throw new LocationPermissionError('denied', String(error?.message || error));
       }
-      // GPS timeout / Play Services issues are not permission failures —
-      // keep them as generic Errors so the UI can fall back to stale radar.
+      const fallback = useCachedOnFailure();
+      if (fallback) return fallback;
       throw error instanceof Error
         ? error
         : new Error(String(error || 'location unavailable'));
@@ -251,6 +289,8 @@ async function resolveUserCoords(forceRefresh) {
   }
 
   if (!navigator.geolocation) {
+    const fallback = useCachedOnFailure();
+    if (fallback) return fallback;
     throw new Error('Geolocation wird von diesem Browser nicht unterstützt.');
   }
 
@@ -266,9 +306,14 @@ async function resolveUserCoords(forceRefresh) {
       },
       (error) => {
         console.warn('Standortabfrage fehlgeschlagen oder abgelehnt:', error.message);
+        const fallback = useCachedOnFailure();
+        if (fallback) {
+          resolve(fallback);
+          return;
+        }
         reject(error);
       },
-      GEO_OPTIONS
+      getGeoOptions(forceRefresh)
     );
   });
 }
@@ -279,29 +324,30 @@ async function withUserLocation(forceRefresh, fetchByCoords) {
 }
 
 async function fetchWeatherAndPollenByCoords(lat, lon) {
+  const timeoutMs = getLightFetchTimeoutMs();
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m`;
-  const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
+  const skipPollen = isConstrainedForLightRequests() || !shouldUseBackgroundNetwork();
 
-  const [weatherSettled, pollenSettled] = await Promise.allSettled([
-    fetchWithTimeout(weatherUrl, {}, 8000),
-    fetchWithTimeout(pollenUrl, {}, 8000)
-  ]);
-
-  if (weatherSettled.status !== 'fulfilled' || !weatherSettled.value.ok) {
+  const weatherResponse = await fetchWithTimeout(weatherUrl, {}, timeoutMs);
+  if (!weatherResponse.ok) {
     throw new Error('Fehler beim Abrufen der Wetterdaten');
   }
 
-  const weatherData = await weatherSettled.value.json();
+  const weatherData = await weatherResponse.json();
   let pollenData = { current: {} };
 
-  if (pollenSettled.status === 'fulfilled' && pollenSettled.value.ok) {
+  if (!skipPollen) {
+    const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen`;
     try {
-      pollenData = await pollenSettled.value.json();
+      const pollenResponse = await fetchWithTimeout(pollenUrl, {}, timeoutMs);
+      if (pollenResponse.ok) {
+        pollenData = await pollenResponse.json();
+      } else {
+        console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.');
+      }
     } catch (e) {
-      console.warn('Pollen-Daten konnten nicht gelesen werden:', e);
+      console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.', e);
     }
-  } else {
-    console.warn('Pollen-API nicht erreichbar – Wetter wird ohne Pollen angezeigt.');
   }
 
   const weatherCode = weatherData.current?.weather_code;
@@ -331,7 +377,7 @@ async function fetchWeatherAndPollenByCoords(lat, lon) {
 
 async function fetchCurrentWeatherByCoords(lat, lon) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
-  const response = await fetchWithTimeout(url, {}, 8000);
+  const response = await fetchWithTimeout(url, {}, getLightFetchTimeoutMs());
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
@@ -355,30 +401,43 @@ async function fetchCurrentWeatherByCoords(lat, lon) {
 }
 
 export async function fetchCurrentWeather(forceRefresh = false) {
+  if (!shouldUseBackgroundNetwork()) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) return cached;
+    throw new Error('offline');
+  }
+
   try {
     const data = await withUserLocation(forceRefresh, fetchCurrentWeatherByCoords);
     writeWeatherCache({ ...data, timestamp: Date.now() });
     return { ...data, fromCache: false };
   } catch (err) {
-    const cached = readWeatherCache();
-    const age = cached?.timestamp != null ? Date.now() - cached.timestamp : Infinity;
-    if (cached && age <= WEATHER_STALE_OK_MS && cached.temperature != null) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) {
       console.warn('Live-Wetter nicht erreichbar – verwende Cache:', err?.message || err);
-      return {
-        temperature: cached.temperature,
-        conditionText: cached.conditionText,
-        conditionIcon: cached.conditionIcon || weatherIconKind(cached.code ?? cached.conditionText),
-        code: cached.code,
-        latitude: cached.latitude,
-        longitude: cached.longitude,
-        fromCache: true,
-        cacheAgeMs: age
-      };
+      return cached;
     }
     throw err;
   }
 }
 
 export async function fetchDashboardWeatherAndPollen(forceRefresh = false) {
-  return withUserLocation(forceRefresh, fetchWeatherAndPollenByCoords);
+  if (!shouldUseBackgroundNetwork()) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) return cached;
+    throw new Error('offline');
+  }
+
+  try {
+    const data = await withUserLocation(forceRefresh, fetchWeatherAndPollenByCoords);
+    writeWeatherCache({ ...data, timestamp: Date.now() });
+    return { ...data, fromCache: false };
+  } catch (err) {
+    const cached = weatherFromCacheEntry(readWeatherCache());
+    if (cached) {
+      console.warn('Live-Radar-Wetter nicht erreichbar – verwende Cache:', err?.message || err);
+      return cached;
+    }
+    throw err;
+  }
 }
