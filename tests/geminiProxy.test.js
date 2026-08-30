@@ -143,4 +143,21 @@ describe('handleGeminiRequest', () => {
     expect(skipped).toMatch(/broodNotInspected=true/);
     expect(skipped).toMatch(/do not infer missing brood/);
   });
+
+  it('uses low-latency thinking levels for short AI tips', async () => {
+    const { buildModelGenerationConfig } = await import('../server/geminiProxy.js');
+    expect(buildModelGenerationConfig({ thinkingLevel: 'minimal', maxOutputTokens: 256 })).toEqual({
+      maxOutputTokens: 256,
+      thinkingConfig: { thinkingLevel: 'minimal' }
+    });
+    expect(buildModelGenerationConfig({ thinkingLevel: 'low', maxOutputTokens: 1024 })).toEqual({
+      maxOutputTokens: 1024,
+      thinkingConfig: { thinkingLevel: 'low' }
+    });
+    // Default path (audio/receipt JSON) also stays on minimal thinking.
+    expect(buildModelGenerationConfig()).toEqual({
+      maxOutputTokens: 1024,
+      thinkingConfig: { thinkingLevel: 'minimal' }
+    });
+  });
 });

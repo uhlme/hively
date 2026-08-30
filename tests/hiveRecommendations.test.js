@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '../src/i18n/index.js';
 
 const { callGeminiMock } = vi.hoisted(() => ({
   callGeminiMock: vi.fn()
@@ -22,6 +23,8 @@ vi.mock('../src/network.js', async (importOriginal) => {
 describe('hiveRecommendations', () => {
   beforeEach(() => {
     callGeminiMock.mockReset();
+    localStorage.clear();
+    setLocale('de', { persist: false });
   });
 
   describe('slim helpers', () => {
@@ -77,8 +80,9 @@ describe('hiveRecommendations', () => {
   describe('getHiveRecommendation', () => {
     it('returns a guidance message when there are no inspections', async () => {
       const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
-      const text = await getHiveRecommendation({ id: 'h1', name: 'Kasten 1' }, []);
-      expect(text).toMatch(/Noch keine Durchsichten/);
+      const result = await getHiveRecommendation({ id: 'h1', name: 'Kasten 1' }, []);
+      expect(result.text).toMatch(/Noch keine Durchsichten/);
+      expect(result.fromCache).toBe(false);
       expect(callGeminiMock).not.toHaveBeenCalled();
     });
 
@@ -90,9 +94,11 @@ describe('hiveRecommendations', () => {
         { id: 'i1', hiveId: 'h1', date: '2026-09-06', notes: 'ok', createdBy: 'x' }
       ];
 
-      const text = await getHiveRecommendation(hive, inspections);
+      const result = await getHiveRecommendation(hive, inspections);
 
-      expect(text).toBe('Varroa kontrollieren.');
+      expect(result.text).toBe('Varroa kontrollieren.');
+      expect(result.fromCache).toBe(false);
+      expect(result.durationMs).toBeGreaterThanOrEqual(0);
       expect(callGeminiMock).toHaveBeenCalledWith(
         'hive_recommendation',
         {
@@ -104,24 +110,76 @@ describe('hiveRecommendations', () => {
       expect(callGeminiMock.mock.calls[0][1].hive.createdBy).toBeUndefined();
     });
 
+    it('serves a second request from cache without calling Gemini', async () => {
+      callGeminiMock.mockResolvedValueOnce({ recommendation: 'Füttern.' });
+      const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
+      const hive = { id: 'h1', name: 'Kasten 1' };
+      const inspections = [{ id: 'i1', hiveId: 'h1', date: '2026-09-06', notes: 'ok' }];
+
+      const first = await getHiveRecommendation(hive, inspections);
+      const second = await getHiveRecommendation(hive, inspections);
+
+      expect(first.fromCache).toBe(false);
+      expect(second).toEqual({
+        text: 'Füttern.',
+        fromCache: true,
+        durationMs: 0
+      });
+      expect(callGeminiMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('bypasses cache when forceRefresh is set', async () => {
+      callGeminiMock
+        .mockResolvedValueOnce({ recommendation: 'Erste Antwort' })
+        .mockResolvedValueOnce({ recommendation: 'Zweite Antwort' });
+      const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
+      const hive = { id: 'h1', name: 'Kasten 1' };
+      const inspections = [{ id: 'i1', hiveId: 'h1', date: '2026-09-06' }];
+
+      await getHiveRecommendation(hive, inspections);
+      const refreshed = await getHiveRecommendation(hive, inspections, { forceRefresh: true });
+
+      expect(refreshed.text).toBe('Zweite Antwort');
+      expect(refreshed.fromCache).toBe(false);
+      expect(callGeminiMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('invalidates cache when inspections change', async () => {
+      callGeminiMock
+        .mockResolvedValueOnce({ recommendation: 'Alt' })
+        .mockResolvedValueOnce({ recommendation: 'Neu' });
+      const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
+      const hive = { id: 'h1', name: 'Kasten 1' };
+
+      await getHiveRecommendation(hive, [{ id: 'i1', hiveId: 'h1', date: '2026-09-06' }]);
+      const next = await getHiveRecommendation(hive, [
+        { id: 'i1', hiveId: 'h1', date: '2026-09-06' },
+        { id: 'i2', hiveId: 'h1', date: '2026-09-07', notes: 'neu' }
+      ]);
+
+      expect(next.text).toBe('Neu');
+      expect(next.fromCache).toBe(false);
+      expect(callGeminiMock).toHaveBeenCalledTimes(2);
+    });
+
     it('returns unavailable when recommendation is empty', async () => {
       callGeminiMock.mockResolvedValueOnce({ recommendation: '   ' });
       const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
-      const text = await getHiveRecommendation(
+      const result = await getHiveRecommendation(
         { id: 'h1' },
         [{ id: 'i1', hiveId: 'h1', date: '2026-01-01' }]
       );
-      expect(text).toBe('Empfehlung gerade nicht verfügbar.');
+      expect(result.text).toBe('Empfehlung gerade nicht verfügbar.');
     });
 
     it('returns unavailable on network errors', async () => {
       callGeminiMock.mockRejectedValueOnce(new Error('Failed to fetch'));
       const { getHiveRecommendation } = await import('../src/hiveRecommendations.js');
-      const text = await getHiveRecommendation(
+      const result = await getHiveRecommendation(
         { id: 'h1' },
         [{ id: 'i1', hiveId: 'h1', date: '2026-01-01' }]
       );
-      expect(text).toBe('Empfehlung gerade nicht verfügbar.');
+      expect(result.text).toBe('Empfehlung gerade nicht verfügbar.');
     });
 
     it('rethrows proxy/auth errors for the UI', async () => {

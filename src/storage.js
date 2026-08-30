@@ -60,6 +60,7 @@ export function clearCloudSessionData() {
   localStorage.removeItem(KEYS.SYNC_QUEUE);
   localStorage.removeItem(KEYS.SYNC_DEAD_LETTER);
   localStorage.removeItem(KEYS.TASKS);
+  localStorage.removeItem('hively_hive_ai_recs');
 }
 
 /** True when local domain entities exist (used before Local→Cloud migration). */
