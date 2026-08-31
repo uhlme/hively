@@ -99,6 +99,7 @@ import {
   isNetworkDegraded,
   clearNetworkDegraded
 } from './network.js';
+import { getUiPrefs, saveUiPrefs } from './uiPrefs.js';
 import {
   ensureActiveOperation,
   listMyOperations,
@@ -334,12 +335,19 @@ function syncBroodInspectionUi() {
   const skipEl = document.getElementById('insp-brood-not-inspected');
   const skip = !!skipEl?.checked;
   const fields = document.getElementById('insp-brood-fields');
+  const skipTile = document.getElementById('insp-brood-not-inspected-tile');
+  if (skipTile) skipTile.classList.toggle('is-checked', skip);
   if (fields) fields.style.opacity = skip ? '0.45' : '';
   for (const id of BROOD_CHECKLIST_IDS) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.disabled = skip;
     if (skip) el.checked = false;
+    const tile = el.closest('.touch-tile');
+    if (tile) {
+      tile.classList.toggle('is-disabled', skip);
+      tile.classList.toggle('is-checked', !skip && el.checked);
+    }
   }
 }
 
@@ -372,6 +380,69 @@ function fillInspectionChecklistForm(insp) {
   setVal('insp-feeding', insp?.feeding || '');
   setVal('insp-honey-super', insp?.honeySuper || '');
   syncBroodInspectionUi();
+  syncTouchChoiceUi();
+  syncTouchTiles(document.getElementById('form-inspection'));
+}
+
+function syncTouchChoiceUi(targetId = null) {
+  const buttons = targetId
+    ? document.querySelectorAll(`.touch-choice-btn[data-target="${targetId}"]`)
+    : document.querySelectorAll('#form-inspection .touch-choice-btn');
+  buttons.forEach((btn) => {
+    const select = document.getElementById(btn.dataset.target || '');
+    if (!select) return;
+    btn.classList.toggle('is-active', select.value === (btn.dataset.value ?? ''));
+    btn.setAttribute('aria-pressed', select.value === (btn.dataset.value ?? '') ? 'true' : 'false');
+  });
+}
+
+function syncTouchTiles(root) {
+  if (!root) return;
+  root.querySelectorAll('.touch-tile input[type="checkbox"]').forEach((input) => {
+    const tile = input.closest('.touch-tile');
+    if (tile) tile.classList.toggle('is-checked', input.checked);
+  });
+}
+
+function initTouchChoiceGroups(root = document) {
+  const scope = root.querySelector ? root : document;
+  scope.querySelectorAll('.touch-choice-btn').forEach((btn) => {
+    if (btn.dataset.touchBound === '1') return;
+    btn.dataset.touchBound = '1';
+    btn.setAttribute('type', 'button');
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const select = document.getElementById(targetId || '');
+      if (!select) return;
+      select.value = btn.dataset.value ?? '';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      syncTouchChoiceUi(targetId);
+    });
+  });
+}
+
+function initTouchTiles(root = document) {
+  const scope = root.querySelector ? root : document;
+  scope.querySelectorAll('.touch-tile input[type="checkbox"]').forEach((input) => {
+    if (input.dataset.touchBound === '1') return;
+    input.dataset.touchBound = '1';
+    input.addEventListener('change', () => syncTouchTiles(scope));
+    syncTouchTiles(scope);
+  });
+}
+
+function applyGloveModeToInspectionForm() {
+  const form = document.getElementById('form-inspection');
+  if (!form) return;
+  const glove = getUiPrefs().gloveMode;
+  form.classList.toggle('insp-form--glove', glove);
+  document.documentElement.classList.toggle('glove-ui', glove);
+}
+
+function refreshUiSettingsUI() {
+  const gloveEl = document.getElementById('pref-glove-mode');
+  if (gloveEl) gloveEl.checked = !!getUiPrefs().gloveMode;
+  applyGloveModeToInspectionForm();
 }
 
 async function populateApiarySelect(selectEl, selectedId = null) {
@@ -2184,15 +2255,19 @@ async function openInspectionModal(inspection = null, preselectedHiveId = null) 
 
     hivesContainer.innerHTML = hives.map(h => {
       const isChecked = (preselectedHiveId === h.id) ? 'checked' : '';
+      const checkedClass = isChecked ? ' is-checked' : '';
       return `
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; margin: 0; padding: 4px; transition: background-color 0.2s;">
-          <input type="checkbox" class="hive-checkbox" value="${escapeHtml(h.id)}" ${isChecked} id="hive-chk-${escapeHtml(h.id)}" style="width: auto; margin: 0;" />
+        <label class="touch-tile touch-tile--full${checkedClass}" for="hive-chk-${escapeHtml(h.id)}">
+          <input type="checkbox" class="hive-checkbox" value="${escapeHtml(h.id)}" ${isChecked} id="hive-chk-${escapeHtml(h.id)}" />
           <span>${escapeHtml(h.name)}</span>
         </label>
       `;
     }).join('');
+    initTouchTiles(hivesContainer);
   }
 
+  applyGloveModeToInspectionForm();
+  syncTouchChoiceUi();
   openModal('modal-inspection');
   syncBroodInspectionUi();
 }
@@ -2378,6 +2453,9 @@ function getFormSubmitButton(form, event) {
 
 // --- Form Submissions & Database Write Ops ---
 function setupForms() {
+  initTouchChoiceGroups(document.getElementById('form-inspection'));
+  initTouchTiles(document.getElementById('form-inspection'));
+
   // Hive Form Submit
   document.getElementById('form-hive').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3313,8 +3391,15 @@ function setupLocaleControls() {
 function setupSettings() {
   const fieldEl = document.getElementById('pref-field-mode');
   const wifiEl = document.getElementById('pref-wifi-only-media');
+  const gloveEl = document.getElementById('pref-glove-mode');
   const syncBtn = document.getElementById('btn-sync-now');
 
+  if (gloveEl) {
+    gloveEl.addEventListener('change', () => {
+      saveUiPrefs({ gloveMode: gloveEl.checked });
+      refreshUiSettingsUI();
+    });
+  }
   if (fieldEl) {
     fieldEl.addEventListener('change', () => {
       saveNetworkPrefs({ fieldMode: fieldEl.checked });
@@ -3358,6 +3443,7 @@ function setupSettings() {
   }
 
   refreshNetworkSettingsUI();
+  refreshUiSettingsUI();
 
   // Apiaries management
   document.getElementById('btn-add-apiary')?.addEventListener('click', async () => {
