@@ -127,6 +127,56 @@ test.describe('Auth form (local mode)', () => {
   });
 });
 
+test.describe('Inspection form (touch UI)', () => {
+  test('touch buttons save structured checklist values', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.nav-item[data-view="hives"]').click();
+    await page.locator('#btn-quick-add').click();
+    await expect(page.locator('#modal-hive')).toHaveClass(/active/);
+
+    const hiveName = `E2E Durchsicht ${Date.now()}`;
+    await page.locator('#hive-form-name').fill(hiveName);
+    await page.locator('#form-hive button[type="submit"]').click();
+    await expect(page.locator('#modal-hive')).not.toHaveClass(/active/);
+
+    await page.locator('.nav-item[data-view="dashboard"]').click();
+    await page.locator('#dash-btn-insp').click();
+    await expect(page.locator('#modal-inspection')).toHaveClass(/active/);
+
+    await page.locator(`label.touch-tile[for^="hive-chk-"]`, { hasText: hiveName }).click();
+    await page.locator('.touch-choice-btn[data-target="insp-queen-seen"][data-value="yes"]').click();
+    await expect(page.locator('#insp-queen-seen')).toHaveValue('yes');
+
+    await page.locator('#insp-brood-not-inspected-tile').click();
+    await page.locator('label.touch-tile[for="insp-eggs"]').click();
+    await expect(page.locator('#insp-eggs')).toBeChecked();
+
+    await page.locator('.touch-choice-btn[data-target="insp-strength"][data-value="strong"]').click();
+    await page.locator('#insp-form-notes').fill('E2E Touch-Test');
+    await page.locator('#form-inspection button[type="submit"]').click();
+
+    await expect(page.locator('#modal-inspection')).not.toHaveClass(/active/);
+
+    await page.locator('.nav-item[data-view="hives"]').click();
+    await page.locator('.hive-card', { hasText: hiveName }).click();
+    await expect(page.locator('#view-hive-detail')).toBeVisible();
+    await expect(page.locator('.checklist-chips')).toContainText(/Königin|Queen/i);
+    await expect(page.locator('.inspection-log-card')).toContainText('E2E Touch-Test');
+  });
+
+  test('glove mode toggle adds form modifier class', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#btn-settings-header').click();
+    await expect(page.locator('#view-settings')).toBeVisible();
+    await page.locator('#pref-glove-mode').check();
+
+    await page.locator('.nav-item[data-view="dashboard"]').click();
+    await page.locator('#dash-btn-insp').click();
+    await expect(page.locator('#form-inspection')).toHaveClass(/insp-form--glove/);
+    await expect(page.locator('html')).toHaveClass(/glove-ui/);
+  });
+});
+
 test.describe('Treatment form', () => {
   test('product list includes Formivar 70% and common CH products', async ({ page }) => {
     await page.goto('/');

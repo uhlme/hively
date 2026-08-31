@@ -481,6 +481,13 @@
                 Optimiert für den Bienenstand mit schlechtem Empfang: lokale Daten zuerst, wenig Hintergrund-Traffic.
               </p>
               <label class="settings-toggle">
+                <input type="checkbox" id="pref-glove-mode" />
+                <span>
+                  <strong data-i18n="settings.gloveMode">Handschuh-Modus</strong>
+                  <span class="settings-toggle-hint" data-i18n="settings.gloveModeHint">Grössere Schaltflächen in der Durchsicht-Erfassung – einfacher mit Handschuhen bedienbar.</span>
+                </span>
+              </label>
+              <label class="settings-toggle">
                 <input type="checkbox" id="pref-field-mode" />
                 <span>
                   <strong data-i18n="settings.fieldMode">Funkloch-Modus</strong>
@@ -663,6 +670,7 @@
               </button>
             </div>
             <div id="voice-transcription-preview" style="display: none; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; background: var(--bg-muted-strong); padding: 8px; border-radius: 4px; max-height: 80px; overflow-y: auto; border-left: 3px solid var(--primary);"></div>
+            <p class="voice-assistant-glove-hint" data-i18n="inspections.voiceGloveHint">Mit Handschuhen: Diktieren statt tippen.</p>
             <div id="voice-assistant-error" class="text-danger" style="display: none; font-size: 0.8rem; margin-top: 4px;"></div>
           </div>
 
@@ -672,7 +680,7 @@
             <input type="hidden" id="insp-weather-condition" />
             <div class="form-group">
               <label data-i18n="inspections.hivesLabel">Bienenvolk / Kästen</label>
-              <div id="insp-form-hives-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background-color: var(--bg-secondary); display: flex; flex-direction: column; gap: 8px;">
+              <div id="insp-form-hives-container" class="insp-hives-container">
                 <!-- Rendered dynamically via JS -->
               </div>
             </div>
@@ -684,8 +692,14 @@
             <div id="insp-checklist" class="card" style="padding: 14px; margin-bottom: 16px; background: var(--bg-muted);">
               <h3 style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="inspections.checklistTitle">Strukturierte Beobachtung</h3>
               <div class="form-group">
-                <label for="insp-queen-seen" data-i18n="inspections.queenSeen">Königin gesehen</label>
-                <select id="insp-queen-seen" class="form-control">
+                <span id="insp-queen-seen-label" class="form-group-label" data-i18n="inspections.queenSeen">Königin gesehen</span>
+                <div class="touch-choice" role="radiogroup" aria-labelledby="insp-queen-seen-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-queen-seen" data-value="" data-i18n="common.none">—</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-queen-seen" data-value="yes" data-i18n="inspections.queenYes">Ja</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-queen-seen" data-value="no" data-i18n="inspections.queenNo">Nein</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-queen-seen" data-value="unsure" data-i18n="inspections.queenUnsure">Unsicher</button>
+                </div>
+                <select id="insp-queen-seen" class="visually-hidden" tabindex="-1" aria-hidden="true">
                   <option value="" data-i18n="common.none">—</option>
                   <option value="yes" data-i18n="inspections.queenYes">Ja</option>
                   <option value="no" data-i18n="inspections.queenNo">Nein</option>
@@ -693,76 +707,109 @@
                 </select>
               </div>
               <div class="form-group" style="margin-bottom: 8px;">
-                <span style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);" data-i18n="inspections.broodCells">Brut &amp; Zellen</span>
-                <label style="display: flex; align-items: flex-start; gap: 8px; font-weight: normal; margin: 0 0 10px; cursor: pointer;">
-                  <input type="checkbox" id="insp-brood-not-inspected" checked style="width: auto; margin: 2px 0 0;" />
+                <span class="form-group-label" data-i18n="inspections.broodCells">Brut &amp; Zellen</span>
+                <label class="touch-tile touch-tile--full" id="insp-brood-not-inspected-tile">
+                  <input type="checkbox" id="insp-brood-not-inspected" checked />
                   <span>
                     <span data-i18n="inspections.broodNotInspected">Keine Brutkontrolle gemacht</span>
-                    <span class="text-muted" style="display: block; font-size: 0.75rem; margin-top: 2px;" data-i18n="inspections.broodNotInspectedHint">Standard – leere Brutfelder zählen dann nicht als «keine Brut».</span>
+                    <span class="text-muted" style="display: block; font-size: 0.75rem; margin-top: 2px; font-weight: 400;" data-i18n="inspections.broodNotInspectedHint">Standard – leere Brutfelder zählen dann nicht als «keine Brut».</span>
                   </span>
                 </label>
-                <div id="insp-brood-fields" style="display: flex; flex-wrap: wrap; gap: 10px 16px;">
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-eggs" style="width: auto; margin: 0;" /> <span data-i18n="inspections.eggs">Stifte</span>
+                <div id="insp-brood-fields" class="touch-tile-grid">
+                  <label class="touch-tile" for="insp-eggs">
+                    <input type="checkbox" id="insp-eggs" />
+                    <span data-i18n="inspections.eggs">Stifte</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-open-brood" style="width: auto; margin: 0;" /> <span data-i18n="inspections.openBrood">Offene Brut</span>
+                  <label class="touch-tile" for="insp-open-brood">
+                    <input type="checkbox" id="insp-open-brood" />
+                    <span data-i18n="inspections.openBrood">Offene Brut</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-capped-brood" style="width: auto; margin: 0;" /> <span data-i18n="inspections.cappedBrood">Verdeckelte Brut</span>
+                  <label class="touch-tile" for="insp-capped-brood">
+                    <input type="checkbox" id="insp-capped-brood" />
+                    <span data-i18n="inspections.cappedBrood">Verdeckelte Brut</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-play-cups" style="width: auto; margin: 0;" /> <span data-i18n="inspections.playCups">Spielnäpfchen</span>
+                  <label class="touch-tile" for="insp-play-cups">
+                    <input type="checkbox" id="insp-play-cups" />
+                    <span data-i18n="inspections.playCups">Spielnäpfchen</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="insp-queen-cells" style="width: auto; margin: 0;" /> <span data-i18n="inspections.queenCells">Weiselzellen</span>
+                  <label class="touch-tile touch-tile--full" for="insp-queen-cells">
+                    <input type="checkbox" id="insp-queen-cells" />
+                    <span data-i18n="inspections.queenCells">Weiselzellen</span>
                   </label>
                 </div>
               </div>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label for="insp-strength" data-i18n="inspections.strength">Volkstärke</label>
-                  <select id="insp-strength" class="form-control">
-                    <option value="" data-i18n="common.none">—</option>
-                    <option value="weak" data-i18n="inspections.strengthWeak">Schwach</option>
-                    <option value="mid" data-i18n="inspections.strengthMid">Mittel</option>
-                    <option value="strong" data-i18n="inspections.strengthStrong">Stark</option>
-                    <option value="na" data-i18n="inspections.strengthNa">n.b.</option>
-                  </select>
+              <div class="form-group">
+                <span id="insp-strength-label" class="form-group-label" data-i18n="inspections.strength">Volkstärke</span>
+                <div class="touch-choice" role="radiogroup" aria-labelledby="insp-strength-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-strength" data-value="" data-i18n="common.none">—</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-strength" data-value="weak" data-i18n="inspections.strengthWeak">Schwach</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-strength" data-value="mid" data-i18n="inspections.strengthMid">Mittel</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-strength" data-value="strong" data-i18n="inspections.strengthStrong">Stark</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-strength" data-value="na" data-i18n="inspections.strengthNa">n.b.</button>
                 </div>
-                <div class="form-group">
-                  <label for="insp-temperament" data-i18n="inspections.temperament">Sanftmut (1–5)</label>
-                  <select id="insp-temperament" class="form-control">
-                    <option value="5" data-i18n="inspections.temperament5">5 – sehr sanft</option>
-                    <option value="4">4</option>
-                    <option value="3">3</option>
-                    <option value="2">2</option>
-                    <option value="1" data-i18n="inspections.temperament1">1 – aggressiv</option>
-                  </select>
-                </div>
+                <select id="insp-strength" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                  <option value="" data-i18n="common.none">—</option>
+                  <option value="weak" data-i18n="inspections.strengthWeak">Schwach</option>
+                  <option value="mid" data-i18n="inspections.strengthMid">Mittel</option>
+                  <option value="strong" data-i18n="inspections.strengthStrong">Stark</option>
+                  <option value="na" data-i18n="inspections.strengthNa">n.b.</option>
+                </select>
               </div>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label for="insp-feeding" data-i18n="inspections.feeding">Fütterung</label>
-                  <select id="insp-feeding" class="form-control">
-                    <option value="" data-i18n="inspections.feedingNo">Nein</option>
-                    <option value="1:1">1:1</option>
-                    <option value="3:2">3:2</option>
-                    <option value="Sonstiges" data-i18n="inspections.feedingOther">Sonstiges</option>
-                  </select>
+              <div class="form-group">
+                <span id="insp-temperament-label" class="form-group-label" data-i18n="inspections.temperament">Sanftmut (1–5)</span>
+                <div class="touch-choice touch-choice--compact" role="radiogroup" aria-labelledby="insp-temperament-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-temperament" data-value="5" data-i18n="inspections.temperament5">5 – sehr sanft</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-temperament" data-value="4">4</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-temperament" data-value="3">3</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-temperament" data-value="2">2</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-temperament" data-value="1" data-i18n="inspections.temperament1">1 – aggressiv</button>
                 </div>
-                <div class="form-group">
-                  <label for="insp-honey-super" data-i18n="inspections.honeySuper">Honigraum</label>
-                  <select id="insp-honey-super" class="form-control">
-                    <option value="" data-i18n="inspections.honeySuperNone">Keiner</option>
-                    <option value="1">1</option>
-                    <option value="2+">2+</option>
-                  </select>
+                <select id="insp-temperament" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                  <option value="5" data-i18n="inspections.temperament5">5 – sehr sanft</option>
+                  <option value="4">4</option>
+                  <option value="3">3</option>
+                  <option value="2">2</option>
+                  <option value="1" data-i18n="inspections.temperament1">1 – aggressiv</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <span id="insp-feeding-label" class="form-group-label" data-i18n="inspections.feeding">Fütterung</span>
+                <div class="touch-choice" role="radiogroup" aria-labelledby="insp-feeding-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-feeding" data-value="" data-i18n="inspections.feedingNo">Nein</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-feeding" data-value="1:1">1:1</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-feeding" data-value="3:2">3:2</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-feeding" data-value="Sonstiges" data-i18n="inspections.feedingOther">Sonstiges</button>
                 </div>
+                <select id="insp-feeding" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                  <option value="" data-i18n="inspections.feedingNo">Nein</option>
+                  <option value="1:1">1:1</option>
+                  <option value="3:2">3:2</option>
+                  <option value="Sonstiges" data-i18n="inspections.feedingOther">Sonstiges</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <span id="insp-honey-super-label" class="form-group-label" data-i18n="inspections.honeySuper">Honigraum</span>
+                <div class="touch-choice" role="radiogroup" aria-labelledby="insp-honey-super-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-honey-super" data-value="" data-i18n="inspections.honeySuperNone">Keiner</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-honey-super" data-value="1">1</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-honey-super" data-value="2+">2+</button>
+                </div>
+                <select id="insp-honey-super" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                  <option value="" data-i18n="inspections.honeySuperNone">Keiner</option>
+                  <option value="1">1</option>
+                  <option value="2+">2+</option>
+                </select>
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label for="insp-varroa-level" data-i18n="inspections.varroaLevel">Varroa-Befall</label>
-                <select id="insp-varroa-level" class="form-control">
+                <span id="insp-varroa-level-label" class="form-group-label" data-i18n="inspections.varroaLevel">Varroa-Befall</span>
+                <div class="touch-choice" role="radiogroup" aria-labelledby="insp-varroa-level-label">
+                  <button type="button" class="touch-choice-btn" data-target="insp-varroa-level" data-value="" data-i18n="common.none">—</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-varroa-level" data-value="low" data-i18n="inspections.varroaLow">Niedrig</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-varroa-level" data-value="mid" data-i18n="inspections.varroaMid">Mittel</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-varroa-level" data-value="high" data-i18n="inspections.varroaHigh">Hoch</button>
+                  <button type="button" class="touch-choice-btn" data-target="insp-varroa-level" data-value="na" data-i18n="inspections.varroaNa">n.b.</button>
+                </div>
+                <select id="insp-varroa-level" class="visually-hidden" tabindex="-1" aria-hidden="true">
                   <option value="" data-i18n="common.none">—</option>
                   <option value="low" data-i18n="inspections.varroaLow">Niedrig</option>
                   <option value="mid" data-i18n="inspections.varroaMid">Mittel</option>
