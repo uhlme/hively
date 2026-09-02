@@ -32,16 +32,26 @@ export function localizeWeatherForAi(weatherData, locale = getLocale()) {
   };
 }
 
+/**
+ * @returns {Promise<{ text: string, durationMs: number }>}
+ */
 export async function getWeatherInsightFromGemini(weatherData) {
+  const started = performance.now();
   try {
     const localized = localizeWeatherForAi(weatherData);
     const result = await callGemini('weather_insight', { weatherData: localized }, 20000);
     const text = typeof result?.text === 'string' ? result.text.trim() : '';
-    return text || t('ai.weatherUnavailable');
+    return {
+      text: text || t('ai.weatherUnavailable'),
+      durationMs: Math.round(performance.now() - started)
+    };
   } catch (e) {
     console.error('Fehler bei Gemini Insight:', e);
+    const durationMs = Math.round(performance.now() - started);
     // CORS / offline / proxy unreachable → never surface raw "Failed to fetch"
-    if (isNetworkError(e)) return t('ai.weatherUnavailable');
-    return e?.message || t('ai.weatherUnavailable');
+    if (isNetworkError(e)) {
+      return { text: t('ai.weatherUnavailable'), durationMs };
+    }
+    return { text: e?.message || t('ai.weatherUnavailable'), durationMs };
   }
 }

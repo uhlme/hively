@@ -207,15 +207,38 @@ function requireBase64Data(data, emptyMessage, tooLargeMessage) {
   }
 }
 
-function getModel(ai, generationConfig = {}) {
+/**
+ * Gemini 3.5 Flash defaults to thinkingLevel "medium", which adds seconds of
+ * latency for short beekeeping tips. Pass an explicit level (minimal/low/…).
+ * SDK 0.24 types omit thinkingConfig; the REST API still accepts it.
+ *
+ * @param {import('@google/generative-ai').GoogleGenerativeAI} ai
+ * @param {{ maxOutputTokens?: number, thinkingLevel?: string } & Record<string, unknown>} [opts]
+ */
+function getModel(ai, opts = {}) {
+  const { thinkingLevel = 'minimal', maxOutputTokens = 1024, ...rest } = opts;
+  /** @type {Record<string, unknown>} */
+  const generationConfig = {
+    maxOutputTokens,
+    ...rest
+  };
+  if (thinkingLevel) {
+    generationConfig.thinkingConfig = { thinkingLevel };
+  }
   return ai.getGenerativeModel({
     model: MODEL,
-    generationConfig: {
-      // Gemini Flash may spend tokens on "thinking"; keep headroom for visible text.
-      maxOutputTokens: 2048,
-      ...generationConfig
-    }
+    generationConfig
   });
+}
+
+/** Exposed for unit tests. */
+export function buildModelGenerationConfig(opts = {}) {
+  const { thinkingLevel = 'minimal', maxOutputTokens = 1024, ...rest } = opts;
+  const generationConfig = { maxOutputTokens, ...rest };
+  if (thinkingLevel) {
+    generationConfig.thinkingConfig = { thinkingLevel };
+  }
+  return generationConfig;
 }
 
 /**
@@ -253,7 +276,11 @@ async function weatherInsight(ai, weatherData, locale) {
   }
 
   const prompt = buildWeatherInsightPrompt(locale, weatherData);
-  const result = await getModel(ai, { maxOutputTokens: 1024 }).generateContent(prompt);
+  // Short tip: minimal thinking + tight output budget for low latency.
+  const result = await getModel(ai, {
+    maxOutputTokens: 256,
+    thinkingLevel: 'minimal'
+  }).generateContent(prompt);
   const text = extractGeminiText(result.response);
   if (!text) throw new Error('Ungültiges Antwortformat der KI');
   return { text };
@@ -366,7 +393,11 @@ Notes: ${hive.notes || 'None'}
     todayLabel
   });
 
-  const result = await getModel(ai, { maxOutputTokens: 4096 }).generateContent(prompt);
+  // Colony advice needs a little reasoning, but default "medium" is too slow.
+  const result = await getModel(ai, {
+    maxOutputTokens: 1024,
+    thinkingLevel: 'low'
+  }).generateContent(prompt);
   // Empty model text → soft client fallback (not a hard 502)
   return { recommendation: extractGeminiText(result.response) };
 }

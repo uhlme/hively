@@ -3,7 +3,7 @@
   command = "npm run build"
   functions = "netlify/functions"
 
-# Gemini 2.5 can exceed the default 10s (thinking + recommendation text).
+# Gemini Flash with thinking can exceed the default 10s; keep headroom after latency opts.
 [functions."gemini"]
   timeout = 26
 

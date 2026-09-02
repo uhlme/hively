@@ -222,7 +222,13 @@ async function buildRadarPayload(forceLocation) {
       insight = cached.insight;
     }
   } else if (shouldUseBackgroundNetwork() && hasProAccess()) {
-    insight = await getWeatherInsightFromGemini(weatherData);
+    const ai = await getWeatherInsightFromGemini(weatherData);
+    insight = ai.text;
+    trackEvent('ai_weather_insight_loaded', {
+      ok: insight !== t('ai.weatherUnavailable'),
+      duration_ms: ai.durationMs,
+      from_cache: false
+    });
   } else if (shouldUseBackgroundNetwork() && isBillingEnabled() && !hasProAccess()) {
     insight = getProUpsellInsight();
   }
@@ -251,8 +257,14 @@ async function refreshRadarInsightIfNeeded(cached) {
 
   try {
     if (hasProAccess() && (upsell || localeChanged)) {
-      const insight = await getWeatherInsightFromGemini(cached);
-      const next = { ...cached, insight, locale, timestamp: Date.now() };
+      const ai = await getWeatherInsightFromGemini(cached);
+      trackEvent('ai_weather_insight_loaded', {
+        ok: ai.text !== t('ai.weatherUnavailable'),
+        duration_ms: ai.durationMs,
+        from_cache: false,
+        reason: localeChanged ? 'locale' : 'upsell'
+      });
+      const next = { ...cached, insight: ai.text, locale, timestamp: Date.now() };
       writeRadarCache(next);
       return next;
     }
@@ -1759,7 +1771,7 @@ async function renderHiveDetailView() {
   infoBlock.parentNode.insertBefore(recommendationBlock, infoBlock.nextSibling);
 
   // Load recommendation
-  async function loadRecommendation() {
+  async function loadRecommendation({ forceRefresh = false } = {}) {
     const recommendationContent = document.getElementById('recommendation-content');
     if (!recommendationContent) return;
 
@@ -1778,11 +1790,16 @@ async function renderHiveDetailView() {
 
     try {
       recommendationContent.innerHTML = `<span>${escapeHtml(t('ai.recommendationLoading'))}</span>`;
-      const recommendation = await getHiveRecommendation(hive, inspections);
+      const result = await getHiveRecommendation(hive, inspections, { forceRefresh });
+      const recommendation = result.text;
       const softFail =
         recommendation === t('ai.recommendationUnavailable') ||
         recommendation === t('ai.recommendationNoInspections');
-      trackEvent('ai_recommendation_loaded', { ok: !softFail });
+      trackEvent('ai_recommendation_loaded', {
+        ok: !softFail,
+        duration_ms: result.durationMs,
+        from_cache: result.fromCache
+      });
 
       // Simple text formatting (proxy/auth errors are returned as plain text)
       const formattedRecommendation = escapeHtml(recommendation).replace(/\n/g, '<br>');
@@ -1790,7 +1807,7 @@ async function renderHiveDetailView() {
       recommendationContent.innerHTML = `<div class="${cls}">${formattedRecommendation}</div>`;
     } catch (err) {
       console.error('Fehler beim Laden der Empfehlung:', err);
-      trackEvent('ai_recommendation_loaded', { ok: false });
+      trackEvent('ai_recommendation_loaded', { ok: false, from_cache: false });
       recommendationContent.innerHTML =
         '<span class="text-danger">' +
         escapeHtml(err?.message || t('ai.recommendationLoadError')) +
@@ -1801,13 +1818,13 @@ async function renderHiveDetailView() {
   // Initial load
   loadRecommendation();
 
-  // Refresh button
+  // Refresh button — bypass cache so "Neu laden" always hits Gemini
   document.getElementById('btn-refresh-recommendation')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-refresh-recommendation');
     if (!btn) return;
     btn.disabled = true;
     btn.innerText = 'Lädt...';
-    await loadRecommendation();
+    await loadRecommendation({ forceRefresh: true });
     btn.disabled = false;
     btn.innerText = 'Neu laden';
   });
