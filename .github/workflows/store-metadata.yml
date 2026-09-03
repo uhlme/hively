@@ -12,11 +12,15 @@ on:
           - both
           - ios
           - android
-      include_screenshots:
-        description: 'Also generate + upload iOS screenshots (runs on macOS)'
-        required: false
-        default: false
-        type: boolean
+      screenshots:
+        description: 'Screenshots — none (text only), upload_existing (repo PNGs, no capture), generate_and_upload (capture then upload)'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - upload_existing
+          - generate_and_upload
   push:
     branches: [main]
     paths:
@@ -81,16 +85,92 @@ jobs:
         if: always()
         run: rm -f /tmp/play-service-account.json
 
-  ios-screenshots:
-    # Optional: generate framed screenshots on macOS and upload them to
-    # App Store Connect. Only runs on manual dispatch with the toggle enabled,
-    # because screenshot capture needs Xcode/simulators (not available on Linux).
+  # --- Upload committed screenshots only (no capture / no emulator / no macOS) ---
+
+  ios-screenshots-existing:
     if: |
       github.event_name == 'workflow_dispatch' &&
-      inputs.include_screenshots == true &&
+      inputs.screenshots == 'upload_existing' &&
       (inputs.platform == 'ios' || inputs.platform == 'both')
-    # Serialize with the text upload: both call `deliver` against the same ASC
-    # version, and this way the slow macOS job is skipped if the cheap one fails.
+    needs: ios-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      STORE_IOS_LOCALES: de-DE
+      SKIP_SCREENSHOTS: 'false'
+      SKIP_METADATA: 'true'
+      # Only 6.9" is committed today — do not wipe iPad sizes on ASC.
+      OVERWRITE_SCREENSHOTS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Verify committed iOS screenshots exist
+        run: bundle exec fastlane ios verify_existing_screenshots
+
+      - name: Upload existing screenshots to App Store Connect
+        run: bundle exec fastlane ios upload_metadata
+
+  android-screenshots-existing:
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.screenshots == 'upload_existing' &&
+      (inputs.platform == 'android' || inputs.platform == 'both')
+    needs: android-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Write Play service-account key to disk
+        run: |
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Stage committed Android screenshots for Play upload
+        env:
+          # Soft-skip when platform=both and phoneScreenshots are not in the repo yet.
+          ALLOW_MISSING_SCREENSHOTS: ${{ inputs.platform == 'both' && 'true' || 'false' }}
+        run: bundle exec fastlane android verify_existing_screenshots
+
+      - name: Upload existing screenshots to Play Store
+        env:
+          SKIP_STORE_SCREENSHOTS: 'false'
+          SKIP_STORE_IMAGES: 'true'
+          SKIP_CHANGELOGS: 'true'
+          SKIP_METADATA: 'true'
+        run: |
+          PLAY_DIR=fastlane/metadata/android/de-DE/images/phoneScreenshots
+          if ! ls "$PLAY_DIR"/*.png >/dev/null 2>&1; then
+            echo "No Android phone screenshots staged — skipping Play screenshot upload."
+            exit 0
+          fi
+          bundle exec fastlane android upload_metadata
+
+      - name: Clean up credential files
+        if: always()
+        run: rm -f /tmp/play-service-account.json
+
+  # --- Generate new screenshots then upload ---
+
+  ios-screenshots:
+    # Capture on macOS (Xcode/simulators), then upload. Manual dispatch only.
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.screenshots == 'generate_and_upload' &&
+      (inputs.platform == 'ios' || inputs.platform == 'both')
     needs: ios-metadata
     runs-on: macos-latest
     timeout-minutes: 60
@@ -128,3 +208,82 @@ jobs:
 
       - name: Upload screenshots to App Store Connect (deliver)
         run: bundle exec fastlane ios upload_metadata
+
+  android-screenshots:
+    # Capture on Linux via Android emulator, then upload. No Mac required.
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.screenshots == 'generate_and_upload' &&
+      (inputs.platform == 'android' || inputs.platform == 'both')
+    needs: android-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build web assets + sync into Android app
+        run: |
+          npm ci
+          npm run android:sync
+
+      - name: Write Play service-account key to disk
+        run: |
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Capture + frame Android screenshots (emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            bundle exec fastlane android screenshots
+            bundle exec fastlane android frame_shots
+
+      - name: Upload screenshots + images to Play Store
+        env:
+          SKIP_STORE_SCREENSHOTS: 'false'
+          SKIP_STORE_IMAGES: 'false'
+          SKIP_CHANGELOGS: 'true'
+          SKIP_METADATA: 'true'
+        run: bundle exec fastlane android upload_metadata
+
+      - name: Upload screenshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-store-screenshots
+          path: |
+            fastlane/screenshots/android/
+            fastlane/metadata/android/de-DE/images/phoneScreenshots/
+          if-no-files-found: warn
+
+      - name: Clean up credential files
+        if: always()
+        run: rm -f /tmp/play-service-account.json

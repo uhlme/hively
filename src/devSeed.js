@@ -2,7 +2,8 @@
 // screenshots (and manual QA) show a populated app instead of an empty state.
 //
 // Trigger (any of):
-//   - localStorage 'hively_uitest_seed' === '1'  (set by the iOS UITest hook)
+//   - localStorage 'hively_uitest_seed' === '1'
+//     (set by iOS MainViewController launch args or Android MainActivity Intent extras)
 //   - URL query   ?hively_seed=demo   (dev builds only)
 //   - URL hash    #hively_seed=demo   (dev builds only)
 //

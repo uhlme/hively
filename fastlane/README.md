@@ -31,6 +31,14 @@ Capture App Store screenshots via the AppUITests target
 
 Add device frames + ASO overlay text to captured screenshots (frameit)
 
+### ios verify_existing_screenshots
+
+```sh
+[bundle exec] fastlane ios verify_existing_screenshots
+```
+
+Fail unless committed iOS screenshots exist under fastlane/screenshots/ (no capture)
+
 ### ios upload_metadata
 
 ```sh
@@ -51,6 +59,30 @@ Build the iOS app and upload it to TestFlight
 
 
 ## Android
+
+### android verify_existing_screenshots
+
+```sh
+[bundle exec] fastlane android verify_existing_screenshots
+```
+
+Stage committed Android screenshots into Play phoneScreenshots/ (no capture)
+
+### android screenshots
+
+```sh
+[bundle exec] fastlane android screenshots
+```
+
+Capture Play Store phone screenshots via ScreenshotCaptureTest (needs emulator/device)
+
+### android frame_shots
+
+```sh
+[bundle exec] fastlane android frame_shots
+```
+
+Add device frames + ASO overlay text, copy into Play phoneScreenshots/
 
 ### android upload_metadata
 

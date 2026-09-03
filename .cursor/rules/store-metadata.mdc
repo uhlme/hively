@@ -24,6 +24,8 @@ bundle exec fastlane android upload_metadata  # Play Store (supply)
 ```
 
 Oder GitHub Actions Workflow **Store metadata** (`workflow_dispatch`).
+Screenshot-Modus: `none` | `upload_existing` | `generate_and_upload`
+(`upload_existing` = Repo-PNGs ohne Capture; Generate: iOS=macOS, Android=Linux-Emulator).
 
 ## Regeln
 
