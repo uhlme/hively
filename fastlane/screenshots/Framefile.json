@@ -13,5 +13,8 @@
     "title": {
       "color": "#e08a3c"
     }
-  }
+  },
+  "data": [
+    { "filter": "Dashboard", "keyword": { "color": "#c4b8a8" }, "title": { "color": "#e08a3c" } }
+  ]
 }

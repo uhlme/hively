@@ -111,7 +111,8 @@ function buildSeed() {
     { id: 'seed-fin-3', date: daysAgo(18), description: 'Zuckerwasser / Futtersirup', category: 'feed', price: 46.2, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
     { id: 'seed-fin-4', date: daysAgo(9), description: 'Ableger-Königin Buckfast', category: 'bees', price: 38, type: 'expense', hiveId: 'seed-hive-5', sponsorName: null, notes: null, ...meta },
     { id: 'seed-fin-5', date: daysAgo(30), description: 'Smoker & Stockmeissel', category: 'hardware', price: 61.5, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
-    { id: 'seed-fin-6', date: daysAgo(6), description: 'Bienenpatenschaft Familie Meier', category: 'sponsorship', price: 120, type: 'sponsorship', hiveId: 'seed-hive-1', sponsorName: 'Familie Meier', notes: null, ...meta }
+    { id: 'seed-fin-6', date: daysAgo(12), description: 'Bienenpatenschaft Familie Meier', category: 'sponsorship', price: 300, type: 'sponsorship', hiveId: 'seed-hive-1', sponsorName: 'Familie Meier', notes: 'Jahrespatenschaft inkl. 3 Gläser Honig', ...meta },
+    { id: 'seed-fin-7', date: daysAgo(5), description: 'Bienenpatenschaft Kita Sonnenschein', category: 'sponsorship', price: 180, type: 'sponsorship', hiveId: 'seed-hive-3', sponsorName: 'Kita Sonnenschein', notes: null, ...meta }
   ];
 
   const honey = [

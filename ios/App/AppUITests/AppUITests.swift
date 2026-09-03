@@ -45,8 +45,15 @@ final class AppUITests: XCTestCase {
             }
 
             if screen.scrollDown {
-                webView.swipeUp()
-                webView.swipeUp()
+                // Scroll to the offline / local-data block near the bottom of
+                // Settings. Stop once the reset button is on screen (or after a
+                // bounded number of swipes) so iPhone and iPad land similarly.
+                let target = webView.buttons["Lokale Daten löschen"]
+                var swipes = 0
+                while !target.isHittable && swipes < 6 {
+                    webView.swipeUp()
+                    swipes += 1
+                }
                 sleep(1)
             }
 
