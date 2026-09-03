@@ -52,6 +52,22 @@ Build the iOS app and upload it to TestFlight
 
 ## Android
 
+### android screenshots
+
+```sh
+[bundle exec] fastlane android screenshots
+```
+
+Capture Play Store phone screenshots via ScreenshotCaptureTest (needs emulator/device)
+
+### android frame_shots
+
+```sh
+[bundle exec] fastlane android frame_shots
+```
+
+Add device frames + ASO overlay text, copy into Play phoneScreenshots/
+
 ### android upload_metadata
 
 ```sh

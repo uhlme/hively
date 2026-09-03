@@ -24,6 +24,8 @@ bundle exec fastlane android upload_metadata  # Play Store (supply)
 ```
 
 Oder GitHub Actions Workflow **Store metadata** (`workflow_dispatch`).
+Mit `include_screenshots`: iOS auf macOS, Android auf Linux-Emulator
+(`reactivecircus/android-emulator-runner`).
 
 ## Regeln
 

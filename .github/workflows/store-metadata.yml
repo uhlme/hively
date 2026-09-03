@@ -13,7 +13,7 @@ on:
           - ios
           - android
       include_screenshots:
-        description: 'Also generate + upload iOS screenshots (runs on macOS)'
+        description: 'Also generate + upload store screenshots (iOS=macOS, Android=Linux emulator)'
         required: false
         default: false
         type: boolean
@@ -128,3 +128,83 @@ jobs:
 
       - name: Upload screenshots to App Store Connect (deliver)
         run: bundle exec fastlane ios upload_metadata
+
+  android-screenshots:
+    # Optional: generate framed phone screenshots on Linux via Android emulator
+    # and upload them to Play Console. No Mac required.
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.include_screenshots == true &&
+      (inputs.platform == 'android' || inputs.platform == 'both')
+    needs: android-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build web assets + sync into Android app
+        run: |
+          npm ci
+          npm run android:sync
+
+      - name: Write Play service-account key to disk
+        run: |
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Capture + frame Android screenshots (emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            bundle exec fastlane android screenshots
+            bundle exec fastlane android frame_shots
+
+      - name: Upload screenshots + images to Play Store
+        env:
+          SKIP_STORE_SCREENSHOTS: 'false'
+          SKIP_STORE_IMAGES: 'false'
+          SKIP_CHANGELOGS: 'true'
+          SKIP_METADATA: 'true'
+        run: bundle exec fastlane android upload_metadata
+
+      - name: Upload screenshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-store-screenshots
+          path: |
+            fastlane/screenshots/android/
+            fastlane/metadata/android/de-DE/images/phoneScreenshots/
+          if-no-files-found: warn
+
+      - name: Clean up credential files
+        if: always()
+        run: rm -f /tmp/play-service-account.json

@@ -268,6 +268,80 @@ platform :ios do
 end
 
 platform :android do
+  desc "Capture Play Store phone screenshots via ScreenshotCaptureTest (needs emulator/device)"
+  lane :screenshots do
+    project_root = File.expand_path("..", __dir__)
+    out_dir = File.join(project_root, "fastlane/screenshots/android/de-DE/phone")
+    FileUtils.rm_rf(out_dir)
+    FileUtils.mkdir_p(out_dir)
+
+    # Best-effort: quiet animations + location so weather prompts stay off-screen.
+    sh("adb shell settings put global window_animation_scale 0 || true")
+    sh("adb shell settings put global transition_animation_scale 0 || true")
+    sh("adb shell settings put global animator_duration_scale 0 || true")
+    sh("adb shell pm grant ch.hively.app android.permission.ACCESS_FINE_LOCATION || true")
+    sh("adb shell pm grant ch.hively.app android.permission.ACCESS_COARSE_LOCATION || true")
+
+    gradle(
+      task: "connectedDebugAndroidTest",
+      project_dir: "android/",
+      flags: "-Pandroid.testInstrumentationRunnerArguments.class=ch.hively.app.ScreenshotCaptureTest"
+    )
+
+    device_path = "/sdcard/Android/data/ch.hively.app/files/Pictures/store-screenshots"
+    sh("adb pull '#{device_path}/.' '#{out_dir}/'")
+
+    captured = Dir[File.join(out_dir, "*.png")].reject { |p| p.include?("_framed") }.length
+    UI.user_error!("Android screenshots: expected 5 PNGs, got #{captured} in #{out_dir}") if captured < 5
+    UI.success("Screenshots saved to #{out_dir}")
+  end
+
+  desc "Add device frames + ASO overlay text, copy into Play phoneScreenshots/"
+  lane :frame_shots do
+    project_root = File.expand_path("..", __dir__)
+    screenshots_root = File.join(project_root, "fastlane/screenshots")
+    phone_dir = File.join(screenshots_root, "android/de-DE/phone")
+    ios_locale_dir = File.join(screenshots_root, "de-DE")
+    background = File.join(screenshots_root, "background.jpg")
+    framefile = File.join(screenshots_root, "Framefile.json")
+
+    UI.user_error!("No screenshots in #{phone_dir}. Run `fastlane android screenshots` first.") unless File.directory?(phone_dir)
+    raw = Dir[File.join(phone_dir, "*.png")].reject { |p| p.include?("_framed") }
+    UI.user_error!("No raw PNGs in #{phone_dir}") if raw.empty?
+    UI.user_error!("Missing #{background} — frameit needs it for overlay text.") unless File.exist?(background)
+
+    # Stage frameit config next to the PNGs (same pattern as ios frame_shots).
+    sh("cp '#{background}' '#{phone_dir}/'")
+    sh("cp '#{framefile}' '#{phone_dir}/'") if File.exist?(framefile)
+    %w[title.strings keyword.strings].each do |f|
+      src = File.join(ios_locale_dir, f)
+      sh("cp '#{src}' '#{phone_dir}/'") if File.exist?(src)
+    end
+
+    frame_screenshots(
+      path: File.join(screenshots_root, "android"),
+      use_platform: "ANDROID"
+    )
+
+    %w[background.jpg Framefile.json title.strings keyword.strings].each do |f|
+      FileUtils.rm_f(File.join(phone_dir, f))
+    end
+
+    play_dir = File.join(project_root, "fastlane/metadata/android/de-DE/images/phoneScreenshots")
+    FileUtils.mkdir_p(play_dir)
+    Dir[File.join(play_dir, "*.png")].each { |p| FileUtils.rm_f(p) }
+
+    framed = Dir[File.join(phone_dir, "*_framed.png")]
+    UI.user_error!("frameit produced no *_framed.png in #{phone_dir}") if framed.empty?
+    framed.each do |src|
+      # Play listing order is alphabetical — drop the _framed suffix for cleaner names.
+      base = File.basename(src, "_framed.png") + ".png"
+      FileUtils.cp(src, File.join(play_dir, base))
+    end
+
+    UI.success("Framed screenshots → #{play_dir} (#{framed.length} files)")
+  end
+
   desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"
   lane :upload_metadata do
     track = ENV["PLAY_METADATA_TRACK"] || "internal"
@@ -289,7 +363,7 @@ platform :android do
         package_name: "ch.hively.app",
         skip_upload_apk: true,
         skip_upload_aab: true,
-        skip_upload_metadata: false,
+        skip_upload_metadata: ENV["SKIP_METADATA"] == "true",
         skip_upload_changelogs: ENV["SKIP_CHANGELOGS"] == "true",
         skip_upload_images: ENV["SKIP_STORE_IMAGES"] != "false",
         skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] != "false"

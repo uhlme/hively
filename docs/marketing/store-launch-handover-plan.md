@@ -97,10 +97,11 @@ Hively soll in den App Stores mit konsistenter Positionierung, lokalisierter Sto
 ### Phase 3: Screenshot-Generierung
 
 - [ ] Bildschirm-Seed für Screenshot-Szenarien aktiv
-- [ ] iOS-UI-Test für 5 Kernansichten laufen lassen
-- [ ] Framed Screenshots erstellen
+- [ ] iOS-UI-Test für 5 Kernansichten laufen lassen (macOS)
+- [ ] Android `ScreenshotCaptureTest` + Emulator (Linux CI oder lokal)
+- [ ] Framed Screenshots erstellen (`ios` / `android frame_shots`)
 - [ ] Bildqualität und Textüberlagerungen prüfen
-- [ ] Alle benötigten Store-Bilder exportieren
+- [ ] Alle benötigten Store-Bilder exportieren / CI-Artifact prüfen
 
 ### Phase 4: Release und Upload
 

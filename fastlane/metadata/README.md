@@ -92,6 +92,17 @@ STORE_IOS_LOCALES=de-DE bundle exec fastlane ios upload_metadata
 
 Screenshots optional einschließen: `SKIP_SCREENSHOTS=false` (iOS) bzw. `SKIP_STORE_IMAGES=false SKIP_STORE_SCREENSHOTS=false` (Android).
 
+Android-Screenshots erzeugen (Emulator muss laufen):
+
+```bash
+npm run android:sync
+bundle exec fastlane android screenshots
+bundle exec fastlane android frame_shots
+```
+
+CI: Workflow **Store metadata** → `include_screenshots` + Platform `android`/`both`
+(Linux-Emulator, kein Mac).
+
 ## Workflow in Cursor
 
 1. Text in `fastlane/metadata/` oder `fastlane/metadata/android/` anpassen

@@ -67,7 +67,9 @@ PostHog) aus [`README.md`](./README.md).
 | Sep–Nov | Varroa-Behandlung protokollieren |
 | Dez–Jan | Saisonplanung & Finanzen |
 
-## Screenshots (frameit-Pipeline, nur macOS)
+## Screenshots (frameit-Pipeline)
+
+### iOS (macOS)
 
 Ablauf und benötigte Assets: [`fastlane/screenshots/README.md`](../../fastlane/screenshots/README.md).
 
@@ -75,9 +77,22 @@ Ablauf und benötigte Assets: [`fastlane/screenshots/README.md`](../../fastlane/
 ios screenshots  →  ios frame_shots  →  SKIP_SCREENSHOTS=false ios upload_metadata
 ```
 
-Screenshot-Set (5 iPhone, 3 iPad, 5 Android) und Overlay-Texte:
+### Android (Linux-Emulator / CI)
+
+Gleiche 5 Screens über Instrumentation-Test + Emulator — **kein Mac nötig**.
+
+```
+android screenshots  →  android frame_shots  →  SKIP_STORE_SCREENSHOTS=false android upload_metadata
+```
+
+CI: Workflow **Store metadata** mit `include_screenshots=true` und Platform
+`android` oder `both` (Job `android-screenshots`,
+`reactivecircus/android-emulator-runner`).
+
+Screenshot-Set (5 iPhone, 3 iPad optional, 5 Android) und Overlay-Texte:
 [`aso-screenshot-texts.md`](./aso-screenshot-texts.md). Rohaufnahmen sind
-gitignored; finale, gerahmte `*_framed.png` können committet werden.
+gitignored; finale, gerahmte `*_framed.png` können committet werden. Play-Store-
+Kopien landen unter `fastlane/metadata/android/de-DE/images/phoneScreenshots/`.
 
 Der UI-Test in
 [`ios/App/AppUITests/AppUITests.swift`](../../ios/App/AppUITests/AppUITests.swift)
