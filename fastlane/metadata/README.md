@@ -11,10 +11,12 @@ fastlane/metadata/
 ├── copyright.txt
 ├── primary_category.txt
 ├── secondary_category.txt
-├── de-DE/          # Deutsch (Schweiz)
+├── de-DE/          # Deutsch (Primary in ASC)
 ├── fr-FR/          # Französisch
 ├── it/             # Italienisch
-└── en-US/          # Englisch
+├── en-US/          # Englisch (USA)
+├── en-GB/          # Englisch (UK) — aktuell Kopie von en-US
+└── en-AU/          # Englisch (AU) — aktuell Kopie von en-US
 ```
 
 Pro Sprache:
@@ -84,10 +86,10 @@ bundle exec fastlane ios upload_metadata
 GOOGLE_PLAY_JSON_KEY_PATH=... bundle exec fastlane android upload_metadata
 ```
 
-**iOS-Sprachen filtern** (z. B. solange eine Version in Review ist und nur Deutsch in ASC aktiv ist):
+**iOS-Sprachen** (müssen in App Store Connect freigeschaltet sein):
 
 ```bash
-STORE_IOS_LOCALES=de-DE bundle exec fastlane ios upload_metadata
+STORE_IOS_LOCALES=de-DE,fr-FR,it,en-US,en-GB,en-AU bundle exec fastlane ios upload_metadata
 ```
 
 Screenshots optional einschließen: `SKIP_SCREENSHOTS=false` (iOS) bzw. `SKIP_STORE_IMAGES=false SKIP_STORE_SCREENSHOTS=false` (Android).

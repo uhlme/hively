@@ -108,17 +108,18 @@ kommen über `-hively-uitest-seed`
 | Locale | iOS-Ordner | Android-Ordner | Status |
 | ------ | ---------- | -------------- | ------ |
 | Deutsch | `de-DE` | `de-DE` | iOS ✓, Android ✓ |
-| Französisch | `fr-FR` | `fr-FR` | Android ✓, iOS wartet auf ASC |
-| Italienisch | `it` | `it-IT` | Android ✓, iOS wartet auf ASC |
-| Englisch | `en-US` | `en-US` | Android ✓, iOS wartet auf ASC |
+| Französisch | `fr-FR` | `fr-FR` | iOS ✓, Android ✓ |
+| Italienisch | `it` | `it-IT` | iOS ✓, Android ✓ |
+| Englisch (US) | `en-US` | `en-US` | iOS ✓, Android ✓ |
+| Englisch (UK) | `en-GB` | — | iOS ✓ (Kopie von en-US) |
+| Englisch (AU) | `en-AU` | — | iOS ✓ (Kopie von en-US) |
 
 iOS `it` vs. Android `it-IT` ist korrekt — **nicht** vereinheitlichen.
 
-**Sobald ASC die Sprachen freigibt**, in
-[`.github/workflows/store-metadata.yml`](../../.github/workflows/store-metadata.yml):
+CI (`STORE_IOS_LOCALES`):
 
 ```yaml
-STORE_IOS_LOCALES: de-DE,fr-FR,it,en-US
+STORE_IOS_LOCALES: de-DE,fr-FR,it,en-US,en-GB,en-AU
 ```
 
 ## Fastlane-Befehlsreferenz
