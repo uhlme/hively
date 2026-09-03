@@ -100,7 +100,7 @@ bundle exec fastlane android screenshots
 bundle exec fastlane android frame_shots
 ```
 
-**Hinweis:** Der Capture-Test darf die App **nicht** per `am force-stop` beenden — das killt die Instrumentation (`Process crashed` in CI). Neu starten läuft über `FLAG_ACTIVITY_CLEAR_TASK`.
+**Hinweis:** Der Capture-Test darf die App **nicht** per `am force-stop` beenden — das killt die Instrumentation (`Process crashed` in CI). Neu starten läuft über `FLAG_ACTIVITY_CLEAR_TASK`. Gradle muss `:app:connectedDebugAndroidTest` nutzen (nicht alle Capacitor-Plugin-Module).
 
 CI: Workflow **Store metadata** → Screenshot-Modus wählen:
 
