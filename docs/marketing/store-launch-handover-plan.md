@@ -16,11 +16,11 @@ Dieses Dokument dient als Übergabe- und Arbeitsplan für den realen App-Store- 
 - Validierung durchgeführt: Tests und Build erfolgreich
 
 ### Noch extern / manuell
-- App Store Connect Setup
-- Play Console Setup
-- Spracheinstellungen freischalten
-- Business-/Content-Rating-/Pricing-Checks
-- tatsächlicher Upload mit echten Store-Anmeldedaten
+- Preis/Länder-Verfügbarkeit in ASC (einmalig), sofern nicht schon gesetzt
+- ASC App Privacy Labels: einmalig via `fastlane ios upload_privacy` (Apple-ID) oder ASC-UI — JSON liegt unter `fastlane/app_privacy_details.json`
+- Play Console: Content Rating (IARC), Data Safety, Privacy-URL, Pricing/Länder
+- Business-/Tax-Checks und Review-Freigabe in beiden Stores
+- Details: [`fastlane/STORE_COMPLIANCE.md`](../../fastlane/STORE_COMPLIANCE.md)
 
 ---
 

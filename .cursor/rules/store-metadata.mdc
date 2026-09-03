@@ -35,4 +35,6 @@ Screenshot-Modus: `none` | `upload_existing` | `generate_and_upload`
 - **KI-Funktionen** immer als Hively Pro + Login + Internet kennzeichnen; Schweizerdeutsch = Eingabe, Ausgabe Hochdeutsch
 - **Kernfunktionen** (Völker, Durchsichten, Finanzen, Kalender, Offline) sind ohne Abo nutzbar
 - **iOS:** Neue Sprachen zuerst in App Store Connect anlegen (oder warten bis Review durch). CI nutzt `STORE_IOS_LOCALES` (aktuell: `de-DE,fr-FR,it,en-US,en-GB,en-AU`)
+- **iOS Age Rating / Free-Preis:** `fastlane/rating_config.json` + `price_tier` über `ios upload_metadata`
+- **iOS App Privacy Labels:** `fastlane/app_privacy_details.json` + `ios upload_privacy` (Apple-ID, kein API-Key) — siehe `fastlane/STORE_COMPLIANCE.md`
 - Keine Secrets in Metadaten-Dateien
