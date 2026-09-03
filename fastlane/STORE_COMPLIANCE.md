@@ -8,7 +8,7 @@ Was Hively über Fastlane automatisieren kann — und was in den Konsolen bleibt
 |-------|-------------|--------|
 | Listing-Texte + Privacy-/Support-URLs | `ios upload_metadata` (`deliver`) | CI auf Push |
 | Altersfreigabe (Age Rating) | `fastlane/rating_config.json` → `deliver` `app_rating_config_path` | CI auf Push |
-| Preis (Free = Tier 0) | `deliver` `price_tier` (Default `0`) | CI; bei API-Fehler: `SKIP_IOS_PRICE_TIER=true` |
+| Preis (Free) | `deliver` `price_tier` | **Nicht in CI** — ASC API deprecated (`apps.prices` / `availableTerritories`); einmal manuell Free setzen |
 | App Privacy Labels | `fastlane/app_privacy_details.json` → `ios upload_privacy` | **Lokal / manuell mit Apple-ID** (kein ASC API-Key) |
 
 ### Age Rating hochladen
@@ -38,8 +38,10 @@ JSON anpassen bei neuen SDKs/Datenflüssen; Grundlage ist `public/privacy/`.
 
 ### Preis / Verfügbarkeit
 
-- **Preis:** Free via `price_tier: 0` (übersteuerbar mit `STORE_IOS_PRICE_TIER`).
-- **Länder/Verfügbarkeit:** Fastlane/ASC-API dafür unzuverlässig/deprecated → **einmal manuell** in ASC unter Pricing and Availability.
+- **Preis + Länder:** Fastlane `price_tier` bricht auf der aktuellen ASC-API ab
+  (`availableInNewTerritories` / `prices` / `availableTerritories` unknown).
+  **Einmal manuell** in ASC unter Pricing and Availability (Free + Länder).
+- Opt-in Versuch (wird voraussichtlich failen): `STORE_IOS_PRICE_TIER=0 bundle exec fastlane ios upload_metadata`
 
 ## Google Play (Fastlane-Grenzen)
 

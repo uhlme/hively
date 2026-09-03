@@ -249,7 +249,7 @@ platform :ios do
     UI.success("Found #{total} iOS screenshot PNG(s) for #{locales.join(', ')}")
   end
 
-  desc "Upload App Store listing text + age rating (+ optional Free price tier) from repo"
+  desc "Upload App Store listing text + age rating from repo (screenshots optional)"
   lane :upload_metadata do
     metadata_path = stage_ios_metadata_for_upload
     upload_shots = ENV["SKIP_SCREENSHOTS"] == "false"
@@ -275,10 +275,12 @@ platform :ios do
       force: true
     }
 
-    # Free app = tier 0. ASC pricing APIs are flaky for new apps; skip with
-    # SKIP_IOS_PRICE_TIER=true if deliver fails on price only.
-    unless ENV["SKIP_IOS_PRICE_TIER"] == "true"
-      deliver_opts[:price_tier] = (ENV["STORE_IOS_PRICE_TIER"] || "0").to_i
+    # price_tier uses deprecated ASC apps.prices / availableTerritories APIs and
+    # fails on current Connect (unknown attribute/relationship). Opt-in only if a
+    # future Fastlane/API fix lands: STORE_IOS_PRICE_TIER=0.
+    if ENV.key?("STORE_IOS_PRICE_TIER") && ENV["SKIP_IOS_PRICE_TIER"] != "true"
+      deliver_opts[:price_tier] = ENV["STORE_IOS_PRICE_TIER"].to_i
+      UI.important("Attempting deliver price_tier=#{deliver_opts[:price_tier]} (often broken on current ASC API)")
     end
 
     screenshots_path = nil

@@ -98,9 +98,9 @@ Screenshots optional einschließen: `SKIP_SCREENSHOTS=false` (iOS) bzw. `SKIP_ST
 
 Siehe [`fastlane/STORE_COMPLIANCE.md`](../STORE_COMPLIANCE.md):
 
-- **Age Rating** + Listing: `bundle exec fastlane ios upload_metadata` (nutzt `rating_config.json`, Free = `price_tier` 0)
+- **Age Rating** + Listing: `bundle exec fastlane ios upload_metadata` (nutzt `rating_config.json`)
 - **App Privacy Labels:** `bundle exec fastlane ios upload_privacy` (braucht Apple-ID-Session, nicht den ASC API-Key)
-- Play Content Rating / Data Safety / Pricing: **nicht** über Fastlane — nur Play Console
+- **ASC Preis/Länder** und Play Content Rating / Data Safety / Pricing: **nicht** über Fastlane — Konsolen (siehe `STORE_COMPLIANCE.md`)
 
 Android-Screenshots erzeugen (Emulator muss laufen):
 

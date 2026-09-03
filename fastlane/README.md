@@ -45,7 +45,7 @@ Fail unless committed iOS screenshots exist under fastlane/screenshots/ (no capt
 [bundle exec] fastlane ios upload_metadata
 ```
 
-Upload App Store listing text + age rating (+ Free price tier) from the repo (no binary)
+Upload App Store listing text + age rating from the repo (no binary)
 
 ### ios upload_privacy
 
