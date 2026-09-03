@@ -411,6 +411,11 @@ platform :android do
     sh("adb shell settings put global animator_duration_scale 0 || true")
     sh("adb shell pm grant ch.hively.app android.permission.ACCESS_FINE_LOCATION || true")
     sh("adb shell pm grant ch.hively.app android.permission.ACCESS_COARSE_LOCATION || true")
+    # Warm up: unlock + one cold start so WebView/Chromium is cached before the test.
+    sh("adb shell input keyevent KEYCODE_WAKEUP || true")
+    sh("adb shell wm dismiss-keyguard || true")
+    sh("adb shell am start -n ch.hively.app/.MainActivity --ez hively_uitest_seed true --es hively_uitest_view dashboard || true")
+    sh("sleep 8 || true")
     sh("adb logcat -c || true")
 
     begin
@@ -436,61 +441,58 @@ platform :android do
     UI.success("Screenshots saved to #{out_dir}")
   end
 
-  desc "Add device frames + ASO overlay text, copy into Play phoneScreenshots/"
+  desc "Stage phone screenshots for Play (raw PNGs; frameit optional / often unsupported)"
   lane :frame_shots do
     project_root = File.expand_path("..", __dir__)
     screenshots_root = File.join(project_root, "fastlane/screenshots")
     phone_dir = File.join(screenshots_root, "android/de-DE/phone")
-    ios_locale_dir = File.join(screenshots_root, "de-DE")
-    background = File.join(screenshots_root, "background.jpg")
-    framefile = File.join(screenshots_root, "Framefile.json")
+    play_dir = File.join(project_root, "fastlane/metadata/android/de-DE/images/phoneScreenshots")
 
     UI.user_error!("No screenshots in #{phone_dir}. Run `fastlane android screenshots` first.") unless File.directory?(phone_dir)
     raw = Dir[File.join(phone_dir, "*.png")].reject { |p| p.include?("_framed") }
     UI.user_error!("No raw PNGs in #{phone_dir}") if raw.empty?
-    UI.user_error!("Missing #{background} — frameit needs it for overlay text.") unless File.exist?(background)
 
-    # Stage frameit config next to the PNGs (same pattern as ios frame_shots).
-    sh("cp '#{background}' '#{phone_dir}/'")
-    sh("cp '#{framefile}' '#{phone_dir}/'") if File.exist?(framefile)
-    %w[title.strings keyword.strings].each do |f|
-      src = File.join(ios_locale_dir, f)
-      sh("cp '#{src}' '#{phone_dir}/'") if File.exist?(src)
-    end
-
-    frame_screenshots(
-      path: File.join(screenshots_root, "android"),
-      use_platform: "ANDROID"
-    )
-
-    %w[background.jpg Framefile.json title.strings keyword.strings].each do |f|
-      FileUtils.rm_f(File.join(phone_dir, f))
-    end
-
-    play_dir = File.join(project_root, "fastlane/metadata/android/de-DE/images/phoneScreenshots")
     FileUtils.mkdir_p(play_dir)
     Dir[File.join(play_dir, "*.png")].each { |p| FileUtils.rm_f(p) }
 
-    framed = Dir[File.join(phone_dir, "*_framed.png")]
-    if framed.empty?
-      # frameit only knows certain sizes (e.g. Pixel 5 = 1080x2340). Pixel 6
-      # (1080x2400) is unsupported — Play accepts raw phone screenshots.
-      UI.important(
-        "frameit produced no *_framed.png (unsupported resolution?). " \
-        "Copying raw phone screenshots to Play listing."
-      )
-      raw.each { |src| FileUtils.cp(src, File.join(play_dir, File.basename(src))) }
-      count = Dir[File.join(play_dir, "*.png")].length
-      UI.user_error!("No Play phone screenshots staged in #{play_dir}") if count < 2
-      UI.success("Raw screenshots → #{play_dir} (#{count} files)")
-    else
-      framed.each do |src|
-        # Play listing order is alphabetical — drop the _framed suffix for cleaner names.
-        base = File.basename(src, "_framed.png") + ".png"
-        FileUtils.cp(src, File.join(play_dir, base))
+    # Play Store does not require device frames. frameit lacks Pixel 6 (1080x2400)
+    # and is slow/fragile in CI — default to raw unless FRAME_ANDROID=true.
+    if ENV["FRAME_ANDROID"] == "true"
+      ios_locale_dir = File.join(screenshots_root, "de-DE")
+      background = File.join(screenshots_root, "background.jpg")
+      framefile = File.join(screenshots_root, "Framefile.json")
+      UI.user_error!("Missing #{background}") unless File.exist?(background)
+      sh("cp '#{background}' '#{phone_dir}/'")
+      sh("cp '#{framefile}' '#{phone_dir}/'") if File.exist?(framefile)
+      %w[title.strings keyword.strings].each do |f|
+        src = File.join(ios_locale_dir, f)
+        sh("cp '#{src}' '#{phone_dir}/'") if File.exist?(src)
       end
-      UI.success("Framed screenshots → #{play_dir} (#{framed.length} files)")
+      frame_screenshots(
+        path: File.join(screenshots_root, "android"),
+        use_platform: "ANDROID"
+      )
+      %w[background.jpg Framefile.json title.strings keyword.strings].each do |f|
+        FileUtils.rm_f(File.join(phone_dir, f))
+      end
+      framed = Dir[File.join(phone_dir, "*_framed.png")]
+      if framed.empty?
+        UI.important("frameit produced no frames — falling back to raw PNGs")
+        raw.each { |src| FileUtils.cp(src, File.join(play_dir, File.basename(src))) }
+      else
+        framed.each do |src|
+          base = File.basename(src, "_framed.png") + ".png"
+          FileUtils.cp(src, File.join(play_dir, base))
+        end
+      end
+    else
+      raw.each { |src| FileUtils.cp(src, File.join(play_dir, File.basename(src))) }
+      UI.important("Skipped frameit (set FRAME_ANDROID=true to enable). Copied raw PNGs.")
     end
+
+    count = Dir[File.join(play_dir, "*.png")].length
+    UI.user_error!("Need 2–8 Play phone screenshots in #{play_dir} (got #{count})") if count < 2 || count > 8
+    UI.success("Play phoneScreenshots → #{play_dir} (#{count} files)")
   end
 
   desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"

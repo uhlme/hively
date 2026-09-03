@@ -100,7 +100,7 @@ bundle exec fastlane android screenshots
 bundle exec fastlane android frame_shots
 ```
 
-**Hinweis:** Der Capture-Test darf die App **nicht** per `am force-stop` beenden — das killt die Instrumentation (`Process crashed` in CI). Neu starten läuft über `FLAG_ACTIVITY_CLEAR_TASK`. Gradle muss `:app:connectedDebugAndroidTest` nutzen (nicht alle Capacitor-Plugin-Module). PNGs liegen unter `/data/local/tmp/hively-store-screenshots` (nicht unter `Android/data/…`, weil `adb pull` dort auf API 30+ blockiert). CI-Emulator: **Pixel 5** (1080×2340) — Pixel 6 (1080×2400) wird von frameit nicht gerahmt; bei Misserfolg kopiert `frame_shots` die Roh-PNGs für Play.
+**Hinweis:** Capture ohne `am force-stop`; PNGs unter `/data/local/tmp/hively-store-screenshots`. CI nutzt Pixel 6 und kopiert Roh-PNGs nach Play (`FRAME_ANDROID=true` für frameit). Committed Play-Screenshots: `fastlane/metadata/android/de-DE/images/phoneScreenshots/`. Generate-Job auch per Push mit Commit-Message `[generate-android-screenshots]`.
 
 CI: Workflow **Store metadata** → Screenshot-Modus wählen:
 
