@@ -141,7 +141,7 @@ export function otaLambdaResponse(statusCode, body, requestOrigin = '') {
  */
 export function parseBundlePath(splat) {
   const raw = String(splat || '').replace(/^\/+/, '');
-  const m = raw.match(/^(staging|production)\/([0-9]+(?:\.[0-9]+){0,2})\.zip$/);
+  const m = raw.match(/^(staging|production)\/([0-9]+\.[0-9]+\.[0-9]+)\.zip$/);
   if (!m) return null;
   return {
     channel: m[1],

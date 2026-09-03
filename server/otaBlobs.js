@@ -60,7 +60,7 @@ export function compareVersions(a, b) {
  * @returns {boolean}
  */
 export function isValidOtaVersion(version) {
-  return /^[0-9]+(\.[0-9]+){0,2}$/.test(String(version || ''));
+  return /^[0-9]+\.[0-9]+\.[0-9]+$/.test(String(version || ''));
 }
 
 /**
@@ -141,7 +141,7 @@ export async function writeManifest(channel, manifest, creds) {
  * @param {{ siteID?: string, token?: string } | undefined} [creds]
  */
 export async function writeBundle(key, data, creds) {
-  if (!/^(staging|production)\/[0-9]+(\.[0-9]+){0,2}\.zip$/.test(key)) {
+  if (!/^(staging|production)\/[0-9]+\.[0-9]+\.[0-9]+\.zip$/.test(key)) {
     throw new Error(`Invalid OTA bundle key: ${key}`);
   }
   const store = openOtaStore(BUNDLE_STORE, creds);
@@ -156,7 +156,7 @@ export async function writeBundle(key, data, creds) {
  * @returns {Promise<ArrayBuffer | null>}
  */
 export async function readBundle(key, creds) {
-  if (!/^(staging|production)\/[0-9]+(\.[0-9]+){0,2}\.zip$/.test(key)) {
+  if (!/^(staging|production)\/[0-9]+\.[0-9]+\.[0-9]+\.zip$/.test(key)) {
     return null;
   }
   const store = openOtaStore(BUNDLE_STORE, creds);
