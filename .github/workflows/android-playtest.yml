@@ -22,6 +22,8 @@ jobs:
       VITE_BILLING_ENABLED: 'true'
       VITE_GEMINI_PROXY_URL: 'https://hivelyy.netlify.app/api/gemini'
       VITE_STRIPE_API_ORIGIN: 'https://hivelyy.netlify.app'
+      # Capgo OTA: Play Internal builds pull from the staging channel
+      VITE_OTA_CHANNEL: 'staging'
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -70,6 +72,9 @@ jobs:
 
       - name: Build web app
         run: npm run build
+
+      - name: Set Capgo OTA channel (staging)
+        run: node scripts/set-ota-channel.mjs staging
 
       - name: Sync Capacitor Android project
         run: npx cap sync android

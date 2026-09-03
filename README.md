@@ -160,6 +160,21 @@ Run `npm run ios:sync` after every change to the web app before rebuilding in Xc
 Events from TestFlight are tagged `platform: ios` via Capacitor detection. The Gemini API key stays
 on the server (Netlify); the native app should call the production `/api/gemini` proxy, not ship the key in the IPA.
 
+### Capgo OTA (native JS/CSS updates without store review)
+
+After a store build that includes `@capgo/capacitor-updater`, push web-only updates with:
+
+```bash
+git tag ota-v0.6.13
+git push origin ota-v0.6.13
+```
+
+GitHub Actions workflow **OTA Publish** builds `dist/`, creates a Capgo ZIP, and uploads it to
+**Netlify Blobs** (channels `staging` + `production`). Requires secrets `NETLIFY_AUTH_TOKEN` and
+`NETLIFY_SITE_ID`. TestFlight/Play Internal builds use channel `staging`; production store builds
+should set `VITE_OTA_CHANNEL=production`. Native plugin or permission changes still need a `v*`
+store release.
+
 ### CI → TestFlight (planned)
 
 A GitHub Actions workflow on a `macos-latest` runner is planned to:

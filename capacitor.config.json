@@ -4,5 +4,15 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": true,
+      "resetWhenUpdate": false,
+      "updateUrl": "https://hivelyy.netlify.app/api/app-updates",
+      "statsUrl": "",
+      "channelUrl": "",
+      "defaultChannel": "production"
+    }
   }
 }

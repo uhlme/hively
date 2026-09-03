@@ -63,3 +63,4 @@ fastlane/DerivedData/
 fastlane/screenshots/**/*.png
 fastlane/screenshots/**/screenshots.html
 !fastlane/screenshots/**/*_framed.png
+*.zip

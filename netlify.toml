@@ -7,10 +7,25 @@
 [functions."gemini"]
   timeout = 26
 
+# Capgo OTA ZIP streaming from Netlify Blobs (bundles are typically 1–5 MB).
+[functions."ota-bundle"]
+  timeout = 26
+
 # AI proxy — keep the Gemini key server-side only
 [[redirects]]
   from = "/api/gemini"
   to = "/.netlify/functions/gemini"
+  status = 200
+
+# Capgo self-hosted OTA (update check + ZIP download)
+[[redirects]]
+  from = "/api/app-updates"
+  to = "/.netlify/functions/app-updates"
+  status = 200
+
+[[redirects]]
+  from = "/api/ota-bundle/*"
+  to = "/.netlify/functions/ota-bundle/:splat"
   status = 200
 
 # Stripe billing (must be before SPA fallback)

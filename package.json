@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "ota:set-channel": "node scripts/set-ota-channel.mjs",
+    "ota:publish": "node scripts/ota-publish.mjs",
     "ios:sync": "npm run build && PATH=\"/opt/homebrew/bin:$PATH\" npx cap sync ios",
     "ios:pods": "cd ios/App && pod install",
     "ios:open": "npm run ios:sync && npx cap open ios",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.2",
+    "@capgo/cli": "^8.46.1",
     "@playwright/test": "^1.62.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
@@ -33,7 +36,9 @@
     "@capacitor/core": "^8.4.2",
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/ios": "^8.4.2",
+    "@capgo/capacitor-updater": "^8.51.15",
     "@google/generative-ai": "^0.24.1",
+    "@netlify/blobs": "^11.0.3",
     "@supabase/supabase-js": "^2.108.2",
     "posthog-js": "^1.413.3",
     "stripe": "^22.4.0"

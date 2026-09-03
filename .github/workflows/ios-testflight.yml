@@ -22,6 +22,8 @@ jobs:
       VITE_BILLING_ENABLED: 'true'
       VITE_GEMINI_PROXY_URL: 'https://hivelyy.netlify.app/api/gemini'
       VITE_STRIPE_API_ORIGIN: 'https://hivelyy.netlify.app'
+      # Capgo OTA: TestFlight builds pull from the staging channel
+      VITE_OTA_CHANNEL: 'staging'
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_KEYCHAIN_NAME: ${{ github.run_id }}.keychain
@@ -93,6 +95,9 @@ jobs:
 
       - name: Build web app
         run: npm run build
+
+      - name: Set Capgo OTA channel (staging)
+        run: node scripts/set-ota-channel.mjs staging
 
       - name: Sync Capacitor iOS project
         run: npx cap sync ios

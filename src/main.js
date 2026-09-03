@@ -160,6 +160,7 @@ import {
   resolveAuthProvider,
   trackAuthSignedIn
 } from './analytics.js';
+import { initOtaUpdates } from './ota.js';
 import {
   APP_VERSION,
   prepareBugReport,
@@ -596,6 +597,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Storage-Initialisierung fehlgeschlagen:', err);
   }
   initAnalytics();
+  // Capgo: confirm the current bundle is healthy (native only; no-op on web).
+  void initOtaUpdates();
   installGlobalErrorHandlers({ onError: rememberError });
   const versionLabel = document.getElementById('app-version-label');
   if (versionLabel) versionLabel.textContent = t('common.version', { version: APP_VERSION });

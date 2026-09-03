@@ -64,3 +64,19 @@ There is a single service: the Vite dev server.
   `fastlane/metadata/README.md`.
 - UI is multilingual (de/fr/it/en) via `src/i18n/` + Settings language switcher; default from browser, fallback German (CH). Hive management lives under the "Kästen" navigation;
   add a hive via the "+ Volk" button → "Neues Volk erfassen" form → "Speichern".
+
+### Capgo OTA (native live updates)
+
+Native iOS/Android can pull JS/CSS/HTML bundles without a store release via
+`@capgo/capacitor-updater` + Netlify Blobs (self-hosted, no Capgo Cloud).
+
+- **Store shell** (`v*` tags): builds include Capgo; TestFlight/Play Internal use
+  `VITE_OTA_CHANNEL=staging` (see `scripts/set-ota-channel.mjs` before `cap sync`).
+- **OTA publish** (`ota-v*` tags): workflow `.github/workflows/ota-publish.yml` builds
+  `dist/`, zips with `@capgo/cli`, uploads to Netlify Blobs stores `ota-bundles` /
+  `ota-manifests` for `staging` + `production`.
+- **Endpoints:** `POST /api/app-updates` (Capgo check), `GET /api/ota-bundle/{channel}/{version}.zip`.
+- **GitHub secrets required for OTA CI:** `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
+  (plus the usual `VITE_*` build secrets).
+- Native plugin / permission changes still need a `v*` store build. Web PWA updates
+  continue via Netlify deploy + Service Worker (SW stays disabled on native).
