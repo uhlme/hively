@@ -425,7 +425,10 @@ platform :android do
       raise e
     end
 
-    device_path = "/sdcard/Android/data/ch.hively.app/files/Pictures/store-screenshots"
+    device_path = "/data/local/tmp/hively-store-screenshots"
+    # API 30+ blocks adb pull of /sdcard/Android/data/… — tests write to /data/local/tmp.
+    listing = sh("adb shell ls -la '#{device_path}' || true", log: true).to_s
+    UI.user_error!("No screenshots on device at #{device_path}:\n#{listing}") unless listing.include?(".png")
     sh("adb pull '#{device_path}/.' '#{out_dir}/'")
 
     captured = Dir[File.join(out_dir, "*.png")].reject { |p| p.include?("_framed") }.length

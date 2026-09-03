@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Environment;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
@@ -21,8 +20,12 @@ import org.junit.runner.RunWith;
  *
  * Launches {@link MainActivity} once per screen with Intent extras
  * {@code hively_uitest_seed} + {@code hively_uitest_view}, waits for seeded
- * content, optionally scrolls Settings, and writes PNGs under the app's
- * external pictures dir for {@code adb pull} / Fastlane.
+ * content, optionally scrolls Settings, and writes PNGs under
+ * {@code /data/local/tmp/hively-store-screenshots} for {@code adb pull} /
+ * Fastlane.
+ *
+ * <p>App-scoped {@code Android/data/…} is not readable via {@code adb pull} on
+ * API 30+; {@code /data/local/tmp} stays world-accessible on emulators.
  *
  * <p><b>Do not</b> {@code am force-stop} the instrumented package — that tears
  * down the instrumentation connection and surfaces as
@@ -32,6 +35,8 @@ import org.junit.runner.RunWith;
 public class ScreenshotCaptureTest {
 
     private static final String PACKAGE = "ch.hively.app";
+    /** Must match Fastlane {@code android screenshots} pull path. */
+    public static final String DEVICE_SCREENSHOT_DIR = "/data/local/tmp/hively-store-screenshots";
     private static final int LAUNCH_TIMEOUT_MS = 60_000;
     private static final int SEED_TIMEOUT_MS = 25_000;
     private static final int SETTLE_MS = 3_000;
@@ -41,24 +46,17 @@ public class ScreenshotCaptureTest {
     private File outDir;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         targetContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        File pictures = targetContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        if (pictures == null) {
-            pictures = new File(targetContext.getFilesDir(), "Pictures");
-        }
-        outDir = new File(pictures, "store-screenshots");
-        if (outDir.exists()) {
-            File[] existing = outDir.listFiles();
-            if (existing != null) {
-                for (File file : existing) {
-                    //noinspection ResultOfMethodCallIgnored
-                    file.delete();
-                }
-            }
-        }
-        assertTrue("could not create screenshot dir " + outDir, outDir.mkdirs() || outDir.isDirectory());
+        outDir = new File(DEVICE_SCREENSHOT_DIR);
+        device.executeShellCommand("rm -rf " + DEVICE_SCREENSHOT_DIR);
+        device.executeShellCommand("mkdir -p " + DEVICE_SCREENSHOT_DIR);
+        device.executeShellCommand("chmod 777 " + DEVICE_SCREENSHOT_DIR);
+        assertTrue(
+            "could not create screenshot dir " + outDir,
+            outDir.mkdirs() || outDir.isDirectory()
+        );
     }
 
     @Test
@@ -107,7 +105,12 @@ public class ScreenshotCaptureTest {
             }
 
             File dest = new File(outDir, name + ".png");
-            assertTrue("takeScreenshot failed for " + name, device.takeScreenshot(dest));
+            boolean captured = device.takeScreenshot(dest);
+            if (!captured || !dest.isFile() || dest.length() == 0) {
+                // Fallback: shell screencap (shell user can always write /data/local/tmp).
+                device.executeShellCommand("screencap -p " + dest.getAbsolutePath());
+            }
+            device.executeShellCommand("chmod 644 " + dest.getAbsolutePath());
             assertTrue(
                 "screenshot missing for " + name + " at " + dest.getAbsolutePath(),
                 dest.isFile() && dest.length() > 0
