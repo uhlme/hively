@@ -472,14 +472,25 @@ platform :android do
     Dir[File.join(play_dir, "*.png")].each { |p| FileUtils.rm_f(p) }
 
     framed = Dir[File.join(phone_dir, "*_framed.png")]
-    UI.user_error!("frameit produced no *_framed.png in #{phone_dir}") if framed.empty?
-    framed.each do |src|
-      # Play listing order is alphabetical — drop the _framed suffix for cleaner names.
-      base = File.basename(src, "_framed.png") + ".png"
-      FileUtils.cp(src, File.join(play_dir, base))
+    if framed.empty?
+      # frameit only knows certain sizes (e.g. Pixel 5 = 1080x2340). Pixel 6
+      # (1080x2400) is unsupported — Play accepts raw phone screenshots.
+      UI.important(
+        "frameit produced no *_framed.png (unsupported resolution?). " \
+        "Copying raw phone screenshots to Play listing."
+      )
+      raw.each { |src| FileUtils.cp(src, File.join(play_dir, File.basename(src))) }
+      count = Dir[File.join(play_dir, "*.png")].length
+      UI.user_error!("No Play phone screenshots staged in #{play_dir}") if count < 2
+      UI.success("Raw screenshots → #{play_dir} (#{count} files)")
+    else
+      framed.each do |src|
+        # Play listing order is alphabetical — drop the _framed suffix for cleaner names.
+        base = File.basename(src, "_framed.png") + ".png"
+        FileUtils.cp(src, File.join(play_dir, base))
+      end
+      UI.success("Framed screenshots → #{play_dir} (#{framed.length} files)")
     end
-
-    UI.success("Framed screenshots → #{play_dir} (#{framed.length} files)")
   end
 
   desc "Upload Play Store listing text from fastlane/metadata/android/ (no binary)"
