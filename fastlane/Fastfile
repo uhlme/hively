@@ -397,21 +397,31 @@ platform :android do
   lane :screenshots do
     project_root = File.expand_path("..", __dir__)
     out_dir = File.join(project_root, "fastlane/screenshots/android/de-DE/phone")
+    logcat_path = File.join(project_root, "fastlane/screenshots/android/logcat-screenshots.txt")
     FileUtils.rm_rf(out_dir)
     FileUtils.mkdir_p(out_dir)
+    FileUtils.mkdir_p(File.dirname(logcat_path))
 
-    # Best-effort: quiet animations + location so weather prompts stay off-screen.
+    # Install debug APK first so pm grant targets a real package, then quiet UI.
+    gradle(task: "installDebug", project_dir: "android/")
     sh("adb shell settings put global window_animation_scale 0 || true")
     sh("adb shell settings put global transition_animation_scale 0 || true")
     sh("adb shell settings put global animator_duration_scale 0 || true")
     sh("adb shell pm grant ch.hively.app android.permission.ACCESS_FINE_LOCATION || true")
     sh("adb shell pm grant ch.hively.app android.permission.ACCESS_COARSE_LOCATION || true")
+    sh("adb logcat -c || true")
 
-    gradle(
-      task: "connectedDebugAndroidTest",
-      project_dir: "android/",
-      flags: "-Pandroid.testInstrumentationRunnerArguments.class=ch.hively.app.ScreenshotCaptureTest"
-    )
+    begin
+      gradle(
+        task: "connectedDebugAndroidTest",
+        project_dir: "android/",
+        flags: "-Pandroid.testInstrumentationRunnerArguments.class=ch.hively.app.ScreenshotCaptureTest"
+      )
+    rescue => e
+      sh("adb logcat -d -v time > '#{logcat_path}' || true")
+      UI.important("Saved emulator logcat to #{logcat_path}")
+      raise e
+    end
 
     device_path = "/sdcard/Android/data/ch.hively.app/files/Pictures/store-screenshots"
     sh("adb pull '#{device_path}/.' '#{out_dir}/'")

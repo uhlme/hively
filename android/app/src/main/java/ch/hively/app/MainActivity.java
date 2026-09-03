@@ -36,10 +36,12 @@ public class MainActivity extends BridgeActivity {
     public static final String EXTRA_UITEST_VIEW = "hively_uitest_view";
 
     private boolean uiTestHooksApplied = false;
+    private int uiTestHookRetries = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        uiTestHookRetries = 0;
         applyUiTestHooks(getIntent());
     }
 
@@ -47,9 +49,10 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        // Force-stop + new process is the normal screenshot path; onNewIntent
-        // only matters for singleTask re-entry — re-apply when extras change.
+        // Screenshot tests use CLEAR_TASK (not am force-stop) so the process
+        // stays alive; onNewIntent covers singleTask re-entry with new extras.
         uiTestHooksApplied = false;
+        uiTestHookRetries = 0;
         applyUiTestHooks(intent);
     }
 
@@ -87,8 +90,21 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = getBridge().getWebView();
         if (webView == null) {
+            // Bridge exists but WebView not inflated yet — retry briefly.
+            if (uiTestHookRetries++ < 20) {
+                getWindow()
+                    .getDecorView()
+                    .postDelayed(
+                        () -> {
+                            uiTestHooksApplied = false;
+                            applyUiTestHooks(intent);
+                        },
+                        50
+                    );
+            }
             return;
         }
+        uiTestHookRetries = 0;
 
         final String js = script.toString();
         final String safeView = hasView ? view : null;
