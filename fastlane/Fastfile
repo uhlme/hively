@@ -403,7 +403,9 @@ platform :android do
     FileUtils.mkdir_p(File.dirname(logcat_path))
 
     # Install debug APK first so pm grant targets a real package, then quiet UI.
-    gradle(task: "installDebug", project_dir: "android/")
+    # Scope to :app — a bare connectedDebugAndroidTest also instruments Capacitor
+    # plugin modules; the class filter then fails with ClassNotFoundException.
+    gradle(task: "app:installDebug", project_dir: "android/")
     sh("adb shell settings put global window_animation_scale 0 || true")
     sh("adb shell settings put global transition_animation_scale 0 || true")
     sh("adb shell settings put global animator_duration_scale 0 || true")
@@ -413,7 +415,7 @@ platform :android do
 
     begin
       gradle(
-        task: "connectedDebugAndroidTest",
+        task: "app:connectedDebugAndroidTest",
         project_dir: "android/",
         flags: "-Pandroid.testInstrumentationRunnerArguments.class=ch.hively.app.ScreenshotCaptureTest"
       )
