@@ -154,10 +154,33 @@ platform :ios do
     background = File.join(screenshots_dir, "background.jpg")
     UI.user_error!("Missing #{background} — frameit needs it to render the overlay text.") unless File.exist?(background)
 
+    # frameit resolves `background` (and picks up the .strings) relative to the
+    # directory of the screenshots it is framing, not the Framefile. Stage the
+    # config into every per-device folder so the overlay text renders.
+    Dir[File.join(screenshots_dir, "*/*-Display")].each do |device_dir|
+      locale_dir = File.dirname(device_dir)
+      sh("cp '#{background}' '#{device_dir}/'")
+      ["Framefile.json"].each do |f|
+        src = File.join(screenshots_dir, f)
+        sh("cp '#{src}' '#{device_dir}/'") if File.exist?(src)
+      end
+      ["title.strings", "keyword.strings"].each do |f|
+        src = File.join(locale_dir, f)
+        sh("cp '#{src}' '#{device_dir}/'") if File.exist?(src)
+      end
+    end
+
     frame_screenshots(
       path: screenshots_dir,
       use_platform: "IOS"
     )
+
+    # Drop the staged copies again so only the framed PNGs remain to commit.
+    Dir[File.join(screenshots_dir, "*/*-Display")].each do |device_dir|
+      ["background.jpg", "Framefile.json", "title.strings", "keyword.strings"].each do |f|
+        FileUtils.rm_f(File.join(device_dir, f))
+      end
+    end
     UI.success("Framed screenshots written next to the originals in #{screenshots_dir}")
   end
 
