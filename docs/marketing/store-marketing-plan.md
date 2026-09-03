@@ -79,10 +79,12 @@ Screenshot-Set (5 iPhone, 3 iPad, 5 Android) und Overlay-Texte:
 [`aso-screenshot-texts.md`](./aso-screenshot-texts.md). Rohaufnahmen sind
 gitignored; finale, gerahmte `*_framed.png` können committet werden.
 
-Die UI-Test-Navigation zu allen 5 Screens ist in
+Der UI-Test in
 [`ios/App/AppUITests/AppUITests.swift`](../../ios/App/AppUITests/AppUITests.swift)
-implementiert. Damit die Screens nicht leer sind, seedet der Test über das
-Launch-Argument `-hively-uitest-seed` deterministische Demo-Daten
+nimmt 5 Screens auf (Dashboard, Völker, Finanzen, Kalender, Einstellungen) und
+startet die App pro Screen mit `-hively-uitest-view <name>` neu — die View wird
+direkt über `?view=` geöffnet statt per WebView-Tap. Deterministische Demo-Daten
+kommen über `-hively-uitest-seed`
 ([`ios/App/App/MainViewController.swift`](../../ios/App/App/MainViewController.swift)
 → [`src/devSeed.js`](../../src/devSeed.js)).
 

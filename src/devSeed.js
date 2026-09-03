@@ -86,10 +86,12 @@ function buildSeed() {
   ];
 
   const finances = [
-    { id: 'seed-fin-1', date: daysAgo(40), description: 'Mittelwände & Rähmchen', category: 'Material', price: 84.5, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
-    { id: 'seed-fin-2', date: daysAgo(25), description: 'Ameisensäure 60%', category: 'Behandlung', price: 32.9, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
-    { id: 'seed-fin-3', date: daysAgo(12), description: 'Honigverkauf Hofladen', category: 'Honigverkauf', price: 240, type: 'income', hiveId: null, sponsorName: null, notes: '20 Gläser à 500 g', ...meta },
-    { id: 'seed-fin-4', date: daysAgo(6), description: 'Bienenpatenschaft Familie Meier', category: 'Patenschaft', price: 120, type: 'income', hiveId: 'seed-hive-1', sponsorName: 'Familie Meier', notes: null, ...meta }
+    { id: 'seed-fin-1', date: daysAgo(40), description: 'Mittelwände & Rähmchen', category: 'hardware', price: 84.5, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
+    { id: 'seed-fin-2', date: daysAgo(25), description: 'Ameisensäure 60 %', category: 'equipment', price: 32.9, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
+    { id: 'seed-fin-3', date: daysAgo(18), description: 'Zuckerwasser / Futtersirup', category: 'feed', price: 46.2, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
+    { id: 'seed-fin-4', date: daysAgo(9), description: 'Ableger-Königin Buckfast', category: 'bees', price: 38, type: 'expense', hiveId: 'seed-hive-5', sponsorName: null, notes: null, ...meta },
+    { id: 'seed-fin-5', date: daysAgo(30), description: 'Smoker & Stockmeissel', category: 'hardware', price: 61.5, type: 'expense', hiveId: null, sponsorName: null, notes: null, ...meta },
+    { id: 'seed-fin-6', date: daysAgo(6), description: 'Bienenpatenschaft Familie Meier', category: 'sponsorship', price: 120, type: 'income', hiveId: 'seed-hive-1', sponsorName: 'Familie Meier', notes: null, ...meta }
   ];
 
   const honey = [

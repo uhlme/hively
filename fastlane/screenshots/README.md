@@ -5,12 +5,13 @@ Google Play (Android). PNGs sind gitignored – nur die Konfiguration ist im Rep
 
 ## Ablauf (nur macOS, mit Xcode)
 
-Der UI-Test navigiert automatisch zu 5 Screens und seedet vorher
-deterministische Demo-Daten (via Launch-Argument `-hively-uitest-seed` →
+Der UI-Test öffnet 5 Screens (App-Neustart je Screen mit `-hively-uitest-view`)
+und seedet vorher deterministische Demo-Daten (via Launch-Argument
+`-hively-uitest-seed` →
 [`ios/App/App/MainViewController.swift`](../../ios/App/App/MainViewController.swift)
 → [`src/devSeed.js`](../../src/devSeed.js)), damit die Screens gefüllt sind.
 
-1. **Aufnehmen** – navigiert die Screens per UI-Test und legt PNGs unter
+1. **Aufnehmen** – legt PNGs unter
    `de-DE/6.9-Display/` und `de-DE/13-Display/` ab:
    ```bash
    npm run ios:sync   # Web bauen + in die iOS-App synchronisieren
@@ -41,14 +42,17 @@ keinen Titeltext. Auflösung ≥ Screenshot-Grösse.
 Quelle der Texte: [`docs/marketing/aso-screenshot-texts.md`](../../docs/marketing/aso-screenshot-texts.md).
 ## Screenshot-Set
 
-| Datei-Präfix | Screen | iPhone | iPad | Android |
-| ------------ | ------ | ------ | ---- | ------- |
-| `01Dashboard`  | Kästen-Übersicht      | ✓ | ✓ | ✓ |
-| `02Inspection` | Kontrolle / Checkliste | ✓ | ✓ | ✓ |
-| `03Finances`   | Finanzen               | ✓ | ✓ | ✓ |
-| `04Apiaries`   | Bienenstände           | ✓ | — | ✓ |
-| `05Offline`    | Einstellungen / Offline | ✓ | — | ✓ |
+| Datei-Präfix | Screen | App-View | iPhone | iPad | Android |
+| ------------ | ------ | -------- | ------ | ---- | ------- |
+| `01Dashboard` | Übersicht              | `dashboard` | ✓ | ✓ | ✓ |
+| `02Hives`     | Völker-Liste           | `hives`     | ✓ | ✓ | ✓ |
+| `03Finances`  | Finanzen               | `finances`  | ✓ | ✓ | ✓ |
+| `04Calendar`  | Saisonkalender         | `calendar`  | ✓ | ✓ | ✓ |
+| `05Settings`  | Einstellungen / Offline | `settings`  | ✓ | ✓ | ✓ |
 
-Die Screenshot-Navigation ist in
+Der UI-Test in
 [`ios/App/AppUITests/AppUITests.swift`](../../ios/App/AppUITests/AppUITests.swift)
-implementiert (Label-basierte WebView-Queries in de-DE).
+startet die App pro Screenshot neu und öffnet die Ziel-View direkt über das
+Launch-Argument `-hively-uitest-view <name>` (→ `MainViewController` setzt
+`?view=<name>`, ausgewertet vom Router in `src/main.js`). Das vermeidet fragile
+WebView-Tap-Navigation. Die Demo-Daten kommen über `-hively-uitest-seed`.

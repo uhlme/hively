@@ -16,9 +16,9 @@
   },
   "data": [
     { "filter": "Dashboard" },
-    { "filter": "Inspection" },
+    { "filter": "Hives" },
     { "filter": "Finances" },
-    { "filter": "Apiaries" },
-    { "filter": "Offline" }
+    { "filter": "Calendar" },
+    { "filter": "Settings" }
   ]
 }

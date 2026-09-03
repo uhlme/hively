@@ -1,5 +1,5 @@
-"01Dashboard" = "Kontrollen festhalten – auch ohne Netz";
-"02Inspection" = "Checklisten, Notizen, Behandlungen pro Volk";
-"03Finances" = "Einnahmen, Ausgaben und Honig-Ernte";
-"04Apiaries" = "Standorte, Völker und Team optional synchronisieren";
-"05Offline" = "Ohne Login starten – Cloud-Sync optional";
+"01Dashboard" = "Stockbuch am Bienenstand";
+"02Hives" = "Jedes Volk im Griff";
+"03Finances" = "Einnahmen, Ausgaben & Honigernte";
+"04Calendar" = "Nichts mehr verpassen";
+"05Settings" = "Ohne Login starten";

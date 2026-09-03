@@ -114,7 +114,15 @@ platform :ios do
 
       sh("xcrun simctl boot '#{udid}' 2>/dev/null || true")
 
-      sh(
+      # Pre-grant location so the "Bienen-Radar" weather prompt never covers a
+      # screenshot. Best-effort: ignore if the app isn't installed yet.
+      sh("xcrun simctl privacy '#{udid}' grant location 'ch.hively.app' 2>/dev/null || true")
+
+      # `snapshot()` writes each PNG as it runs, so keep going even if xcodebuild
+      # reports a test failure (Xcode 26 raises the UIScene-lifecycle notice as a
+      # test issue, and slow simulators occasionally trip a wait). Whether the
+      # run produced the expected screenshots is verified below.
+      test_ok = system(
         "xcodebuild " \
         "-workspace '#{workspace_path}' " \
         "-scheme AppUITests " \
@@ -122,10 +130,14 @@ platform :ios do
         "-destination 'platform=iOS Simulator,id=#{udid}' " \
         "test"
       )
+      UI.important("xcodebuild test reported a failure for #{device_name}; checking screenshots anyway.") unless test_ok
 
       device_output_dir = File.join(output_dir, folder)
       sh("mkdir -p '#{device_output_dir}'")
       sh("mv '#{cache_screenshots_dir}'/*.png '#{device_output_dir}'/ 2>/dev/null || true")
+
+      captured = Dir[File.join(device_output_dir, "*.png")].length
+      UI.user_error!("#{device_name}: expected 5 screenshots, got #{captured}") if captured < 5
     end
 
     UI.success("Screenshots saved to #{output_dir}")
