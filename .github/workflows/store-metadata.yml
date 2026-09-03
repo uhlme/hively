@@ -64,6 +64,9 @@ jobs:
       # release notes on an explicit manual run, never on an automatic push that
       # just changed listing text (it would clobber the live build's notes).
       SKIP_CHANGELOGS: ${{ github.event_name == 'workflow_dispatch' && 'false' || 'true' }}
+      # Always push phoneScreenshots/featureGraphic from the repo when present.
+      SKIP_STORE_SCREENSHOTS: 'false'
+      SKIP_STORE_IMAGES: 'false'
     steps:
       - uses: actions/checkout@v4
 
@@ -210,11 +213,15 @@ jobs:
         run: bundle exec fastlane ios upload_metadata
 
   android-screenshots:
-    # Capture on Linux via Android emulator, then upload. No Mac required.
+    # Capture on Linux via Android emulator, then stage + upload. No Mac required.
+    # Also runs on push when the merge/commit message contains [generate-android-screenshots]
+    # (Cloud agents cannot workflow_dispatch — actions:write is blocked).
     if: |
-      github.event_name == 'workflow_dispatch' &&
-      inputs.screenshots == 'generate_and_upload' &&
-      (inputs.platform == 'android' || inputs.platform == 'both')
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.screenshots == 'generate_and_upload' &&
+       (inputs.platform == 'android' || inputs.platform == 'both')) ||
+      (github.event_name == 'push' &&
+       contains(github.event.head_commit.message, '[generate-android-screenshots]'))
     needs: android-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -252,13 +259,14 @@ jobs:
           echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
           echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
 
-      - name: Capture + frame Android screenshots (emulator)
+      - name: Capture + stage Android screenshots (emulator)
         uses: reactivecircus/android-emulator-runner@v2
         with:
+          # pixel_6 (1080x2400) is proven to capture; Play accepts raw PNGs (no frameit).
           api-level: 34
           target: google_apis
           arch: x86_64
-          profile: pixel_5
+          profile: pixel_6
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
