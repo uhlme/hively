@@ -82,6 +82,22 @@ def stage_android_metadata_for_upload
   dst
 end
 
+# Stage only ASC locale folders (exclude fastlane/screenshots/android/) so
+# deliver never treats Android captures as an App Store locale.
+def stage_ios_screenshots_for_upload
+  src = File.expand_path("screenshots", __dir__)
+  dst = File.expand_path("screenshots_ios_upload", __dir__)
+  sh("rm -rf '#{dst}' && mkdir -p '#{dst}'")
+  locales = (ENV["STORE_IOS_LOCALES"] || "de-DE").split(",").map(&:strip)
+  locales.each do |locale|
+    locale_src = File.join(src, locale)
+    next unless File.directory?(locale_src)
+
+    sh("cp -R '#{locale_src}' '#{dst}/'")
+  end
+  dst
+end
+
 platform :ios do
   desc "Capture App Store screenshots via the AppUITests target"
   lane :screenshots do
@@ -184,40 +200,58 @@ platform :ios do
     UI.success("Framed screenshots written next to the originals in #{screenshots_dir}")
   end
 
-  desc "Fail unless committed iOS screenshots exist under fastlane/screenshots/ (no capture)"
+  desc "Fail unless committed iOS screenshots exist for STORE_IOS_LOCALES (no capture)"
   lane :verify_existing_screenshots do
     project_root = File.expand_path("..", __dir__)
     screenshots_dir = File.join(project_root, "fastlane/screenshots")
-    # Prefer framed PNGs; fall back to any PNG under locale device folders.
-    framed = Dir[File.join(screenshots_dir, "**", "*_framed.png")]
-    any = Dir[File.join(screenshots_dir, "**", "*.png")].reject { |p| File.basename(p).start_with?(".") }
-    count = framed.length > 0 ? framed.length : any.length
-    UI.user_error!(
-      "No iOS screenshots found under #{screenshots_dir}. " \
-      "Commit *_framed.png (e.g. de-DE/6.9-Display/) or run `fastlane ios screenshots` first."
-    ) if count < 1
-    UI.success("Found #{count} iOS screenshot PNG(s) ready to upload")
+    locales = (ENV["STORE_IOS_LOCALES"] || "de-DE").split(",").map(&:strip)
+    total = 0
+    locales.each do |locale|
+      locale_dir = File.join(screenshots_dir, locale)
+      UI.user_error!("Missing iOS screenshot locale folder: #{locale_dir}") unless File.directory?(locale_dir)
+      framed = Dir[File.join(locale_dir, "**", "*_framed.png")]
+      any = Dir[File.join(locale_dir, "**", "*.png")]
+      count = framed.length > 0 ? framed.length : any.length
+      UI.user_error!(
+        "Need ≥5 iOS screenshots under #{locale_dir} (found #{count}). " \
+        "Commit *_framed.png e.g. #{locale}/6.9-Display/ or run `fastlane ios screenshots`."
+      ) if count < 5
+      total += count
+    end
+    UI.success("Found #{total} iOS screenshot PNG(s) for #{locales.join(', ')}")
   end
 
   desc "Upload App Store listing text + screenshots from fastlane/metadata/ (no binary)"
   lane :upload_metadata do
     metadata_path = stage_ios_metadata_for_upload
     upload_shots = ENV["SKIP_SCREENSHOTS"] == "false"
+    # Default false: overwrite clears ALL ASC screenshot sizes for the locale,
+    # then uploads only what's local (e.g. wiping iPad if only 6.9" is in repo).
+    # Set OVERWRITE_SCREENSHOTS=true when uploading a complete device matrix.
+    overwrite = ENV["OVERWRITE_SCREENSHOTS"] == "true"
+    screenshots_path = nil
     begin
+      if upload_shots
+        screenshots_path = stage_ios_screenshots_for_upload
+        staged = Dir[File.join(screenshots_path, "**", "*.png")]
+        UI.user_error!("No iOS screenshots staged under #{screenshots_path}") if staged.empty?
+      end
       deliver(
         api_key: asc_api_key,
         app_identifier: "ch.hively.app",
         metadata_path: metadata_path,
+        screenshots_path: screenshots_path,
         skip_binary_upload: true,
         skip_app_version_update: true,
         skip_metadata: ENV["SKIP_METADATA"] == "true",
         skip_screenshots: !upload_shots,
-        overwrite_screenshots: upload_shots,
+        overwrite_screenshots: overwrite,
         run_precheck_before_submit: false,
         force: true
       )
     ensure
       sh("rm -rf '#{metadata_path}'")
+      sh("rm -rf '#{screenshots_path}'") if screenshots_path
     end
   end
 
@@ -298,12 +332,21 @@ platform :android do
       if framed.empty?
         # Also accept unframed captures already sitting in the phone folder.
         raw = Dir[File.join(framed_dir, "*.png")]
-        UI.user_error!(
-          "No Android phone screenshots found.\n" \
-          "  Expected PNGs in #{play_dir}\n" \
-          "  or *_framed.png under #{framed_dir}\n" \
-          "Run `fastlane android screenshots` + `frame_shots`, or commit the Play images."
-        ) if raw.empty?
+        if raw.empty?
+          if ENV["ALLOW_MISSING_SCREENSHOTS"] == "true"
+            UI.important(
+              "No Android phone screenshots in repo — skipping " \
+              "(ALLOW_MISSING_SCREENSHOTS=true). Commit PNGs under #{play_dir} later."
+            )
+            next
+          end
+          UI.user_error!(
+            "No Android phone screenshots found.\n" \
+            "  Expected PNGs in #{play_dir}\n" \
+            "  or *_framed.png under #{framed_dir}\n" \
+            "Run `fastlane android screenshots` + `frame_shots`, or commit the Play images."
+          )
+        end
         raw.each { |src| FileUtils.cp(src, File.join(play_dir, File.basename(src))) }
       else
         framed.each do |src|
@@ -314,8 +357,12 @@ platform :android do
       play_pngs = Dir[File.join(play_dir, "*.png")]
     end
 
-    UI.user_error!("Android phoneScreenshots still empty after staging") if play_pngs.empty?
-    UI.success("Found #{play_pngs.length} Android phone screenshot(s) in #{play_dir}")
+    count = play_pngs.length
+    UI.user_error!("Android phoneScreenshots still empty after staging") if count < 1
+    UI.user_error!(
+      "Play phone screenshots: need 2–8 PNGs in #{play_dir} (found #{count})"
+    ) if count < 2 || count > 8
+    UI.success("Found #{count} Android phone screenshot(s) in #{play_dir}")
   end
 
   desc "Capture Play Store phone screenshots via ScreenshotCaptureTest (needs emulator/device)"

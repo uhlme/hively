@@ -102,6 +102,8 @@ jobs:
       STORE_IOS_LOCALES: de-DE
       SKIP_SCREENSHOTS: 'false'
       SKIP_METADATA: 'true'
+      # Only 6.9" is committed today — do not wipe iPad sizes on ASC.
+      OVERWRITE_SCREENSHOTS: 'false'
     steps:
       - uses: actions/checkout@v4
 
@@ -138,15 +140,24 @@ jobs:
           echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
 
       - name: Stage committed Android screenshots for Play upload
+        env:
+          # Soft-skip when platform=both and phoneScreenshots are not in the repo yet.
+          ALLOW_MISSING_SCREENSHOTS: ${{ inputs.platform == 'both' && 'true' || 'false' }}
         run: bundle exec fastlane android verify_existing_screenshots
 
-      - name: Upload existing screenshots + images to Play Store
+      - name: Upload existing screenshots to Play Store
         env:
           SKIP_STORE_SCREENSHOTS: 'false'
-          SKIP_STORE_IMAGES: 'false'
+          SKIP_STORE_IMAGES: 'true'
           SKIP_CHANGELOGS: 'true'
           SKIP_METADATA: 'true'
-        run: bundle exec fastlane android upload_metadata
+        run: |
+          PLAY_DIR=fastlane/metadata/android/de-DE/images/phoneScreenshots
+          if ! ls "$PLAY_DIR"/*.png >/dev/null 2>&1; then
+            echo "No Android phone screenshots staged — skipping Play screenshot upload."
+            exit 0
+          fi
+          bundle exec fastlane android upload_metadata
 
       - name: Clean up credential files
         if: always()

@@ -36,10 +36,13 @@ CI: GitHub Actions → **Store metadata** → Platform `ios`/`both` und Screensh
 | `upload_existing` | committete PNGs unter `fastlane/screenshots/` hochladen (kein Capture, Ubuntu) |
 | `generate_and_upload` | neu aufnehmen auf macOS, dann hochladen |
 
-Lokal nur vorhandene hochladen:
+Lokal nur vorhandene hochladen (ersetzt ASC-Screenshots derselben Größe;
+andere Geräte-Größen bleiben, solange `OVERWRITE_SCREENSHOTS` nicht gesetzt ist):
 
 ```bash
 SKIP_SCREENSHOTS=false bundle exec fastlane ios upload_metadata
+# Vollständiges Ersetzen aller Größen:
+# OVERWRITE_SCREENSHOTS=true SKIP_SCREENSHOTS=false bundle exec fastlane ios upload_metadata
 ```
 
 ## Android (Linux-Emulator oder lokales Gerät)

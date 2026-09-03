@@ -1,6 +1,7 @@
 package ch.hively.app;
 
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.webkit.WebView;
 import androidx.webkit.WebViewCompat;
@@ -25,11 +26,16 @@ import java.util.Collections;
  * Both are applied through a document-start script so {@code src/devSeed.js}
  * and the {@code ?view=} router in {@code src/main.js} see them on first paint
  * after a controlled reload.
+ *
+ * <p><b>Debug builds only</b> — release/production ignores these extras so a
+ * third-party Intent cannot wipe the user's local data via the demo seed.
  */
 public class MainActivity extends BridgeActivity {
 
     public static final String EXTRA_UITEST_SEED = "hively_uitest_seed";
     public static final String EXTRA_UITEST_VIEW = "hively_uitest_view";
+
+    private boolean uiTestHooksApplied = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -41,11 +47,18 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        // Force-stop + new process is the normal screenshot path; onNewIntent
+        // only matters for singleTask re-entry — re-apply when extras change.
+        uiTestHooksApplied = false;
         applyUiTestHooks(intent);
     }
 
+    private boolean isDebuggable() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
     private void applyUiTestHooks(Intent intent) {
-        if (intent == null || getBridge() == null) {
+        if (intent == null || getBridge() == null || !isDebuggable() || uiTestHooksApplied) {
             return;
         }
 
@@ -79,6 +92,7 @@ public class MainActivity extends BridgeActivity {
 
         final String js = script.toString();
         final String safeView = hasView ? view : null;
+        uiTestHooksApplied = true;
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(
