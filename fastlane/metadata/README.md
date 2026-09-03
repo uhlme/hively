@@ -100,8 +100,11 @@ bundle exec fastlane android screenshots
 bundle exec fastlane android frame_shots
 ```
 
-CI: Workflow **Store metadata** → `include_screenshots` + Platform `android`/`both`
-(Linux-Emulator, kein Mac).
+CI: Workflow **Store metadata** → Screenshot-Modus wählen:
+
+- `none` — nur Texte
+- `upload_existing` — vorhandene Repo-Screenshots hochladen (iOS + Android, ohne Capture)
+- `generate_and_upload` — neu aufnehmen (iOS=macOS, Android=Linux-Emulator) und hochladen
 
 ## Workflow in Cursor
 

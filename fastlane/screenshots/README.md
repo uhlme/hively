@@ -28,8 +28,19 @@ und seedet vorher deterministische Demo-Daten (via Launch-Argument
    SKIP_SCREENSHOTS=false bundle exec fastlane ios upload_metadata
    ```
 
-CI: GitHub Actions → **Store metadata** → `include_screenshots` + Platform `ios`
-oder `both` (Job `ios-screenshots` auf `macos-latest`).
+CI: GitHub Actions → **Store metadata** → Platform `ios`/`both` und Screenshot-Modus:
+
+| `screenshots` | Verhalten |
+| ------------- | --------- |
+| `none` | nur Listing-Text |
+| `upload_existing` | committete PNGs unter `fastlane/screenshots/` hochladen (kein Capture, Ubuntu) |
+| `generate_and_upload` | neu aufnehmen auf macOS, dann hochladen |
+
+Lokal nur vorhandene hochladen:
+
+```bash
+SKIP_SCREENSHOTS=false bundle exec fastlane ios upload_metadata
+```
 
 ## Android (Linux-Emulator oder lokales Gerät)
 
@@ -56,10 +67,21 @@ Voraussetzung: laufender Emulator/Gerät (`adb devices`).
      bundle exec fastlane android upload_metadata
    ```
 
-CI: GitHub Actions → **Store metadata** → `include_screenshots` + Platform
-`android` oder `both` (Job `android-screenshots` auf `ubuntu-latest` mit
-[`reactivecircus/android-emulator-runner`](https://github.com/ReactiveCircus/android-emulator-runner),
-Pixel 6 / API 34).
+CI: GitHub Actions → **Store metadata** → Platform `android`/`both` und Screenshot-Modus:
+
+| `screenshots` | Verhalten |
+| ------------- | --------- |
+| `none` | nur Listing-Text |
+| `upload_existing` | PNGs aus `metadata/.../phoneScreenshots/` (oder gerahmte unter `screenshots/android/`) hochladen — kein Emulator |
+| `generate_and_upload` | Emulator-Capture (`reactivecircus/android-emulator-runner`), dann Upload |
+
+Lokal nur vorhandene hochladen:
+
+```bash
+bundle exec fastlane android verify_existing_screenshots
+SKIP_STORE_SCREENSHOTS=false SKIP_STORE_IMAGES=false \
+  bundle exec fastlane android upload_metadata
+```
 
 ## Benötigtes Asset
 

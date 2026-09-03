@@ -85,9 +85,9 @@ Gleiche 5 Screens über Instrumentation-Test + Emulator — **kein Mac nötig**.
 android screenshots  →  android frame_shots  →  SKIP_STORE_SCREENSHOTS=false android upload_metadata
 ```
 
-CI: Workflow **Store metadata** mit `include_screenshots=true` und Platform
-`android` oder `both` (Job `android-screenshots`,
-`reactivecircus/android-emulator-runner`).
+CI: Workflow **Store metadata** mit Screenshot-Modus `upload_existing` oder
+`generate_and_upload` und Platform `android` oder `both`
+(`reactivecircus/android-emulator-runner` nur bei Generate).
 
 Screenshot-Set (5 iPhone, 3 iPad optional, 5 Android) und Overlay-Texte:
 [`aso-screenshot-texts.md`](./aso-screenshot-texts.md). Rohaufnahmen sind

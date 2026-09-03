@@ -12,11 +12,15 @@ on:
           - both
           - ios
           - android
-      include_screenshots:
-        description: 'Also generate + upload store screenshots (iOS=macOS, Android=Linux emulator)'
-        required: false
-        default: false
-        type: boolean
+      screenshots:
+        description: 'Screenshots — none (text only), upload_existing (repo PNGs, no capture), generate_and_upload (capture then upload)'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - upload_existing
+          - generate_and_upload
   push:
     branches: [main]
     paths:
@@ -81,16 +85,81 @@ jobs:
         if: always()
         run: rm -f /tmp/play-service-account.json
 
-  ios-screenshots:
-    # Optional: generate framed screenshots on macOS and upload them to
-    # App Store Connect. Only runs on manual dispatch with the toggle enabled,
-    # because screenshot capture needs Xcode/simulators (not available on Linux).
+  # --- Upload committed screenshots only (no capture / no emulator / no macOS) ---
+
+  ios-screenshots-existing:
     if: |
       github.event_name == 'workflow_dispatch' &&
-      inputs.include_screenshots == true &&
+      inputs.screenshots == 'upload_existing' &&
       (inputs.platform == 'ios' || inputs.platform == 'both')
-    # Serialize with the text upload: both call `deliver` against the same ASC
-    # version, and this way the slow macOS job is skipped if the cheap one fails.
+    needs: ios-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      STORE_IOS_LOCALES: de-DE
+      SKIP_SCREENSHOTS: 'false'
+      SKIP_METADATA: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Verify committed iOS screenshots exist
+        run: bundle exec fastlane ios verify_existing_screenshots
+
+      - name: Upload existing screenshots to App Store Connect
+        run: bundle exec fastlane ios upload_metadata
+
+  android-screenshots-existing:
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.screenshots == 'upload_existing' &&
+      (inputs.platform == 'android' || inputs.platform == 'both')
+    needs: android-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Write Play service-account key to disk
+        run: |
+          echo "${{ secrets.PLAY_STORE_JSON_KEY_BASE64 }}" | base64 -d > /tmp/play-service-account.json
+          echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Stage committed Android screenshots for Play upload
+        run: bundle exec fastlane android verify_existing_screenshots
+
+      - name: Upload existing screenshots + images to Play Store
+        env:
+          SKIP_STORE_SCREENSHOTS: 'false'
+          SKIP_STORE_IMAGES: 'false'
+          SKIP_CHANGELOGS: 'true'
+          SKIP_METADATA: 'true'
+        run: bundle exec fastlane android upload_metadata
+
+      - name: Clean up credential files
+        if: always()
+        run: rm -f /tmp/play-service-account.json
+
+  # --- Generate new screenshots then upload ---
+
+  ios-screenshots:
+    # Capture on macOS (Xcode/simulators), then upload. Manual dispatch only.
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.screenshots == 'generate_and_upload' &&
+      (inputs.platform == 'ios' || inputs.platform == 'both')
     needs: ios-metadata
     runs-on: macos-latest
     timeout-minutes: 60
@@ -130,11 +199,10 @@ jobs:
         run: bundle exec fastlane ios upload_metadata
 
   android-screenshots:
-    # Optional: generate framed phone screenshots on Linux via Android emulator
-    # and upload them to Play Console. No Mac required.
+    # Capture on Linux via Android emulator, then upload. No Mac required.
     if: |
       github.event_name == 'workflow_dispatch' &&
-      inputs.include_screenshots == true &&
+      inputs.screenshots == 'generate_and_upload' &&
       (inputs.platform == 'android' || inputs.platform == 'both')
     needs: android-metadata
     runs-on: ubuntu-latest
