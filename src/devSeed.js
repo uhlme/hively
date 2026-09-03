@@ -21,7 +21,8 @@ const KEYS = {
   FINANCES: 'bee_tracker_finances',
   HONEY: 'bee_tracker_honey',
   APIARIES: 'bee_tracker_apiaries',
-  TREATMENTS: 'bee_tracker_treatments'
+  TREATMENTS: 'bee_tracker_treatments',
+  TASKS: 'bee_tracker_tasks'
 };
 const LOCALE_KEY = 'hively_locale';
 const SEED_FLAG = 'hively_uitest_seed';
@@ -157,6 +158,8 @@ export function seedDemoData() {
     localStorage.setItem(KEYS.FINANCES, JSON.stringify(finances));
     localStorage.setItem(KEYS.HONEY, JSON.stringify(honey));
     localStorage.setItem(KEYS.TREATMENTS, JSON.stringify(treatments));
+    // Drop leftover tasks that reference hives/apiaries we just replaced.
+    localStorage.setItem(KEYS.TASKS, JSON.stringify([]));
     if (!localStorage.getItem(LOCALE_KEY)) {
       localStorage.setItem(LOCALE_KEY, 'de');
     }

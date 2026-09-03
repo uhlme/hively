@@ -12,7 +12,8 @@ const KEYS = {
   FINANCES: 'bee_tracker_finances',
   HONEY: 'bee_tracker_honey',
   APIARIES: 'bee_tracker_apiaries',
-  TREATMENTS: 'bee_tracker_treatments'
+  TREATMENTS: 'bee_tracker_treatments',
+  TASKS: 'bee_tracker_tasks'
 };
 
 // Enum keys the inspection form / storage accept (src/healthCatalog.js, index.html).
@@ -64,6 +65,7 @@ describe('devSeed', () => {
     expect(finances.length).toBeGreaterThanOrEqual(3);
     expect(honey.length).toBeGreaterThanOrEqual(2);
     expect(treatments.length).toBeGreaterThanOrEqual(1);
+    expect(read(KEYS.TASKS)).toEqual([]);
     expect(localStorage.getItem('hively_locale')).toBe('de');
 
     const apiaryIds = new Set(apiaries.map((a) => a.id));
