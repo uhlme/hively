@@ -62,5 +62,4 @@ fastlane/DerivedData/
 # (Framefile.json, background.jpg, *.strings, README) and the final framed PNGs.
 fastlane/screenshots/**/*.png
 fastlane/screenshots/**/screenshots.html
-fastlane/screenshots/**/*_original.png
 !fastlane/screenshots/**/*_framed.png

@@ -55,6 +55,11 @@ jobs:
       inputs.platform == 'android' || inputs.platform == 'both'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # supply's changelog upload targets the *active* track release. Only touch
+      # release notes on an explicit manual run, never on an automatic push that
+      # just changed listing text (it would clobber the live build's notes).
+      SKIP_CHANGELOGS: ${{ github.event_name == 'workflow_dispatch' && 'false' || 'true' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -84,6 +89,9 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       inputs.include_screenshots == true &&
       (inputs.platform == 'ios' || inputs.platform == 'both')
+    # Serialize with the text upload: both call `deliver` against the same ASC
+    # version, and this way the slow macOS job is skipped if the cheap one fails.
+    needs: ios-metadata
     runs-on: macos-latest
     timeout-minutes: 60
     env:
@@ -107,12 +115,10 @@ jobs:
           cache: 'npm'
 
       - name: Build web assets + sync into iOS app
+        # `cap sync` (inside ios:sync) also runs `pod install`.
         run: |
           npm ci
           npm run ios:sync
-
-      - name: Install CocoaPods
-        run: cd ios/App && pod install
 
       - name: Capture screenshots (xcodebuild + snapshot)
         run: bundle exec fastlane ios screenshots

@@ -13,12 +13,5 @@
     "title": {
       "color": "#e08a3c"
     }
-  },
-  "data": [
-    { "filter": "Dashboard" },
-    { "filter": "Hives" },
-    { "filter": "Finances" },
-    { "filter": "Calendar" },
-    { "filter": "Settings" }
-  ]
+  }
 }

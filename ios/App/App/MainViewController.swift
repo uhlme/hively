@@ -5,7 +5,7 @@ import WebKit
 /// App entry view controller.
 ///
 /// Supports two launch arguments used by the App Store screenshot UI test:
-///   -hively-uitest-seed            seed deterministic demo data before render
+///   -hively-uitest-seed            seed demo data before the web app renders
 ///   -hively-uitest-view <name>     open a specific view on launch (dashboard,
 ///                                  hives, finances, calendar, settings …)
 ///
@@ -13,6 +13,11 @@ import WebKit
 /// `userContentController` it gets from `webViewConfiguration(for:)`, so the
 /// script has to be added here, where `configuration.userContentController` is
 /// the one the web view is actually created with.
+///
+/// The script runs on every page load while the argument is set, so each UITest
+/// launch re-seeds from scratch — an identical starting state per screenshot.
+/// (devSeed.js clears the flag after seeding; that guard is for the web PWA,
+/// where nothing re-sets it.)
 class MainViewController: CAPBridgeViewController {
     override func webView(with frame: CGRect, configuration: WKWebViewConfiguration) -> WKWebView {
         let args = ProcessInfo.processInfo.arguments
