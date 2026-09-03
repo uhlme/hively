@@ -94,6 +94,14 @@ STORE_IOS_LOCALES=de-DE,fr-FR,it,en-US,en-GB,en-AU bundle exec fastlane ios uplo
 
 Screenshots optional einschließen: `SKIP_SCREENSHOTS=false` (iOS) bzw. `SKIP_STORE_IMAGES=false SKIP_STORE_SCREENSHOTS=false` (Android).
 
+### Age Rating, Preis, App Privacy (iOS)
+
+Siehe [`fastlane/STORE_COMPLIANCE.md`](../STORE_COMPLIANCE.md):
+
+- **Age Rating** + Listing: `bundle exec fastlane ios upload_metadata` (nutzt `rating_config.json`, Free = `price_tier` 0)
+- **App Privacy Labels:** `bundle exec fastlane ios upload_privacy` (braucht Apple-ID-Session, nicht den ASC API-Key)
+- Play Content Rating / Data Safety / Pricing: **nicht** über Fastlane — nur Play Console
+
 Android-Screenshots erzeugen (Emulator muss laufen):
 
 ```bash

@@ -21,11 +21,18 @@ on:
           - none
           - upload_existing
           - generate_and_upload
+      upload_ios_privacy:
+        description: 'Also upload ASC App Privacy Labels (needs APPLE_ID + app-specific password secrets)'
+        required: true
+        default: false
+        type: boolean
   push:
     branches: [main]
     paths:
       - 'fastlane/metadata/**'
       - 'fastlane/Fastfile'
+      - 'fastlane/rating_config.json'
+      - 'fastlane/app_privacy_details.json'
       - '.github/workflows/store-metadata.yml'
 
 jobs:
@@ -49,8 +56,46 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
-      - name: Upload App Store listing (deliver)
+      - name: Upload App Store listing + age rating (deliver)
         run: bundle exec fastlane ios upload_metadata
+
+  # App Privacy Labels cannot use ASC API keys — Apple only exposes the
+  # interactive/iTunes Connect session APIs. Opt-in via workflow_dispatch.
+  ios-privacy:
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.upload_ios_privacy == true &&
+      (inputs.platform == 'ios' || inputs.platform == 'both')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: ios-metadata
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      FASTLANE_USER: ${{ secrets.APPLE_ID }}
+      FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+      FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Guard Apple ID secrets
+        run: |
+          if [ -z "${APPLE_ID}" ]; then
+            echo "::error::upload_ios_privacy=true requires secret APPLE_ID (Apple ID email)."
+            exit 1
+          fi
+          if [ -z "${FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD}" ] && [ -z "${FASTLANE_SESSION}" ]; then
+            echo "::error::Set FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD or FASTLANE_SESSION for App Privacy upload."
+            exit 1
+          fi
+
+      - name: Upload App Privacy Labels
+        run: bundle exec fastlane ios upload_privacy
 
   android-metadata:
     if: |
