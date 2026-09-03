@@ -100,7 +100,7 @@ bundle exec fastlane android screenshots
 bundle exec fastlane android frame_shots
 ```
 
-**Hinweis:** Der Capture-Test darf die App **nicht** per `am force-stop` beenden — das killt die Instrumentation (`Process crashed` in CI). Neu starten läuft über `FLAG_ACTIVITY_CLEAR_TASK`. Gradle muss `:app:connectedDebugAndroidTest` nutzen (nicht alle Capacitor-Plugin-Module).
+**Hinweis:** Der Capture-Test darf die App **nicht** per `am force-stop` beenden — das killt die Instrumentation (`Process crashed` in CI). Neu starten läuft über `FLAG_ACTIVITY_CLEAR_TASK`. Gradle muss `:app:connectedDebugAndroidTest` nutzen (nicht alle Capacitor-Plugin-Module). PNGs liegen unter `/data/local/tmp/hively-store-screenshots` (nicht unter `Android/data/…`, weil `adb pull` dort auf API 30+ blockiert).
 
 CI: Workflow **Store metadata** → Screenshot-Modus wählen:
 
