@@ -71,6 +71,13 @@ def stage_android_metadata_for_upload
       from = File.join(locale_src, file)
       sh("cp '#{from}' '#{locale_dst}/'") if File.exist?(from)
     end
+
+    # Copy per-locale changelogs and store images so supply can upload them
+    # when the corresponding skip flags are disabled.
+    changelogs_src = File.join(locale_src, "changelogs")
+    sh("cp -R '#{changelogs_src}' '#{locale_dst}/'") if File.directory?(changelogs_src)
+    images_src = File.join(locale_src, "images")
+    sh("cp -R '#{images_src}' '#{locale_dst}/'") if File.directory?(images_src)
   end
   dst
 end
@@ -122,6 +129,24 @@ platform :ios do
     end
 
     UI.success("Screenshots saved to #{output_dir}")
+  end
+
+  desc "Add device frames + ASO overlay text to captured screenshots (frameit)"
+  lane :frame_shots do
+    project_root = File.expand_path("..", __dir__)
+    screenshots_dir = File.join(project_root, "fastlane/screenshots")
+    UI.user_error!("No screenshots found in #{screenshots_dir}. Run `fastlane ios screenshots` first.") unless File.directory?(screenshots_dir)
+
+    # frameit silently skips the title/keyword overlay when no background image
+    # is present, producing framed-but-textless screenshots. Fail loudly instead.
+    background = File.join(screenshots_dir, "background.jpg")
+    UI.user_error!("Missing #{background} — frameit needs it to render the overlay text.") unless File.exist?(background)
+
+    frame_screenshots(
+      path: screenshots_dir,
+      use_platform: "IOS"
+    )
+    UI.success("Framed screenshots written next to the originals in #{screenshots_dir}")
   end
 
   desc "Upload App Store listing text + screenshots from fastlane/metadata/ (no binary)"
@@ -230,7 +255,7 @@ platform :android do
         skip_upload_apk: true,
         skip_upload_aab: true,
         skip_upload_metadata: false,
-        skip_upload_changelogs: true,
+        skip_upload_changelogs: ENV["SKIP_CHANGELOGS"] == "true",
         skip_upload_images: ENV["SKIP_STORE_IMAGES"] != "false",
         skip_upload_screenshots: ENV["SKIP_STORE_SCREENSHOTS"] != "false"
       )

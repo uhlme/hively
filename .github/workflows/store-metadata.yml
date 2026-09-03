@@ -12,6 +12,11 @@ on:
           - both
           - ios
           - android
+      include_screenshots:
+        description: 'Also generate + upload iOS screenshots (runs on macOS)'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
     paths:
@@ -64,8 +69,56 @@ jobs:
           echo "GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json" >> "$GITHUB_ENV"
 
       - name: Upload Play Store listing (supply)
+        # Changelogs are uploaded by default; set SKIP_CHANGELOGS=true to skip.
         run: bundle exec fastlane android upload_metadata
 
       - name: Clean up credential files
         if: always()
         run: rm -f /tmp/play-service-account.json
+
+  ios-screenshots:
+    # Optional: generate framed screenshots on macOS and upload them to
+    # App Store Connect. Only runs on manual dispatch with the toggle enabled,
+    # because screenshot capture needs Xcode/simulators (not available on Linux).
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.include_screenshots == true &&
+      (inputs.platform == 'ios' || inputs.platform == 'both')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      STORE_IOS_LOCALES: de-DE
+      SKIP_SCREENSHOTS: 'false'
+      SKIP_METADATA: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Build web assets + sync into iOS app
+        run: |
+          npm ci
+          npm run ios:sync
+
+      - name: Install CocoaPods
+        run: cd ios/App && pod install
+
+      - name: Capture screenshots (xcodebuild + snapshot)
+        run: bundle exec fastlane ios screenshots
+
+      - name: Add device frames + overlay text (frameit)
+        run: bundle exec fastlane ios frame_shots
+
+      - name: Upload screenshots to App Store Connect (deliver)
+        run: bundle exec fastlane ios upload_metadata

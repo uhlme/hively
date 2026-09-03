@@ -1,0 +1,24 @@
+{
+  "device_frame_version": "latest",
+  "default": {
+    "background": "./background.jpg",
+    "padding": 50,
+    "frame": "BLACK",
+    "show_complete_frame": false,
+    "stack_title": true,
+    "title_below_image": false,
+    "keyword": {
+      "color": "#c4b8a8"
+    },
+    "title": {
+      "color": "#e08a3c"
+    }
+  },
+  "data": [
+    { "filter": "Dashboard" },
+    { "filter": "Inspection" },
+    { "filter": "Finances" },
+    { "filter": "Apiaries" },
+    { "filter": "Offline" }
+  ]
+}

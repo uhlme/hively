@@ -100,6 +100,7 @@ import {
   clearNetworkDegraded
 } from './network.js';
 import { getUiPrefs, saveUiPrefs } from './uiPrefs.js';
+import { maybeSeedDemoData } from './devSeed.js';
 import {
   ensureActiveOperation,
   listMyOperations,
@@ -572,6 +573,7 @@ function bindAppHeight() {
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
+  maybeSeedDemoData();
   initI18n();
   try {
     await initStorage();

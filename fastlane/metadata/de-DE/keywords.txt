@@ -1,1 +1,1 @@
-Imkerei,Bienen,Bienenstand,Bienenvolk,Honig,Behandlung,Imker,Varroa,Stockkarte,Team
+Imkerei,Bienen,Bienenstand,Bienenvolk,Honig,Behandlung,Imker,Varroa,Stockkarte,Team,Stockbuch

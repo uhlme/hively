@@ -48,7 +48,6 @@ ios/.gradle/
 # fastlane
 fastlane/report.xml
 fastlane/Preview.html
-fastlane/screenshots/**/*.png
 fastlane/test_output
 vendor/bundle
 *.ipa
@@ -58,4 +57,10 @@ vendor/bundle
 *.p8
 apple/
 fastlane/DerivedData/
-fastlane/screenshots/
+
+# fastlane screenshots: ignore raw + generated captures, keep the config
+# (Framefile.json, background.jpg, *.strings, README) and the final framed PNGs.
+fastlane/screenshots/**/*.png
+fastlane/screenshots/**/screenshots.html
+fastlane/screenshots/**/*_original.png
+!fastlane/screenshots/**/*_framed.png
