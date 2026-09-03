@@ -263,6 +263,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            set -e
             bundle exec fastlane android screenshots
             bundle exec fastlane android frame_shots
 
@@ -282,6 +283,7 @@ jobs:
           path: |
             fastlane/screenshots/android/
             fastlane/metadata/android/de-DE/images/phoneScreenshots/
+            android/app/build/reports/androidTests/
           if-no-files-found: warn
 
       - name: Clean up credential files

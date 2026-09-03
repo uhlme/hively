@@ -1,5 +1,6 @@
 package ch.hively.app;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -22,6 +23,10 @@ import org.junit.runner.RunWith;
  * {@code hively_uitest_seed} + {@code hively_uitest_view}, waits for seeded
  * content, optionally scrolls Settings, and writes PNGs under the app's
  * external pictures dir for {@code adb pull} / Fastlane.
+ *
+ * <p><b>Do not</b> {@code am force-stop} the instrumented package — that tears
+ * down the instrumentation connection and surfaces as
+ * {@code Process crashed} on CI emulators.
  */
 @RunWith(AndroidJUnit4.class)
 public class ScreenshotCaptureTest {
@@ -29,6 +34,7 @@ public class ScreenshotCaptureTest {
     private static final String PACKAGE = "ch.hively.app";
     private static final int LAUNCH_TIMEOUT_MS = 60_000;
     private static final int SEED_TIMEOUT_MS = 25_000;
+    private static final int SETTLE_MS = 3_000;
 
     private UiDevice device;
     private Context targetContext;
@@ -38,11 +44,11 @@ public class ScreenshotCaptureTest {
     public void setUp() {
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         targetContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        outDir =
-            new File(
-                targetContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                "store-screenshots"
-            );
+        File pictures = targetContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (pictures == null) {
+            pictures = new File(targetContext.getFilesDir(), "Pictures");
+        }
+        outDir = new File(pictures, "store-screenshots");
         if (outDir.exists()) {
             File[] existing = outDir.listFiles();
             if (existing != null) {
@@ -52,8 +58,7 @@ public class ScreenshotCaptureTest {
                 }
             }
         }
-        //noinspection ResultOfMethodCallIgnored
-        outDir.mkdirs();
+        assertTrue("could not create screenshot dir " + outDir, outDir.mkdirs() || outDir.isDirectory());
     }
 
     @Test
@@ -71,9 +76,8 @@ public class ScreenshotCaptureTest {
             String view = screens[index][1];
             boolean scrollDown = "1".equals(screens[index][2]);
 
-            device.executeShellCommand("am force-stop " + PACKAGE);
-            Thread.sleep(500);
-
+            // singleTask + CLEAR_TASK recreates MainActivity without killing the
+            // instrumentation process (unlike `am force-stop`).
             Intent intent = new Intent(targetContext, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             intent.putExtra(MainActivity.EXTRA_UITEST_SEED, true);
@@ -88,7 +92,7 @@ public class ScreenshotCaptureTest {
             if (index == 0) {
                 waitForSeededContent();
             } else {
-                Thread.sleep(3000);
+                Thread.sleep(SETTLE_MS);
             }
 
             if (scrollDown) {
@@ -104,8 +108,15 @@ public class ScreenshotCaptureTest {
 
             File dest = new File(outDir, name + ".png");
             assertTrue("takeScreenshot failed for " + name, device.takeScreenshot(dest));
-            assertTrue("screenshot missing for " + name, dest.isFile() && dest.length() > 0);
+            assertTrue(
+                "screenshot missing for " + name + " at " + dest.getAbsolutePath(),
+                dest.isFile() && dest.length() > 0
+            );
         }
+
+        File[] written = outDir.listFiles((dir, fileName) -> fileName.endsWith(".png"));
+        assertNotNull(written);
+        assertTrue("expected 5 screenshots, got " + written.length, written.length >= 5);
     }
 
     private void waitForSeededContent() throws InterruptedException {
