@@ -84,17 +84,45 @@ end
 
 # Stage only ASC locale folders (exclude fastlane/screenshots/android/) so
 # deliver never treats Android captures as an App Store locale.
+#
+# deliver expects a *flat* per-locale layout (`de-DE/*.png`). Device subfolders
+# like `6.9-Display/` from our capture lane are ignored — which looks like a
+# successful upload of 0 screenshots. Flatten framed (preferred) or raw PNGs.
 def stage_ios_screenshots_for_upload
   src = File.expand_path("screenshots", __dir__)
   dst = File.expand_path("screenshots_ios_upload", __dir__)
   sh("rm -rf '#{dst}' && mkdir -p '#{dst}'")
   locales = (ENV["STORE_IOS_LOCALES"] || "de-DE").split(",").map(&:strip)
+  total = 0
   locales.each do |locale|
     locale_src = File.join(src, locale)
     next unless File.directory?(locale_src)
 
-    sh("cp -R '#{locale_src}' '#{dst}/'")
+    locale_dst = File.join(dst, locale)
+    sh("mkdir -p '#{locale_dst}'")
+
+    framed = Dir[File.join(locale_src, "**", "*_framed.png")]
+    pngs = framed.empty? ? Dir[File.join(locale_src, "**", "*.png")] : framed
+    pngs.each do |png|
+      # Keep basename so deliver can use the "iPhone 17 Pro Max-…" device hint.
+      dest_name = File.basename(png)
+      # Avoid collisions when the same basename appears in multiple device folders.
+      dest = File.join(locale_dst, dest_name)
+      if File.exist?(dest)
+        parent = File.basename(File.dirname(png))
+        dest = File.join(locale_dst, "#{parent}-#{dest_name}")
+      end
+      FileUtils.cp(png, dest)
+    end
+    count = Dir[File.join(locale_dst, "*.png")].length
+    UI.user_error!(
+      "No iOS screenshots to stage for #{locale} under #{locale_src} " \
+      "(expected flat de-DE/*.png or de-DE/**/*_framed.png)"
+    ) if count < 1
+    total += count
+    UI.message("Staged #{count} screenshot(s) → #{locale_dst}/ (flat for deliver)")
   end
+  UI.user_error!("No iOS screenshot locales staged") if total < 1
   dst
 end
 
