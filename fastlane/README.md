@@ -23,13 +23,21 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Capture App Store screenshots via the AppUITests target
 
+### ios frame_shots
+
+```sh
+[bundle exec] fastlane ios frame_shots
+```
+
+Add device frames + ASO overlay text to captured screenshots (frameit)
+
 ### ios upload_metadata
 
 ```sh
 [bundle exec] fastlane ios upload_metadata
 ```
 
-Upload App Store metadata and screenshots (no binary)
+Upload App Store listing text + screenshots from fastlane/metadata/ (no binary)
 
 ### ios beta
 
@@ -43,6 +51,14 @@ Build the iOS app and upload it to TestFlight
 
 
 ## Android
+
+### android upload_metadata
+
+```sh
+[bundle exec] fastlane android upload_metadata
+```
+
+Upload Play Store listing text from fastlane/metadata/android/ (no binary)
 
 ### android beta
 

@@ -22,6 +22,26 @@ Ersetze `SOURCE` durch die Quelle (`flyer`, `facebook`, `verein`, `instagram`, �
 
 Optional: `utm_content` für Anzeigen-Varianten, `utm_term` für Keywords.
 
+## Store-Kampagnen (UTM)
+
+Für Store-getriebene Kampagnen `utm_campaign=ch-2026-store` verwenden und die
+Plattform über `utm_content` unterscheiden.
+
+| Kanal | UTM-Beispiel |
+| ----- | ------------ |
+| App Store Badge (Flyer) | `utm_source=flyer&utm_medium=print&utm_campaign=ch-2026-store&utm_content=ios` |
+| Play Store Badge (Flyer) | `utm_source=flyer&utm_medium=print&utm_campaign=ch-2026-store&utm_content=android` |
+| Instagram Bio | `utm_source=instagram&utm_medium=social&utm_campaign=ch-2026-store` |
+
+Die Store-Badges auf `/start/` hängen die aktiven UTM-Parameter automatisch an
+die Store-Links an und tracken den Klick als `marketing_cta_click`
+(`cta: app_store` / `play_store`).
+
+## Store-Marketing / ASO
+
+Vollständiger App-Store- und Play-Store-Plan (ASO, Screenshots, Release-Kadenz,
+Fastlane-Befehle, KPIs): [`store-marketing-plan.md`](./store-marketing-plan.md).
+
 ## Flyer
 
 - **Vorschau / Druck:** https://hivelyy.netlify.app/marketing/flyer.html

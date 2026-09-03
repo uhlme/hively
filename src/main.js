@@ -100,6 +100,7 @@ import {
   clearNetworkDegraded
 } from './network.js';
 import { getUiPrefs, saveUiPrefs } from './uiPrefs.js';
+import { maybeSeedDemoData } from './devSeed.js';
 import {
   ensureActiveOperation,
   listMyOperations,
@@ -584,6 +585,10 @@ function bindAppHeight() {
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
+  // Must run before initI18n() (so the seeded hively_locale is picked up) and
+  // before initStorage() (so ensureDefaultApiary() sees the seeded apiaries and
+  // doesn't add another one). No-op unless a UITest/dev trigger is set.
+  maybeSeedDemoData();
   initI18n();
   try {
     await initStorage();
