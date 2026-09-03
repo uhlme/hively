@@ -23,7 +23,9 @@ und seedet vorher deterministische Demo-Daten (via Launch-Argument
    ```bash
    bundle exec fastlane ios frame_shots
    ```
-3. **Hochladen** – lädt die gerahmten Screenshots zu App Store Connect:
+3. **Hochladen** – lädt die gerahmten Screenshots zu App Store Connect.
+   `deliver` braucht eine **flache** Locale-Struktur (`de-DE/*.png`); die Lane
+   flacht `6.9-Display/` / `13-Display/` beim Upload automatisch ab:
    ```bash
    SKIP_SCREENSHOTS=false bundle exec fastlane ios upload_metadata
    ```
