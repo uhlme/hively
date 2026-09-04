@@ -70,16 +70,23 @@ There is a single service: the Vite dev server.
 Native iOS/Android can pull JS/CSS/HTML bundles without a store release via
 `@capgo/capacitor-updater` + Netlify Blobs (self-hosted, no Capgo Cloud).
 
-- **Store shell** (`v*` tags): builds include Capgo; TestFlight/Play Internal use
-  `VITE_OTA_CHANNEL=staging` (see `scripts/set-ota-channel.mjs` before `cap sync`).
+- **Store shell + Capgo channel matrix:**
+  | Trigger | OTA channel | Typical use |
+  |--------|-------------|-------------|
+  | Tag `v*` / `ios-v*` / `android-v*` | `staging` | TestFlight / Play Internal |
+  | Tag `release-v*` / `release-ios-v*` / `release-android-v*` | `production` | Public App Store / Play shell |
+  | Workflow dispatch → `ota_channel` | chosen | Manual rebuild with explicit channel |
+  Channel is baked via `VITE_OTA_CHANNEL` + `scripts/set-ota-channel.mjs` before `cap sync`.
+  Store workflows also refuse a Local-Only shell (Supabase must be in `dist/`).
 - **OTA publish** (`ota-v*` tags): workflow `.github/workflows/ota-publish.yml` builds
   `dist/`, zips with `@capgo/cli`, uploads to Netlify Blobs stores `ota-bundles` /
   `ota-manifests` for `staging` + `production`.
 - **Endpoints:** `POST /api/app-updates` (Capgo check), `GET /api/ota-bundle/{channel}/{version}.zip`.
 - **GitHub secrets required for OTA CI:** `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
-  (plus the usual `VITE_*` build secrets — especially `VITE_SUPABASE_URL` /
-  `VITE_SUPABASE_ANON_KEY`). Publishing an OTA without those Vite vars ships a
-  **Local-Only** bundle (no login/sync). The workflow refuses to publish if they
-  are missing or not embedded in `dist/`.
-- Native plugin / permission changes still need a `v*` store build. Web PWA updates
+  (Site ID = Netlify **API ID** UUID, not the site name; plus the usual `VITE_*`
+  build secrets — especially `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`).
+  Publishing an OTA without those Vite vars ships a **Local-Only** bundle
+  (no login/sync). The workflow refuses to publish if they are missing or not
+  embedded in `dist/`.
+- Native plugin / permission changes still need a store shell tag. Web PWA updates
   continue via Netlify deploy + Service Worker (SW stays disabled on native).

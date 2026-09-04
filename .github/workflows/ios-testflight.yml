@@ -2,10 +2,20 @@ name: iOS TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      ota_channel:
+        description: 'Capgo OTA channel baked into the native shell'
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
   push:
     tags:
       - 'v*'
       - 'ios-v*'
+      - 'release-v*'
+      - 'release-ios-v*'
 
 jobs:
   beta:
@@ -22,8 +32,6 @@ jobs:
       VITE_BILLING_ENABLED: 'true'
       VITE_GEMINI_PROXY_URL: 'https://hivelyy.netlify.app/api/gemini'
       VITE_STRIPE_API_ORIGIN: 'https://hivelyy.netlify.app'
-      # Capgo OTA: TestFlight builds pull from the staging channel
-      VITE_OTA_CHANNEL: 'staging'
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_KEYCHAIN_NAME: ${{ github.run_id }}.keychain
@@ -37,18 +45,40 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Resolve Capgo OTA channel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            channel="${{ github.event.inputs.ota_channel }}"
+          else
+            case "${GITHUB_REF_NAME}" in
+              release-v*|release-ios-v*) channel=production ;;
+              *) channel=staging ;;
+            esac
+          fi
+          case "$channel" in
+            staging|production) ;;
+            *)
+              echo "Invalid OTA channel: $channel" >&2
+              exit 1
+              ;;
+          esac
+          echo "VITE_OTA_CHANNEL=$channel" >> "$GITHUB_ENV"
+          echo "Capgo OTA channel: $channel"
+
       - name: Determine version number from release tag
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             tag="${GITHUB_REF_NAME}"
           else
-            tag=$(git describe --tags --match 'v*' --match 'ios-v*' --abbrev=0 2>/dev/null || true)
+            tag=$(git describe --tags --match 'v*' --match 'ios-v*' --match 'release-v*' --match 'release-ios-v*' --abbrev=0 2>/dev/null || true)
           fi
           case "$tag" in
+            release-ios-v*) version="${tag#release-ios-v}" ;;
+            release-v*) version="${tag#release-v}" ;;
             ios-v*) version="${tag#ios-v}" ;;
             v*) version="${tag#v}" ;;
             *)
-              echo "Kein gültiger Release-Tag gefunden (v* oder ios-v*), breche ab." >&2
+              echo "Kein gültiger Release-Tag gefunden (v*, ios-v*, release-v*, release-ios-v*), breche ab." >&2
               exit 1
               ;;
           esac
@@ -90,14 +120,30 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
 
+      - name: Require Vite Supabase env (avoid Local-Only shell)
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY — native shell would be Local-Only." >&2
+            exit 1
+          fi
+
       - name: Install JS dependencies
         run: npm ci
 
       - name: Build web app
         run: npm run build
 
-      - name: Set Capgo OTA channel (staging)
-        run: node scripts/set-ota-channel.mjs staging
+      - name: Verify build embeds Supabase (not Local-Only)
+        run: |
+          set -euo pipefail
+          HOST=$(node -e "try{process.stdout.write(new URL(process.env.VITE_SUPABASE_URL).host)}catch{process.exit(1)}")
+          if ! grep -R --quiet --fixed-strings "$HOST" dist/; then
+            echo "Built dist/ does not contain Supabase host — refusing Local-Only shell." >&2
+            exit 1
+          fi
+
+      - name: Set Capgo OTA channel
+        run: node scripts/set-ota-channel.mjs "$VITE_OTA_CHANNEL"
 
       - name: Sync Capacitor iOS project
         run: npx cap sync ios
