@@ -60,6 +60,13 @@ jobs:
             exit 1
           fi
 
+      - name: Require Vite Supabase env (avoid Local-Only OTA)
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY — OTA would ship Local-Only mode." >&2
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -70,6 +77,16 @@ jobs:
 
       - name: Build web app
         run: npm run build
+
+      - name: Verify build embeds Supabase (not Local-Only)
+        run: |
+          set -euo pipefail
+          HOST=$(node -e "try{process.stdout.write(new URL(process.env.VITE_SUPABASE_URL).host)}catch{process.exit(1)}")
+          if ! grep -R --quiet --fixed-strings "$HOST" dist/; then
+            echo "Built dist/ does not contain Supabase host — refusing to publish Local-Only OTA." >&2
+            exit 1
+          fi
+          echo "Supabase host present in dist/"
 
       - name: Zip Capgo bundle
         id: zip

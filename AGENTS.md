@@ -77,6 +77,9 @@ Native iOS/Android can pull JS/CSS/HTML bundles without a store release via
   `ota-manifests` for `staging` + `production`.
 - **Endpoints:** `POST /api/app-updates` (Capgo check), `GET /api/ota-bundle/{channel}/{version}.zip`.
 - **GitHub secrets required for OTA CI:** `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
-  (plus the usual `VITE_*` build secrets).
+  (plus the usual `VITE_*` build secrets — especially `VITE_SUPABASE_URL` /
+  `VITE_SUPABASE_ANON_KEY`). Publishing an OTA without those Vite vars ships a
+  **Local-Only** bundle (no login/sync). The workflow refuses to publish if they
+  are missing or not embedded in `dist/`.
 - Native plugin / permission changes still need a `v*` store build. Web PWA updates
   continue via Netlify deploy + Service Worker (SW stays disabled on native).
