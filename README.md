@@ -171,9 +171,9 @@ git push origin ota-v0.6.13
 
 GitHub Actions workflow **OTA Publish** builds `dist/`, creates a Capgo ZIP, and uploads it to
 **Netlify Blobs** (channels `staging` + `production`). Requires secrets `NETLIFY_AUTH_TOKEN` and
-`NETLIFY_SITE_ID`. TestFlight/Play Internal builds use channel `staging`; production store builds
-should set `VITE_OTA_CHANNEL=production`. Native plugin or permission changes still need a `v*`
-store release.
+`NETLIFY_SITE_ID` (Netlify API ID UUID). TestFlight/Play Internal (`v*` tags) use channel
+`staging`; public store shells use `release-v*` (or workflow_dispatch `ota_channel=production`).
+Native plugin or permission changes still need a store shell release.
 
 ### CI → TestFlight (planned)
 
