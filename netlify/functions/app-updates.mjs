@@ -1,3 +1,4 @@
+import { ensureOtaBlobsContext } from '../../server/otaBlobs.js';
 import {
   handleOtaUpdateRequest,
   otaLambdaResponse
@@ -9,6 +10,7 @@ function requestOrigin(headers = {}) {
 }
 
 export async function handler(event) {
+  ensureOtaBlobsContext(event);
   const origin = requestOrigin(event.headers);
 
   if (event.httpMethod === 'OPTIONS') {

@@ -3,7 +3,22 @@
  * Used by Netlify Functions (auto context) and CI (siteID + token).
  */
 
-import { getStore } from '@netlify/blobs';
+import { connectLambda, getStore } from '@netlify/blobs';
+
+/**
+ * Functions v1 (export handler) need an explicit Blobs context from the Lambda event.
+ * No-op when siteID+token are already provided (CI) or when Blobs env is already set.
+ * @param {unknown} event
+ */
+export function ensureOtaBlobsContext(event) {
+  if (!event || typeof event !== 'object') return;
+  try {
+    connectLambda(event);
+  } catch (err) {
+    // Already connected or running outside Lambda — fall through to getStore options.
+    console.warn('[otaBlobs] connectLambda skipped:', err?.message || err);
+  }
+}
 
 export const OTA_APP_ID = 'ch.hively.app';
 export const OTA_CHANNELS = Object.freeze(['staging', 'production']);

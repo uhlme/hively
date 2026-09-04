@@ -1,7 +1,9 @@
-import { readBundle } from '../../server/otaBlobs.js';
+import { ensureOtaBlobsContext, readBundle } from '../../server/otaBlobs.js';
 import { parseBundlePath } from '../../server/otaUpdates.js';
 
 export async function handler(event) {
+  ensureOtaBlobsContext(event);
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,

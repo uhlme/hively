@@ -1,13 +1,30 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const connectLambdaMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@netlify/blobs', () => ({
+  getStore: vi.fn(),
+  connectLambda: connectLambdaMock
+}));
+
 import {
   bundleKeyFor,
   compareVersions,
+  ensureOtaBlobsContext,
   isOtaChannel,
   isValidOtaVersion,
   parseManifest
 } from '../server/otaBlobs.js';
 
 describe('otaBlobs helpers', () => {
+  it('connects Lambda Blobs context for Functions v1', () => {
+    const event = { httpMethod: 'POST' };
+    ensureOtaBlobsContext(event);
+    expect(connectLambdaMock).toHaveBeenCalledWith(event);
+    ensureOtaBlobsContext(null);
+    expect(connectLambdaMock).toHaveBeenCalledTimes(1);
+  });
+
   it('validates channels and versions', () => {
     expect(isOtaChannel('staging')).toBe(true);
     expect(isOtaChannel('production')).toBe(true);
