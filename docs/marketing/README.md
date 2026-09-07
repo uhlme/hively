@@ -2,6 +2,11 @@
 
 Materialien für lokale Imker-Vereine, Social Media und App-Store-Screenshots.
 
+## Vereins-Outreach
+
+E-Mail-Vorlagen (DE/FR), Adresslisten Dach-/Kantonalverbände und personalisierte Willisau/VLI-Mails:
+[`verein-outreach.md`](./verein-outreach.md) · PDF: [`verein-outreach.pdf`](./verein-outreach.pdf).
+
 ## Mini-Landing
 
 - **URL:** https://hivelyy.netlify.app/start/
