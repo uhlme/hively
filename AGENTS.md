@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## Agent skills (AI Hero / Matt Pocock)
+
+Project skills from [aihero.dev/skills](https://www.aihero.dev/skills) live under
+`.agents/skills/` (Cursor discovers this path automatically). Lockfile:
+`skills-lock.json`.
+
+- Invoke in chat with `/skill-name` (e.g. `/grill-me`, `/tdd`, `/to-spec`, `/ask-matt`)
+- One-time repo setup: `/setup-matt-pocock-skills`
+- Update later: `npx skills update -p -y`
+
+Hively-specific Cursor skills remain under `.cursor/skills/`.
+
 ## Cursor Cloud specific instructions
 
 Hively is a local-first Vanilla JS + Vite PWA (beehive tracker). See `README.md` for the
