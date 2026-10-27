@@ -16,6 +16,11 @@ describe('auth-return.html bridge', () => {
     expect(html).toContain("scheme + '://auth'");
   });
 
+  it('stashes OAuth code via handoff API for Custom Tabs close path', () => {
+    expect(html).toContain('/api/oauth-handoff');
+    expect(html).toContain('stashHandoff');
+  });
+
   it('does not leak OAuth codes via browser_fallback_url', () => {
     expect(html).not.toContain('browser_fallback_url');
   });

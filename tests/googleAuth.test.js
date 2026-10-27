@@ -68,9 +68,13 @@ describe('googleAuth', () => {
     expect(getGoogleOAuthRedirectUrl({ link: true })).toBe(`${window.location.origin}/`);
   });
 
-  it('builds native redirect URL via HTTPS bridge', () => {
+  it('builds native redirect URL via HTTPS bridge with handoff id', () => {
     Capacitor.isNativePlatform.mockReturnValue(true);
-    expect(getGoogleOAuthRedirectUrl()).toContain('/auth-return.html?native=1&mode=sign-in');
+    const url = getGoogleOAuthRedirectUrl({ handoffId: '550e8400-e29b-41d4-a716-446655440000' });
+    expect(url).toContain('/auth-return.html?');
+    expect(url).toContain('native=1');
+    expect(url).toContain('mode=sign-in');
+    expect(url).toContain('h=550e8400-e29b-41d4-a716-446655440000');
     expect(getGoogleOAuthRedirectUrl({ link: true })).toContain('mode=link');
   });
 
@@ -96,8 +100,11 @@ describe('googleAuth', () => {
   });
 
   it('tracks pending native OAuth state', () => {
-    markGoogleAuthPending('link');
-    expect(consumeGoogleAuthPending()).toEqual({ mode: 'link' });
+    markGoogleAuthPending('link', { handoffId: 'abc123def456ghi789' });
+    expect(consumeGoogleAuthPending()).toEqual({
+      mode: 'link',
+      handoffId: 'abc123def456ghi789'
+    });
     expect(consumeGoogleAuthPending()).toBeNull();
   });
 
@@ -127,6 +134,14 @@ describe('googleAuth', () => {
     const result = await signInWithGoogle();
     expect(result.openedBrowser).toBe(true);
     expect(result.redirected).toBe(false);
+    expect(result.handoffId).toBeTruthy();
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: expect.objectContaining({
+        redirectTo: expect.stringContaining(`h=${result.handoffId}`),
+        skipBrowserRedirect: true
+      })
+    });
     expect(Browser.open).toHaveBeenCalledWith({
       url: 'https://accounts.google.com/o/oauth2/v2/auth',
       presentationStyle: 'fullscreen'

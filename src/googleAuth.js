@@ -27,16 +27,30 @@ function nativeApiOrigin() {
   );
 }
 
+/** @returns {string} */
+export function createGoogleOAuthHandoffId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `h-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 /**
  * OAuth redirect target for Supabase.
- * Native uses an HTTPS bridge page that bounces into the app scheme.
- * @param {{ link?: boolean }} [options]
+ * Native uses an HTTPS bridge that stores the code server-side (handoff) and
+ * best-effort bounces into the app scheme — Custom Tabs often block deep links.
+ * @param {{ link?: boolean, handoffId?: string|null }} [options]
  */
-export function getGoogleOAuthRedirectUrl({ link = false } = {}) {
+export function getGoogleOAuthRedirectUrl({ link = false, handoffId = null } = {}) {
   const mode = link ? 'link' : 'sign-in';
   if (Capacitor.isNativePlatform()) {
     const origin = nativeApiOrigin().replace(/\/$/, '');
-    return `${origin}/auth-return.html?native=1&mode=${encodeURIComponent(mode)}`;
+    const params = new URLSearchParams({
+      native: '1',
+      mode
+    });
+    if (handoffId) params.set('h', handoffId);
+    return `${origin}/auth-return.html?${params.toString()}`;
   }
   if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}/`;
@@ -60,7 +74,7 @@ export function parseAuthReturnUrl(urlOrSearch) {
     const isBridgePage = (url.pathname || '').includes('auth-return');
 
     if (!isNativeAuthHost && !isBridgePage) {
-      return { isAuth: false, code: null, error: null, errorDescription: null, mode: null };
+      return { isAuth: false, code: null, error: null, errorDescription: null, mode: null, handoffId: null };
     }
 
     const params = new URLSearchParams(url.search);
@@ -76,19 +90,23 @@ export function parseAuthReturnUrl(urlOrSearch) {
       code: params.get('code'),
       error: params.get('error'),
       errorDescription: params.get('error_description'),
-      mode: params.get('mode')
+      mode: params.get('mode'),
+      handoffId: params.get('h')
     };
   } catch {
-    return { isAuth: false, code: null, error: null, errorDescription: null, mode: null };
+    return { isAuth: false, code: null, error: null, errorDescription: null, mode: null, handoffId: null };
   }
 }
 
-/** @param {'sign-in' | 'link'} mode */
-export function markGoogleAuthPending(mode = 'sign-in') {
+/**
+ * @param {'sign-in' | 'link'} mode
+ * @param {{ handoffId?: string|null }} [extra]
+ */
+export function markGoogleAuthPending(mode = 'sign-in', { handoffId = null } = {}) {
   try {
     sessionStorage.setItem(
       PENDING_GOOGLE_AUTH_KEY,
-      JSON.stringify({ mode, at: Date.now() })
+      JSON.stringify({ mode, at: Date.now(), handoffId: handoffId || null })
     );
   } catch {
     /* ignore */
@@ -104,19 +122,30 @@ export function clearGoogleAuthPending() {
 }
 
 /**
- * @returns {{ mode: 'sign-in' | 'link' } | null}
+ * @returns {{ mode: 'sign-in' | 'link', handoffId: string|null } | null}
  */
-export function consumeGoogleAuthPending({ maxAgeMs = 30 * 60 * 1000 } = {}) {
+export function peekGoogleAuthPending({ maxAgeMs = 30 * 60 * 1000 } = {}) {
   try {
     const raw = sessionStorage.getItem(PENDING_GOOGLE_AUTH_KEY);
     if (!raw) return null;
-    sessionStorage.removeItem(PENDING_GOOGLE_AUTH_KEY);
     const parsed = JSON.parse(raw);
     if (!parsed?.at || Date.now() - parsed.at > maxAgeMs) return null;
-    return { mode: parsed.mode === 'link' ? 'link' : 'sign-in' };
+    return {
+      mode: parsed.mode === 'link' ? 'link' : 'sign-in',
+      handoffId: typeof parsed.handoffId === 'string' ? parsed.handoffId : null
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * @returns {{ mode: 'sign-in' | 'link', handoffId: string|null } | null}
+ */
+export function consumeGoogleAuthPending({ maxAgeMs = 30 * 60 * 1000 } = {}) {
+  const pending = peekGoogleAuthPending({ maxAgeMs });
+  clearGoogleAuthPending();
+  return pending;
 }
 
 export async function closeGoogleAuthBrowser() {
@@ -126,6 +155,46 @@ export async function closeGoogleAuthBrowser() {
   } catch {
     /* already closed */
   }
+}
+
+/**
+ * Claim a code stored by auth-return.html when the deep link bounce failed.
+ * @param {string} handoffId
+ * @returns {Promise<{ code: string, mode: 'sign-in'|'link' }|null>}
+ */
+export async function claimGoogleOAuthHandoff(handoffId) {
+  const id = String(handoffId || '').trim();
+  if (!id) return null;
+  const origin = (nativeApiOrigin() || DEFAULT_NATIVE_ORIGIN).replace(/\/$/, '');
+  const url = `${origin}/api/oauth-handoff?id=${encodeURIComponent(id)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store'
+  });
+  if (!res.ok) return null;
+  const body = await res.json().catch(() => null);
+  const code = typeof body?.code === 'string' ? body.code.trim() : '';
+  if (!code) return null;
+  return { code, mode: body?.mode === 'link' ? 'link' : 'sign-in' };
+}
+
+/**
+ * @param {string} code
+ * @param {'sign-in'|'link'|null} [mode]
+ */
+async function exchangeOAuthCode(code, mode = null) {
+  if (!supabase) {
+    throw new Error('Supabase is not configured');
+  }
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) throw error;
+  const pending = consumeGoogleAuthPending();
+  return {
+    handled: true,
+    session: data.session,
+    mode: mode === 'link' || mode === 'sign-in' ? mode : pending?.mode || 'sign-in'
+  };
 }
 
 /**
@@ -147,20 +216,34 @@ export async function createSessionFromOAuthUrl(url) {
     return { handled: false };
   }
 
-  if (!supabase) {
-    throw new Error('Supabase is not configured');
+  return exchangeOAuthCode(parsed.code, parsed.mode === 'link' ? 'link' : parsed.mode === 'sign-in' ? 'sign-in' : null);
+}
+
+/**
+ * After Custom Tabs closes: claim server handoff if deep link never arrived.
+ * @param {Parameters<typeof handleNativeAuthOpenUrl>[1]} handlers
+ */
+export async function completeGoogleAuthFromHandoff(handlers = {}) {
+  const pending = peekGoogleAuthPending();
+  if (!pending?.handoffId) return { handled: false };
+
+  const claimed = await claimGoogleOAuthHandoff(pending.handoffId);
+  if (!claimed?.code) return { handled: false };
+
+  try {
+    const result = await exchangeOAuthCode(claimed.code, claimed.mode);
+    if (result.handled && handlers.onAuthComplete) {
+      await handlers.onAuthComplete({
+        mode: result.mode === 'link' ? 'link' : 'sign-in',
+        session: result.session || null
+      });
+    }
+    return result;
+  } catch (err) {
+    clearGoogleAuthPending();
+    clearPendingAuthProvider();
+    throw err;
   }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(parsed.code);
-  if (error) throw error;
-
-  const pending = consumeGoogleAuthPending();
-
-  return {
-    handled: true,
-    session: data.session,
-    mode: parsed.mode || pending?.mode || 'sign-in'
-  };
 }
 
 async function startGoogleOAuth({ link = false } = {}) {
@@ -168,8 +251,9 @@ async function startGoogleOAuth({ link = false } = {}) {
     throw new Error('Supabase is not configured');
   }
 
-  const redirectTo = getGoogleOAuthRedirectUrl({ link });
   const isNative = Capacitor.isNativePlatform();
+  const handoffId = isNative ? createGoogleOAuthHandoffId() : null;
+  const redirectTo = getGoogleOAuthRedirectUrl({ link, handoffId });
   const options = {
     redirectTo,
     skipBrowserRedirect: isNative,
@@ -179,7 +263,7 @@ async function startGoogleOAuth({ link = false } = {}) {
     }
   };
 
-  markGoogleAuthPending(link ? 'link' : 'sign-in');
+  markGoogleAuthPending(link ? 'link' : 'sign-in', { handoffId });
   if (!link) {
     markPendingAuthProvider('google');
   }
@@ -211,7 +295,7 @@ async function startGoogleOAuth({ link = false } = {}) {
       throw new Error('Google OAuth URL missing');
     }
     await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
-    return { openedBrowser: true, redirected: false, mode: link ? 'link' : 'sign-in' };
+    return { openedBrowser: true, redirected: false, mode: link ? 'link' : 'sign-in', handoffId };
   }
 
   // Web: Supabase navigates away; completion arrives via detectSessionInUrl / onAuthStateChange.
@@ -263,6 +347,8 @@ export function isGoogleSignInCancelled(err) {
  * @param {string} url
  * @param {{
  *   onAuthComplete?: (result: { mode: 'sign-in' | 'link', session: object|null }) => void | Promise<void>,
+ *   onAuthError?: (err: Error) => void | Promise<void>,
+ *   onAuthCancelled?: (mode: 'sign-in'|'link') => void | Promise<void>,
  *   onAppResume?: () => void | Promise<void>
  * }} handlers
  */
@@ -314,6 +400,7 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
   if (!Capacitor.isNativePlatform()) return () => {};
 
   const unsubscribers = [];
+  let handoffAttempted = false;
 
   const appUrlSub = await App.addListener('appUrlOpen', async ({ url }) => {
     try {
@@ -333,27 +420,37 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
 
   const browserSub = await Browser.addListener('browserFinished', async () => {
     // Peek only — appUrlOpen may still exchange the code after the sheet closes.
-    try {
-      const raw = sessionStorage.getItem(PENDING_GOOGLE_AUTH_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!parsed?.at || Date.now() - parsed.at > 30 * 60 * 1000) {
-        clearGoogleAuthPending();
+    const pending = peekGoogleAuthPending();
+    if (!pending) return;
+
+    // Prefer server handoff: Custom Tabs often never deliver the deep link.
+    setTimeout(async () => {
+      if (!peekGoogleAuthPending()) return;
+      if (handoffAttempted) return;
+      handoffAttempted = true;
+      try {
+        const result = await completeGoogleAuthFromHandoff(handlers);
+        if (result.handled) return;
+      } catch (err) {
+        console.warn('Google OAuth handoff claim failed:', err);
+        if (handlers.onAuthError) {
+          try {
+            await handlers.onAuthError(err);
+          } catch {
+            /* ignore */
+          }
+        }
         return;
       }
-    } catch {
-      return;
-    }
-    // Android Custom Tabs often deliver the deep link slightly after the sheet
-    // closes (Intent bounce). Wait longer than the auth-return.html retries.
-    setTimeout(() => {
-      const pending = consumeGoogleAuthPending();
-      if (!pending) return;
+
+      // Still pending and no handoff → user cancelled / closed early.
+      const leftover = consumeGoogleAuthPending();
+      if (!leftover) return;
       if (handlers.onAuthCancelled) {
         clearPendingAuthProvider();
-        void handlers.onAuthCancelled(pending.mode);
+        void handlers.onAuthCancelled(leftover.mode);
       }
-    }, 2500);
+    }, 900);
   });
   unsubscribers.push(() => browserSub.remove());
 

@@ -75,7 +75,7 @@
     <div id="actions" class="actions" hidden>
       <a id="open-app" class="btn" href="#">In der App öffnen</a>
     </div>
-    <p class="hint">Falls die App nicht öffnet: Tippe auf den Button oder schliess dieses Fenster (✕).</p>
+    <p class="hint">Danach dieses Fenster schliessen (✕), falls die App nicht von selbst öffnet.</p>
   </main>
   <script>
     (function () {
@@ -85,10 +85,11 @@
       var actions = document.getElementById('actions');
       var openApp = document.getElementById('open-app');
       var error = params.get('error');
+      var code = params.get('code');
+      var handoffId = params.get('h');
+      var mode = params.get('mode') || 'sign-in';
 
-      // SFSafariViewController / Custom Tabs cannot use custom-scheme URLs as
-      // Supabase redirect targets. This HTTPS bridge bounces into the app.
-      // Do not put the OAuth code into a browser fallback URL.
+      // Keep handoff id in the deep link so older app builds can still parse mode/code.
       params.delete('native');
       var qs = params.toString();
       var scheme = 'ch.hively.app';
@@ -101,20 +102,6 @@
       var isAndroid = /Android/i.test(ua);
       var openHref = isAndroid ? androidIntent : deep;
 
-      if (error) {
-        title.textContent = 'Anmeldung abgebrochen';
-        message.textContent = 'Die Google-Anmeldung wurde nicht abgeschlossen. Schliess dieses Fenster, um zur App zurückzukehren.';
-        return;
-      }
-
-      title.textContent = 'Anmeldung läuft';
-      message.textContent = isAndroid
-        ? 'Du wirst in die Hively-App geleitet. Tippe auf den Button, falls nichts passiert.'
-        : 'Du wirst gleich zurück in die Hively-App geleitet.';
-
-      openApp.setAttribute('href', openHref);
-      actions.hidden = false;
-
       function bounceToApp() {
         try {
           window.location.href = openHref;
@@ -123,11 +110,37 @@
         }
       }
 
-      // Android Chrome Custom Tabs often ignore plain custom-scheme navigations;
-      // Intent URLs (same pattern as join.html) open the app reliably.
-      // Retry once — the first attempt can race with Custom Tabs settling.
-      setTimeout(bounceToApp, 250);
-      setTimeout(bounceToApp, 1200);
+      function stashHandoff() {
+        if (!code || !handoffId) return Promise.resolve(false);
+        return fetch('/api/oauth-handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ id: handoffId, code: code, mode: mode }),
+          cache: 'no-store',
+          keepalive: true
+        })
+          .then(function (res) { return res.ok || res.status === 204; })
+          .catch(function () { return false; });
+      }
+
+      if (error) {
+        title.textContent = 'Anmeldung abgebrochen';
+        message.textContent = 'Die Google-Anmeldung wurde nicht abgeschlossen. Schliess dieses Fenster, um zur App zurückzukehren.';
+        return;
+      }
+
+      title.textContent = 'Anmeldung läuft';
+      message.textContent = isAndroid
+        ? 'Tippe auf den Button oder schliess dieses Fenster – die Anmeldung wird in der App abgeschlossen.'
+        : 'Du wirst gleich zurück in die Hively-App geleitet. Sonst Fenster schliessen (✕).';
+
+      openApp.setAttribute('href', openHref);
+      actions.hidden = false;
+
+      stashHandoff().then(function () {
+        setTimeout(bounceToApp, 250);
+        setTimeout(bounceToApp, 1200);
+      });
     })();
   </script>
 </body>
