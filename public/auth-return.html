@@ -10,6 +10,8 @@
       --text: #f6efe4;
       --muted: #c4b8a8;
       --accent: #e08a3c;
+      --btn-bg: #e08a3c;
+      --btn-text: #1a1510;
     }
     * { box-sizing: border-box; }
     body {
@@ -40,49 +42,105 @@
     }
     .hint {
       display: inline-block;
-      margin-top: 0.5rem;
+      margin-top: 0.75rem;
       padding: 0.65rem 1rem;
       border: 1px solid rgba(224, 138, 60, 0.45);
       border-radius: 0.65rem;
       color: var(--accent);
       font-size: 0.95rem;
     }
+    .actions {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    .actions[hidden] { display: none; }
+    a.btn {
+      display: inline-block;
+      padding: 0.85rem 1.1rem;
+      border-radius: 0.75rem;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+    }
+    a.btn:active { filter: brightness(0.95); }
   </style>
 </head>
 <body>
   <main>
     <h1 id="title">Hively</h1>
     <p id="message">Einen Moment…</p>
-    <p class="hint">Fenster schliessen (✕), um zur App zurückzukehren.</p>
+    <div id="actions" class="actions" hidden>
+      <a id="open-app" class="btn" href="#">In der App öffnen</a>
+    </div>
+    <p class="hint">Danach dieses Fenster schliessen (✕), falls die App nicht von selbst öffnet.</p>
   </main>
   <script>
     (function () {
       var params = new URLSearchParams(window.location.search);
       var title = document.getElementById('title');
       var message = document.getElementById('message');
+      var actions = document.getElementById('actions');
+      var openApp = document.getElementById('open-app');
       var error = params.get('error');
+      var code = params.get('code');
+      var handoffId = params.get('h');
+      var mode = params.get('mode') || 'sign-in';
 
-      if (error) {
-        title.textContent = 'Anmeldung abgebrochen';
-        message.textContent = 'Die Google-Anmeldung wurde nicht abgeschlossen.';
-      } else {
-        title.textContent = 'Anmeldung läuft';
-        message.textContent = 'Du wirst gleich zurück in die Hively-App geleitet.';
-      }
-
-      // SFSafariViewController cannot load custom-scheme URLs directly as redirect targets.
+      // Keep handoff id in the deep link so older app builds can still parse mode/code.
       params.delete('native');
       var qs = params.toString();
       var scheme = 'ch.hively.app';
       var deep = scheme + '://auth' + (qs ? '?' + qs : '');
+      var androidIntent =
+        'intent://auth' + (qs ? '?' + qs : '') +
+        '#Intent;scheme=' + scheme + ';package=ch.hively.app;end';
 
-      setTimeout(function () {
+      var ua = navigator.userAgent || '';
+      var isAndroid = /Android/i.test(ua);
+      var openHref = isAndroid ? androidIntent : deep;
+
+      function bounceToApp() {
         try {
-          window.location.href = deep;
+          window.location.href = openHref;
         } catch (e) {
-          /* user can close manually */
+          /* user can tap the button */
         }
-      }, 250);
+      }
+
+      function stashHandoff() {
+        if (!code || !handoffId) return Promise.resolve(false);
+        return fetch('/api/oauth-handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ id: handoffId, code: code, mode: mode }),
+          cache: 'no-store',
+          keepalive: true
+        })
+          .then(function (res) { return res.ok || res.status === 204; })
+          .catch(function () { return false; });
+      }
+
+      if (error) {
+        title.textContent = 'Anmeldung abgebrochen';
+        message.textContent = 'Die Google-Anmeldung wurde nicht abgeschlossen. Schliess dieses Fenster, um zur App zurückzukehren.';
+        return;
+      }
+
+      title.textContent = 'Anmeldung läuft';
+      message.textContent = isAndroid
+        ? 'Tippe auf den Button oder schliess dieses Fenster – die Anmeldung wird in der App abgeschlossen.'
+        : 'Du wirst gleich zurück in die Hively-App geleitet. Sonst Fenster schliessen (✕).';
+
+      openApp.setAttribute('href', openHref);
+      actions.hidden = false;
+
+      stashHandoff().then(function () {
+        setTimeout(bounceToApp, 250);
+        setTimeout(bounceToApp, 1200);
+      });
     })();
   </script>
 </body>

@@ -44,6 +44,12 @@
   to = "/.netlify/functions/stripe-webhook"
   status = 200
 
+# Native Google OAuth code handoff (Custom Tabs → app)
+[[redirects]]
+  from = "/api/oauth-handoff"
+  to = "/.netlify/functions/oauth-handoff"
+  status = 200
+
 # Security headers
 [[headers]]
   for = "/*"
