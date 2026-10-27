@@ -27,7 +27,9 @@ export function ensureHandoffBlobsContext(event) {
 }
 
 function handoffStore() {
-  return getStore({ name: HANDOFF_STORE, consistency: 'strong' });
+  // Default eventual consistency — strong mode needs uncachedEdgeURL which is
+  // not always present in Functions v1 Lambda context on this site.
+  return getStore(HANDOFF_STORE);
 }
 
 /**
@@ -78,6 +80,7 @@ export async function storeOAuthHandoff(payload) {
 
 /**
  * Claim (read + delete) a handoff payload.
+ * Retries briefly so an immediate claim after store still sees eventual writes.
  * @param {string} idRaw
  */
 export async function claimOAuthHandoff(idRaw) {
@@ -87,7 +90,12 @@ export async function claimOAuthHandoff(idRaw) {
   }
 
   const store = handoffStore();
-  const data = await store.get(id, { type: 'json' });
+  let data = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    data = await store.get(id, { type: 'json' });
+    if (data?.code) break;
+    await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+  }
   if (!data?.code) {
     return { ok: false, status: 404, body: { error: 'not_found' } };
   }
