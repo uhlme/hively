@@ -647,9 +647,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     onAuthError: async (err) => {
       clearPendingAuthProvider();
-      if (isGoogleSignInCancelled(err)) return;
+      if (isGoogleSignInCancelled(err)) {
+        trackEvent('auth_google_cancelled');
+        return;
+      }
       console.warn('Google auth deep-link failed:', err);
+      trackEvent('auth_google_failed', {
+        reason: String(err?.message || err || 'unknown').slice(0, 120)
+      });
       alert(t('auth.googleFailed'));
+    },
+    onAuthCancelled: () => {
+      clearPendingAuthProvider();
+      trackEvent('auth_google_cancelled');
     }
   };
   setupNativeAuthLifecycle(nativeAuthHandlers).catch((err) =>

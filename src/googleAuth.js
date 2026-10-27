@@ -344,7 +344,8 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
     } catch {
       return;
     }
-    // Give the deep-link handler a moment before treating this as cancel.
+    // Android Custom Tabs often deliver the deep link slightly after the sheet
+    // closes (Intent bounce). Wait longer than the auth-return.html retries.
     setTimeout(() => {
       const pending = consumeGoogleAuthPending();
       if (!pending) return;
@@ -352,7 +353,7 @@ export async function setupNativeAuthLifecycle(handlers = {}) {
         clearPendingAuthProvider();
         void handlers.onAuthCancelled(pending.mode);
       }
-    }, 750);
+    }, 2500);
   });
   unsubscribers.push(() => browserSub.remove());
 
